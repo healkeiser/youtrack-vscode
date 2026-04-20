@@ -202,9 +202,9 @@ export class IssueDetailPanel {
     const reporterRow = issue.reporter
       ? `<div class="side-field"><span class="label">Reporter</span><span class="value">${renderUserChip(issue.reporter)}</span></div>`
       : '';
-    const tagsRow = issue.tags.length
-      ? `<div class="side-field"><span class="label">Tags</span><span class="value tags-value">${issue.tags.map(renderTag).join('')}</span></div>`
-      : '';
+    const tagsRow = `<div class="side-field"><span class="label">Tags</span><span class="value tags-value">${
+      issue.tags.length ? issue.tags.map(renderTag).join('') : '—'
+    }</span></div>`;
 
     const attachHtml = attachments.map((a) =>
       `<div class="attachment"><span>📎</span><a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a><span style="color:var(--vscode-descriptionForeground);font-size:0.85em">${a.size} B</span></div>`

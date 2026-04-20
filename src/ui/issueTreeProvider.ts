@@ -39,6 +39,43 @@ function stateVisuals(state: string): StateVisuals {
   return { icon: 'circle-outline' };
 }
 
+function toUnicodeBold(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code >= 65 && code <= 90) out += String.fromCodePoint(0x1D400 + (code - 65));
+    else if (code >= 97 && code <= 122) out += String.fromCodePoint(0x1D41A + (code - 97));
+    else if (code >= 48 && code <= 57) out += String.fromCodePoint(0x1D7CE + (code - 48));
+    else out += ch;
+  }
+  return out;
+}
+
+function tagColorEmoji(bg: string | undefined | null): string {
+  if (!bg) return '⚪';
+  const m = /#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(bg);
+  if (!m) return '⚪';
+  const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const lightness = (max + min) / 2 / 255;
+  if (lightness < 0.18) return '⚫';
+  if (lightness > 0.90 && max - min < 25) return '⚪';
+  const d = max - min;
+  if (d < 15) return '⚪';
+  let h: number;
+  if (max === r) h = ((g - b) / d);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h = h * 60;
+  if (h < 0) h += 360;
+  if (h < 20 || h >= 340) return '🔴';
+  if (h < 50)  return '🟠';
+  if (h < 75)  return '🟡';
+  if (h < 170) return '🟢';
+  if (h < 260) return '🔵';
+  return '🟣';
+}
+
 function groupByProject(issues: Issue[]): Map<string, Issue[]> {
   const out = new Map<string, Issue[]>();
   for (const i of issues) {
@@ -231,17 +268,17 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
     if (node.kind === 'issue') {
       const state = issueStateName(node.issue);
       const { icon, color } = stateVisuals(state);
-      const idLen = node.issue.idReadable.length;
-      const label: vscode.TreeItemLabel = {
-        label: `${node.issue.idReadable}  ${node.issue.summary}`,
-        highlights: [[0, idLen]],
-      };
-      const t = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
+      const boldId = toUnicodeBold(node.issue.idReadable);
+      const t = new vscode.TreeItem(
+        `${boldId}  ${node.issue.summary}`,
+        vscode.TreeItemCollapsibleState.None,
+      );
       t.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
-      const tagNames = node.issue.tags.map((t) => t.name);
       const descParts: string[] = [];
       if (state) descParts.push(state);
-      if (tagNames.length) descParts.push(tagNames.map((n) => `#${n}`).join(' '));
+      if (node.issue.tags.length) {
+        descParts.push(node.issue.tags.map((tag) => `${tagColorEmoji(tag.color?.background)} ${tag.name}`).join('  '));
+      }
       t.description = descParts.length ? descParts.join('  ·  ') : undefined;
       t.command = { command: 'youtrack.openIssue', title: 'Open', arguments: [node.issue.idReadable] };
       t.contextValue = 'issue';
@@ -249,7 +286,10 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
       tooltip.supportThemeIcons = true;
       if (state) tooltip.appendMarkdown(`**${state}**  \n`);
       tooltip.appendMarkdown(`${node.issue.summary}\n`);
-      if (tagNames.length) tooltip.appendMarkdown(`\n\n_Tags:_ ${tagNames.map((n) => `\`#${n}\``).join(' ')}`);
+      if (node.issue.tags.length) {
+        const parts = node.issue.tags.map((tag) => `${tagColorEmoji(tag.color?.background)} \`${tag.name}\``);
+        tooltip.appendMarkdown(`\n\n_Tags:_ ${parts.join(' ')}`);
+      }
       t.tooltip = tooltip;
       return t;
     }
