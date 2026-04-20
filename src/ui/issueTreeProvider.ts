@@ -36,7 +36,7 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
 
     if (element.kind === 'query') {
       if (element.loaded.length === 0) {
-        const issues = await this.client.searchIssues(element.query.query, 0, PAGE_SIZE);
+        const issues = await this.client.searchSavedQueryIssues(element.query.id, 0, PAGE_SIZE);
         element.loaded = issues;
         element.skip = issues.length;
         element.hasMore = issues.length === PAGE_SIZE;
@@ -75,7 +75,7 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
   async loadMore(parentQueryId: string): Promise<void> {
     const q = this.queries.get(parentQueryId);
     if (!q) return;
-    const more = await this.client.searchIssues(q.query.query, q.skip, PAGE_SIZE);
+    const more = await this.client.searchSavedQueryIssues(q.query.id, q.skip, PAGE_SIZE);
     q.loaded = q.loaded.concat(more);
     q.skip += more.length;
     q.hasMore = more.length === PAGE_SIZE;

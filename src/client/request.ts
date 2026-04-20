@@ -17,12 +17,13 @@ export interface RequestOptions {
 
 function buildUrl(baseUrl: string, path: string, query?: RequestOptions['query']): string {
   const url = new URL(path, baseUrl.endsWith('/') ? baseUrl : baseUrl + '/');
-  if (query) {
-    for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined) url.searchParams.set(k, String(v));
-    }
+  if (!query) return url.toString();
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(query)) {
+    if (v === undefined) continue;
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   }
-  return url.toString();
+  return parts.length ? `${url.origin}${url.pathname}?${parts.join('&')}` : url.toString();
 }
 
 async function sleep(ms: number): Promise<void> {

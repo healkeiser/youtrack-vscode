@@ -102,9 +102,16 @@ export class YouTrackClient {
     return raw.map(mapIssue);
   }
 
+  async searchSavedQueryIssues(savedQueryId: string, skip = 0, top = 50): Promise<Issue[]> {
+    const raw = await this.call<any[]>(`/api/savedQueries/${savedQueryId}/issues`, {
+      query: { $skip: skip, $top: top, fields: ISSUE_FIELDS },
+    });
+    return raw.map(mapIssue);
+  }
+
   async fetchSavedQueries(): Promise<SavedQuery[]> {
     const raw = await this.call<any[]>('/api/savedQueries', { query: { fields: 'id,name,query' } });
-    return raw.map((r) => ({ id: r.id, name: r.name, query: r.query }));
+    return raw.map((r) => ({ id: r.id, name: r.name, query: r.query ?? '' }));
   }
 
   async fetchComments(issueId: string): Promise<Comment[]> {
