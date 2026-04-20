@@ -120,6 +120,13 @@ export class YouTrackClient {
     return raw.map((r) => ({ id: r.id, name: r.name, query: r.query ?? '' }));
   }
 
+  async listUsers(query = '', top = 30): Promise<User[]> {
+    const raw = await this.call<any[]>('/api/users', {
+      query: { query, $top: top, fields: 'id,login,fullName,avatarUrl' },
+    });
+    return raw.map((r) => mapUser(r)).filter((u): u is User => u !== null);
+  }
+
   async addComment(issueId: string, text: string): Promise<Comment> {
     const raw = await this.call<any>(`/api/issues/${issueId}/comments`, {
       method: 'POST',

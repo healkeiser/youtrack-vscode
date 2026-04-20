@@ -227,7 +227,8 @@ export class IssueDetailPanel {
           </div>
           <div class="section">
             <h3>Log time</h3>
-            <form class="log-time">
+            <button type="button" class="log-time-toggle" data-log-toggle>+ Add spent time</button>
+            <form class="log-time collapsed">
               <label>Duration</label><input name="duration" placeholder="1h30m" required>
               <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
               <label>Type</label><select name="type">${typeOpts}</select>
@@ -238,7 +239,21 @@ export class IssueDetailPanel {
           <div class="section">
             <h3>Add comment</h3>
             <form class="add-comment">
-              <textarea name="text" placeholder="Write a comment..." required></textarea>
+              <div class="comment-toolbar">
+                <button type="button" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+                <button type="button" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+                <button type="button" data-md="strike" title="Strikethrough"><s>S</s></button>
+                <button type="button" data-md="code" title="Inline code (Ctrl+E)">&lt;/&gt;</button>
+                <button type="button" data-md="codeblock" title="Code block">{ }</button>
+                <button type="button" data-md="link" title="Link (Ctrl+K)">🔗</button>
+                <span class="sep"></span>
+                <button type="button" data-md="ul" title="Bulleted list">•</button>
+                <button type="button" data-md="ol" title="Numbered list">1.</button>
+                <button type="button" data-md="quote" title="Quote">&gt;</button>
+                <span class="sep"></span>
+                <button type="button" data-md="mention" title="Mention user">@</button>
+              </div>
+              <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
               <button type="submit">Post Comment</button>
             </form>
           </div>
@@ -285,6 +300,19 @@ export class IssueDetailPanel {
         await this.reload();
       } catch (e) {
         vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+    if (msg.type === 'pickMention') {
+      try {
+        const users = await this.client.listUsers('', 50);
+        const picked = await vscode.window.showQuickPick(
+          users.map((u) => ({ label: u.login, description: u.fullName })),
+          { placeHolder: 'Mention a user', matchOnDescription: true, ignoreFocusOut: true },
+        );
+        if (picked) this.panel.webview.postMessage({ type: 'insertMention', login: picked.label });
+      } catch (e) {
+        vscode.window.showErrorMessage(`YouTrack: couldn't load users: ${(e as Error).message}`);
       }
       return;
     }
