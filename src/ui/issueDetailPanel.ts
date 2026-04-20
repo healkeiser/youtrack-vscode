@@ -210,13 +210,13 @@ export class IssueDetailPanel {
             <div class="id-row"><span class="id">${escapeHtml(issue.idReadable)}</span><span class="sep">·</span><span>${escapeHtml(issue.project.shortName)}</span></div>
             <div class="summary">${escapeHtml(issue.summary)}</div>
             <div class="toolbar">
-              <button class="primary" data-cmd="startWork">▶ Start Work</button>
-              <button data-cmd="assignToMe">Assign to Me</button>
-              <button data-cmd="changeState">Change State…</button>
-              <button data-cmd="logTime">Log Time…</button>
-              <button data-cmd="createBranch">Create Branch</button>
-              <button data-cmd="copyLink">Copy Link</button>
-              <button data-cmd="openInBrowser">Open in Browser</button>
+              <button class="primary" data-cmd="startWork" title="Start Work (transition + branch)">▶ Start Work</button>
+              <button data-cmd="assignToMe" title="Assign to me">Assign</button>
+              <button data-cmd="changeState" title="Change state">State…</button>
+              <button data-cmd="logTime" title="Log time">Log Time</button>
+              <button data-cmd="createBranch" title="Create git branch from issue">Branch</button>
+              <button data-cmd="copyLink" title="Copy issue link">Copy</button>
+              <button data-cmd="openInBrowser" title="Open in browser">Open</button>
             </div>
             ${descriptionHtml}
           </div>
