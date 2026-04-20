@@ -13,6 +13,7 @@ import { assignToMe } from './commands/assignToMe';
 import { changeState } from './commands/changeState';
 import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
+import { StatusBar } from './ui/statusBar';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -72,6 +73,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!issueId) return;
       await createBranch(client, cache, issueId);
     }),
+  );
+
+  const pollMs = cfg.get<number>('cache.pollInterval', 60) * 1000;
+  const statusBar = new StatusBar(client, pollMs);
+  statusBar.start();
+  context.subscriptions.push(
+    statusBar,
+    vscode.commands.registerCommand('youtrack.statusBarClick', () => statusBar.click()),
   );
 
   context.subscriptions.push({ dispose: () => db.close() });
