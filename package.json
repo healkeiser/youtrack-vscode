@@ -97,6 +97,16 @@
       {
         "command": "youtrack.startWork",
         "title": "YouTrack: Start Work on Issue..."
+      },
+      {
+        "command": "youtrack.groupByProject",
+        "title": "YouTrack: Group by Project",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "youtrack.groupFlat",
+        "title": "YouTrack: Show Flat List",
+        "icon": "$(list-flat)"
       }
     ],
     "configuration": {
@@ -156,6 +166,12 @@
           "type": "boolean",
           "default": false,
           "description": "Copy to clipboard instead of creating the branch."
+        },
+        "youtrack.sidebar.groupBy": {
+          "type": "string",
+          "enum": ["none", "project"],
+          "default": "project",
+          "description": "How to group issues within each saved search in the sidebar."
         }
       }
     },
@@ -189,9 +205,19 @@
           "group": "navigation@1"
         },
         {
+          "command": "youtrack.groupFlat",
+          "when": "view == youtrack.issues && youtrack.groupedByProject",
+          "group": "navigation@2"
+        },
+        {
+          "command": "youtrack.groupByProject",
+          "when": "view == youtrack.issues && !youtrack.groupedByProject",
+          "group": "navigation@2"
+        },
+        {
           "command": "youtrack.refresh",
           "when": "view == youtrack.issues",
-          "group": "navigation@2"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

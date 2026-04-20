@@ -5,8 +5,11 @@ import type { Issue, SavedQuery } from '../client/types';
 
 type Node =
   | { kind: 'query'; query: SavedQuery; loaded: Issue[]; skip: number; hasMore: boolean }
+  | { kind: 'project'; parentQueryId: string; shortName: string; issues: Issue[] }
   | { kind: 'issue'; issue: Issue; parentQueryId: string }
   | { kind: 'loadMore'; parentQueryId: string };
+
+export type GroupMode = 'none' | 'project';
 
 const PAGE_SIZE = 50;
 
@@ -35,12 +38,24 @@ function stateVisuals(state: string): StateVisuals {
   return { icon: 'circle-outline' };
 }
 
+function groupByProject(issues: Issue[]): Map<string, Issue[]> {
+  const out = new Map<string, Issue[]>();
+  for (const i of issues) {
+    const key = i.project.shortName || '—';
+    const list = out.get(key);
+    if (list) list.push(i);
+    else out.set(key, [i]);
+  }
+  return new Map([...out.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
 export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
   private _emitter = new vscode.EventEmitter<Node | undefined>();
   onDidChangeTreeData = this._emitter.event;
 
   private queries = new Map<string, Node & { kind: 'query' }>();
   private filterText = '';
+  private groupMode: GroupMode = 'project';
 
   constructor(private client: YouTrackClient, private cache: Cache) {}
 
@@ -56,6 +71,16 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
 
   getFilter(): string {
     return this.filterText;
+  }
+
+  setGroupMode(mode: GroupMode): void {
+    if (this.groupMode === mode) return;
+    this.groupMode = mode;
+    this._emitter.fire(undefined);
+  }
+
+  getGroupMode(): GroupMode {
+    return this.groupMode;
   }
 
   private matchesFilter(issue: Issue): boolean {
@@ -84,9 +109,25 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
         for (const i of issues) this.cache.putIssue(i);
       }
       const visible = element.loaded.filter((i) => this.matchesFilter(i));
+
+      const loadMore: Node[] = element.hasMore && !this.filterText
+        ? [{ kind: 'loadMore', parentQueryId: element.query.id }]
+        : [];
+
+      if (this.groupMode === 'project') {
+        const grouped = groupByProject(visible);
+        const kids: Node[] = [...grouped.entries()].map(([shortName, issues]) => ({
+          kind: 'project', parentQueryId: element.query.id, shortName, issues,
+        }));
+        return [...kids, ...loadMore];
+      }
+
       const kids: Node[] = visible.map((i) => ({ kind: 'issue', issue: i, parentQueryId: element.query.id }));
-      if (element.hasMore && !this.filterText) kids.push({ kind: 'loadMore', parentQueryId: element.query.id });
-      return kids;
+      return [...kids, ...loadMore];
+    }
+
+    if (element.kind === 'project') {
+      return element.issues.map((i) => ({ kind: 'issue', issue: i, parentQueryId: element.parentQueryId }));
     }
 
     return [];
@@ -103,6 +144,13 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
       } else if (node.loaded.length) {
         t.description = String(node.loaded.length);
       }
+      return t;
+    }
+    if (node.kind === 'project') {
+      const t = new vscode.TreeItem(node.shortName, vscode.TreeItemCollapsibleState.Expanded);
+      t.iconPath = new vscode.ThemeIcon('folder');
+      t.description = String(node.issues.length);
+      t.contextValue = 'project';
       return t;
     }
     if (node.kind === 'issue') {

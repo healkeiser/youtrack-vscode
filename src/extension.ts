@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { YouTrackClient } from './client/youtrackClient';
 import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
-import { IssueTreeProvider } from './ui/issueTreeProvider';
+import { IssueTreeProvider, type GroupMode } from './ui/issueTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
 import { search } from './commands/search';
@@ -51,6 +51,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
 
   const tree = new IssueTreeProvider(client, cache);
+  const initialGroup: GroupMode = cfg.get<string>('sidebar.groupBy', 'project') === 'none' ? 'none' : 'project';
+  tree.setGroupMode(initialGroup);
+  await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', initialGroup === 'project');
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('youtrack.issues', tree),
     vscode.commands.registerCommand('youtrack.refresh', () => tree.refresh()),
@@ -70,6 +74,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.clearFilter', async () => {
       tree.setFilter('');
       await vscode.commands.executeCommand('setContext', 'youtrack.filterActive', false);
+    }),
+    vscode.commands.registerCommand('youtrack.groupByProject', async () => {
+      tree.setGroupMode('project');
+      await vscode.workspace.getConfiguration('youtrack').update('sidebar.groupBy', 'project', vscode.ConfigurationTarget.Global);
+      await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', true);
+    }),
+    vscode.commands.registerCommand('youtrack.groupFlat', async () => {
+      tree.setGroupMode('none');
+      await vscode.workspace.getConfiguration('youtrack').update('sidebar.groupBy', 'none', vscode.ConfigurationTarget.Global);
+      await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', false);
     }),
     vscode.commands.registerCommand('youtrack.openIssue', (id: string) =>
       IssueDetailPanel.show(context.extensionUri, client, cache, id),
