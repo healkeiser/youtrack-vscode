@@ -10,8 +10,7 @@ const ISSUE_FIELDS = [
   'created', 'updated',
   'project(id,shortName)',
   'reporter(id,login,fullName,avatarUrl)',
-  'assignee:Assignee(id,login,fullName,avatarUrl)',
-  'customFields(name,$type,value(id,name,login,fullName,text,presentation,minutes))',
+  'customFields(name,$type,value(id,name,login,fullName,avatarUrl,text,presentation,minutes))',
 ].join(',');
 
 function mapUser(u: any): User | null {
@@ -58,7 +57,14 @@ function mapCustomField(raw: any): CustomField {
   return { name: raw.name, type, value: mapCustomFieldValue(raw.value, type) };
 }
 
+function extractAssignee(rawCustomFields: any[]): User | null {
+  const field = rawCustomFields.find((f) => f?.name === 'Assignee');
+  if (!field?.value) return null;
+  return mapUser(field.value);
+}
+
 function mapIssue(raw: any): Issue {
+  const rawFields: any[] = raw.customFields ?? [];
   return {
     id: raw.id,
     idReadable: raw.idReadable,
@@ -66,10 +72,10 @@ function mapIssue(raw: any): Issue {
     description: raw.description ?? '',
     project: { id: raw.project.id, shortName: raw.project.shortName },
     reporter: mapUser(raw.reporter),
-    assignee: mapUser(raw.assignee),
+    assignee: extractAssignee(rawFields),
     created: raw.created,
     updated: raw.updated,
-    customFields: (raw.customFields ?? []).map(mapCustomField),
+    customFields: rawFields.map(mapCustomField),
   };
 }
 
