@@ -10,11 +10,17 @@ window.addEventListener('message', (evt) => {
     wireCommentToolbars();
     wireLogTimeToggle();
     wireEditables();
+    wireMdTabs();
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
     const target = pendingMentionTarget ?? document.querySelector('form.add-comment textarea');
     insertAtCursor(target, '@' + msg.login + ' ');
     pendingMentionTarget = null;
+  }
+  if (msg.type === 'previewHtml' && typeof msg.formId === 'string') {
+    const form = document.getElementById(msg.formId);
+    const preview = form?.querySelector('.md-preview');
+    if (preview) preview.innerHTML = msg.html;
   }
 });
 
@@ -135,6 +141,41 @@ function wireCommentToolbars() {
         else if (e.key === 'e') { e.preventDefault(); applyMd('code', ta); }
       });
     }
+  });
+}
+
+let mdFormCounter = 0;
+function wireMdTabs() {
+  document.querySelectorAll('.md-form').forEach((form) => {
+    if (!form.id) form.id = `md-form-${++mdFormCounter}`;
+    const tabs = form.querySelectorAll('.md-tab');
+    const toolbar = form.querySelector('.comment-toolbar');
+    const textarea = form.querySelector('textarea');
+    const preview = form.querySelector('.md-preview');
+    if (!tabs.length || !textarea || !preview) return;
+
+    const showWrite = () => {
+      tabs.forEach((t) => t.classList.toggle('active', t.dataset.mdTab === 'write'));
+      if (toolbar) toolbar.hidden = false;
+      textarea.hidden = false;
+      preview.hidden = true;
+    };
+    const showPreview = () => {
+      tabs.forEach((t) => t.classList.toggle('active', t.dataset.mdTab === 'preview'));
+      if (toolbar) toolbar.hidden = true;
+      textarea.hidden = true;
+      preview.hidden = false;
+      preview.innerHTML = '<p style="color:var(--vscode-descriptionForeground);font-style:italic">Rendering…</p>';
+      vscode.postMessage({ type: 'renderPreview', formId: form.id, text: textarea.value });
+    };
+
+    tabs.forEach((t) => {
+      t.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (t.dataset.mdTab === 'preview') showPreview();
+        else showWrite();
+      });
+    });
   });
 }
 

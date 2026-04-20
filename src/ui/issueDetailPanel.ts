@@ -96,6 +96,10 @@ function valueAsText(v: CustomFieldValue): string {
 
 function formattingToolbarHtml(): string {
   return `
+    <div class="md-tabs">
+      <button type="button" class="md-tab active" data-md-tab="write">Write</button>
+      <button type="button" class="md-tab" data-md-tab="preview">Preview</button>
+    </div>
     <div class="comment-toolbar">
       <button type="button" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
       <button type="button" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
@@ -292,9 +296,10 @@ export class IssueDetailPanel {
                 ${descriptionBody}
                 <button class="edit-btn edit-btn-floating" data-edit="description" title="Edit description">✎</button>
               </div>
-              <form class="editable-edit description-edit" data-edit-form="description" hidden>
+              <form class="editable-edit description-edit md-form" data-edit-form="description" hidden>
                 ${formattingToolbarHtml()}
                 <textarea name="text" placeholder="Markdown supported">${escapeHtml(issue.description)}</textarea>
+                <div class="md-preview md-body" hidden></div>
                 <div class="edit-actions">
                   <button type="submit" class="primary">Save</button>
                   <button type="button" data-edit-cancel="description">Cancel</button>
@@ -320,9 +325,10 @@ export class IssueDetailPanel {
           </div>
           <div class="section">
             <h3>Add comment</h3>
-            <form class="add-comment">
+            <form class="add-comment md-form">
               ${formattingToolbarHtml()}
               <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
+              <div class="md-preview md-body" hidden></div>
               <button type="submit">Post Comment</button>
             </form>
           </div>
@@ -371,6 +377,12 @@ export class IssueDetailPanel {
       } catch (e) {
         vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
       }
+      return;
+    }
+    if (msg.type === 'renderPreview') {
+      const text = String(msg.text ?? '');
+      const html = text.trim() ? renderBody(text, this.userLookup) : '<p style="color:var(--vscode-descriptionForeground);font-style:italic">Nothing to preview.</p>';
+      this.panel.webview.postMessage({ type: 'previewHtml', formId: msg.formId, html });
       return;
     }
     if (msg.type === 'updateField') {
