@@ -22,6 +22,7 @@ export class AuthStore {
     const baseUrl = await vscode.window.showInputBox({
       prompt: 'YouTrack Cloud base URL',
       placeHolder: 'https://<workspace>.youtrack.cloud',
+      ignoreFocusOut: true,
       validateInput: (v) => (v && /^https:\/\/.+/.test(v) ? null : 'Must be an https URL'),
     });
     if (!baseUrl) return null;
@@ -29,6 +30,7 @@ export class AuthStore {
     const token = await vscode.window.showInputBox({
       prompt: 'YouTrack permanent token',
       password: true,
+      ignoreFocusOut: true,
       validateInput: (v) => (v && v.length > 10 ? null : 'Token looks too short'),
     });
     if (!token) return null;

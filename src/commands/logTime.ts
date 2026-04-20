@@ -6,6 +6,7 @@ export async function logTime(client: YouTrackClient, issueId: string): Promise<
   const raw = await vscode.window.showInputBox({
     prompt: 'Duration',
     placeHolder: '1h30m',
+    ignoreFocusOut: true,
     validateInput: (v) => (parseDuration(v) !== null ? null : 'Invalid duration'),
   });
   if (!raw) return;
@@ -14,17 +15,18 @@ export async function logTime(client: YouTrackClient, issueId: string): Promise<
   const dateStr = await vscode.window.showInputBox({
     prompt: 'Date (YYYY-MM-DD)',
     value: new Date().toISOString().slice(0, 10),
+    ignoreFocusOut: true,
     validateInput: (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? null : 'YYYY-MM-DD'),
   });
   if (!dateStr) return;
 
   const types = await client.listWorkItemTypes();
   const picked = types.length
-    ? await vscode.window.showQuickPick([{ label: '(no type)', id: '' }, ...types.map((t) => ({ label: t.name, id: t.id }))], { placeHolder: 'Type' })
+    ? await vscode.window.showQuickPick([{ label: '(no type)', id: '' }, ...types.map((t) => ({ label: t.name, id: t.id }))], { placeHolder: 'Type', ignoreFocusOut: true })
     : { id: '' };
   if (!picked) return;
 
-  const text = await vscode.window.showInputBox({ prompt: 'Note (optional)' });
+  const text = await vscode.window.showInputBox({ prompt: 'Note (optional)', ignoreFocusOut: true });
 
   await client.addWorkItem(issueId, {
     durationSeconds: seconds,

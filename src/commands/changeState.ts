@@ -9,7 +9,7 @@ export async function changeState(client: YouTrackClient, cache: Cache, issueId:
     vscode.window.showErrorMessage('YouTrack: no states configured for this project');
     return;
   }
-  const picked = await vscode.window.showQuickPick(states, { placeHolder: 'New state' });
+  const picked = await vscode.window.showQuickPick(states, { placeHolder: 'New state', ignoreFocusOut: true });
   if (!picked) return;
   await client.transitionState(issueId, picked);
   cache.invalidateIssue(issueId);

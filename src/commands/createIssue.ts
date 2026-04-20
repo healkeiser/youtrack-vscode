@@ -13,16 +13,16 @@ export async function createIssue(client: YouTrackClient): Promise<string | null
   if (!projectId) {
     const picked = await vscode.window.showQuickPick(
       projects.map((p) => ({ label: p.shortName, description: p.name, id: p.id })),
-      { placeHolder: 'Project' },
+      { placeHolder: 'Project', ignoreFocusOut: true },
     );
     if (!picked) return null;
     projectId = picked.id;
   }
 
-  const summary = await vscode.window.showInputBox({ prompt: 'Summary', validateInput: (v) => v ? null : 'Required' });
+  const summary = await vscode.window.showInputBox({ prompt: 'Summary', ignoreFocusOut: true, validateInput: (v) => v ? null : 'Required' });
   if (!summary) return null;
 
-  const description = await vscode.window.showInputBox({ prompt: 'Description (optional)' });
+  const description = await vscode.window.showInputBox({ prompt: 'Description (optional)', ignoreFocusOut: true });
 
   const { idReadable } = await client.createIssue(projectId, summary, description ?? '');
   vscode.window.showInformationMessage(`YouTrack: created ${idReadable}`);

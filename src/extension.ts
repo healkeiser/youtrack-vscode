@@ -75,22 +75,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
     }),
     vscode.commands.registerCommand('youtrack.assignToMe', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
+      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
       if (!issueId) return;
       await assignToMe(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.changeState', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
+      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
       if (!issueId) return;
       await changeState(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.logTime', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
+      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
       if (!issueId) return;
       await logTime(client, issueId);
     }),
     vscode.commands.registerCommand('youtrack.createBranch', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
+      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
       if (!issueId) return;
       await createBranch(client, cache, issueId);
     }),

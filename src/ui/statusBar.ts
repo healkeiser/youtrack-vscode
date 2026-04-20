@@ -34,7 +34,7 @@ export class StatusBar implements vscode.Disposable {
     if (!this.issues.length) { await this.refresh(); }
     const picked = await vscode.window.showQuickPick(
       this.issues.map((i) => ({ label: i.idReadable, description: i.summary })),
-      { placeHolder: 'Your issues' },
+      { placeHolder: 'Your issues', ignoreFocusOut: true },
     );
     if (picked) vscode.commands.executeCommand('youtrack.openIssue', picked.label);
   }
