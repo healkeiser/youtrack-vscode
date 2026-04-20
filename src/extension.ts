@@ -14,6 +14,7 @@ import { changeState } from './commands/changeState';
 import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
+import { openBoard } from './commands/openBoard';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -73,6 +74,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!issueId) return;
       await createBranch(client, cache, issueId);
     }),
+    vscode.commands.registerCommand('youtrack.openBoard', () => openBoard(context.extensionUri, client)),
   );
 
   const pollMs = cfg.get<number>('cache.pollInterval', 60) * 1000;

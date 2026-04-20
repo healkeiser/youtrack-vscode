@@ -1,0 +1,10 @@
+body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); margin: 0; padding: 0.5rem; }
+.toolbar { display: flex; gap: 0.5rem; padding: 0.25rem; border-bottom: 1px solid var(--vscode-panel-border); }
+.board { display: flex; gap: 0.5rem; overflow-x: auto; padding-top: 0.5rem; }
+.column { min-width: 240px; flex: 1; background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 0.5rem; }
+.column h4 { margin: 0 0 0.5rem 0; font-size: 0.9em; text-transform: uppercase; color: var(--vscode-descriptionForeground); }
+.card { background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; cursor: grab; }
+.card.dragging { opacity: 0.5; }
+.card .id { font-size: 0.8em; color: var(--vscode-descriptionForeground); }
+.card .summary { margin-top: 0.25rem; }
+.column.drop-target { outline: 2px dashed var(--vscode-focusBorder); }

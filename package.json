@@ -56,6 +56,10 @@
       {
         "command": "youtrack.createBranch",
         "title": "YouTrack: Create Branch from Issue..."
+      },
+      {
+        "command": "youtrack.openBoard",
+        "title": "YouTrack: Open Agile Board..."
       }
     ],
     "configuration": {
