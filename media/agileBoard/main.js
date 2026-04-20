@@ -1,6 +1,7 @@
 const vscode = acquireVsCodeApi();
 let state = { columns: [], issuesByColumn: {} };
 let meta = { boardTitle: '', boardId: '', sprintId: '', sprints: [] };
+let sortMode = (vscode.getState()?.sortMode) ?? 'default';
 
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
@@ -44,6 +45,30 @@ function issuePriority(issue) {
   if (!f || !f.value) return '';
   if (f.value.kind === 'enum') return f.value.name || '';
   return '';
+}
+
+function priorityRank(name) {
+  const s = (name || '').toLowerCase();
+  if (/show-?stopper|blocker/.test(s)) return 0;
+  if (/critical/.test(s)) return 1;
+  if (/major|high/.test(s)) return 2;
+  if (/normal|medium/.test(s)) return 3;
+  if (/minor|low/.test(s)) return 4;
+  if (/trivial/.test(s)) return 5;
+  return 99;
+}
+
+function sortIssues(issues) {
+  if (sortMode === 'default') return issues;
+  const sorted = [...issues];
+  switch (sortMode) {
+    case 'priority': sorted.sort((a, b) => priorityRank(issuePriority(a)) - priorityRank(issuePriority(b))); break;
+    case 'updated':  sorted.sort((a, b) => (b.updated || 0) - (a.updated || 0)); break;
+    case 'created':  sorted.sort((a, b) => (b.created || 0) - (a.created || 0)); break;
+    case 'id':       sorted.sort((a, b) => a.idReadable.localeCompare(b.idReadable, undefined, { numeric: true })); break;
+    case 'summary':  sorted.sort((a, b) => a.summary.localeCompare(b.summary)); break;
+  }
+  return sorted;
 }
 
 function stateClass(name) {
@@ -105,6 +130,16 @@ function renderHeader() {
 
   const refresh = document.getElementById('refreshBtn');
   if (refresh) refresh.onclick = () => vscode.postMessage({ type: 'refresh' });
+
+  const sortSelect = document.getElementById('sortPicker');
+  if (sortSelect) {
+    sortSelect.value = sortMode;
+    sortSelect.onchange = () => {
+      sortMode = sortSelect.value;
+      vscode.setState({ ...(vscode.getState() ?? {}), sortMode });
+      render();
+    };
+  }
 }
 
 function renderCard(issue, colId) {
@@ -151,7 +186,7 @@ function render() {
   }
   board.innerHTML = '';
   for (const col of state.columns) {
-    const issues = state.issuesByColumn[col.id] ?? [];
+    const issues = sortIssues(state.issuesByColumn[col.id] ?? []);
     const colEl = document.createElement('div');
     colEl.className = 'column';
     colEl.dataset.columnId = col.id;
