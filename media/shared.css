@@ -11,6 +11,12 @@ body {
   line-height: 1.5;
 }
 
+/* Tell native form controls (date picker, select dropdowns) to follow
+   the active VS Code theme so their icons aren't rendered as black
+   on a dark background. */
+body.vscode-dark, body.vscode-high-contrast { color-scheme: dark; }
+body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
+
 /* Card surface */
 .card-surface,
 .section,

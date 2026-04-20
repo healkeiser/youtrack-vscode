@@ -29,11 +29,19 @@
   line-height: 1.3;
 }
 
-.toolbar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+.toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
 .toolbar button {
   padding: 0.4rem 0.8rem;
   border-radius: 3px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .toolbar button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }
 .toolbar button.primary:hover { background: var(--vscode-button-hoverBackground); }
