@@ -20,6 +20,8 @@ import { UriHandler } from './ui/uriHandler';
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
 
+  await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', false);
+
   context.subscriptions.push(
     vscode.commands.registerCommand('youtrack.signIn', async () => {
       const signed = await auth.promptAndValidate();
@@ -37,6 +39,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let creds = await auth.getCredentials();
   if (!creds) creds = await auth.promptAndValidate();
   if (!creds) return;
+
+  await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', true);
 
   const client = new YouTrackClient(creds.baseUrl, creds.token);
   const dbPath = path.join(context.globalStorageUri.fsPath, 'cache.sqlite');
@@ -105,6 +109,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerUriHandler(new UriHandler()),
     vscode.commands.registerCommand('youtrack.signOut', async () => {
       await auth.signOut();
+      await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', false);
       vscode.window.showInformationMessage('YouTrack: signed out. Reload window to re-authenticate.');
     }),
   );

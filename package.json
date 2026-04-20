@@ -156,7 +156,14 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "youtrack.issues",
+        "contents": "You're not signed in to YouTrack Cloud.\n[Sign In](command:youtrack.signIn)",
+        "when": "!youtrack.signedIn"
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
