@@ -2,12 +2,37 @@ import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { marked } from 'marked';
+import sanitizeHtml from 'sanitize-html';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
 import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag, IssueLink } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
+import { getNonce } from './webviewSecurity';
 
 marked.setOptions({ gfm: true, breaks: false });
+
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    'a', 'abbr', 'b', 'blockquote', 'br', 'code', 'del', 'div', 'em', 'figcaption', 'figure',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'input', 'ins', 'kbd', 'li', 'mark',
+    'ol', 'p', 'pre', 's', 'samp', 'small', 'span', 'strong', 'sub', 'summary', 'sup',
+    'table', 'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul',
+  ],
+  allowedAttributes: {
+    '*': ['class', 'title'],
+    a: ['href', 'name', 'target', 'rel'],
+    img: ['src', 'alt', 'title', 'width', 'height'],
+    input: ['type', 'checked', 'disabled'],
+    th: ['align'],
+    td: ['align'],
+  },
+  allowedSchemes: ['http', 'https', 'mailto', 'tel', 'vscode'],
+  allowedSchemesByTag: { img: ['http', 'https', 'data'] },
+  allowProtocolRelative: false,
+  transformTags: {
+    a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }),
+  },
+};
 
 function escapeHtml(s: unknown): string {
   if (s == null) return '';
@@ -27,7 +52,7 @@ function renderBody(raw: string | null | undefined, userLookup: Map<string, User
   if (!raw) return '';
   const withMentions = resolveMentions(raw, userLookup);
   const html = marked.parse(withMentions, { async: false }) as string;
-  return html;
+  return sanitizeHtml(html, SANITIZE_OPTIONS);
 }
 
 function stateSlug(name: string): string {
@@ -191,7 +216,10 @@ export class IssueDetailPanel {
     const mediaRoot = vscode.Uri.joinPath(this.extensionUri, 'media');
     const panelUri = vscode.Uri.joinPath(mediaRoot, 'issueDetail');
     const tpl = fs.readFileSync(path.join(panelUri.fsPath, 'index.html'), 'utf-8');
+    const nonce = getNonce();
     return tpl
+      .replace('{{CSP_SOURCE}}', this.panel.webview.cspSource)
+      .replace(/\{\{NONCE\}\}/g, nonce)
       .replace('{{CODICONS}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')).toString())
       .replace('{{SHARED}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'shared.css')).toString())
       .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'style.css')).toString())
