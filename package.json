@@ -48,6 +48,10 @@
       {
         "command": "youtrack.changeState",
         "title": "YouTrack: Change State..."
+      },
+      {
+        "command": "youtrack.logTime",
+        "title": "YouTrack: Log Time..."
       }
     ],
     "configuration": {
