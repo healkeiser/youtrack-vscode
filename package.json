@@ -60,6 +60,10 @@
       {
         "command": "youtrack.openBoard",
         "title": "YouTrack: Open Agile Board..."
+      },
+      {
+        "command": "youtrack.signOut",
+        "title": "YouTrack: Sign Out"
       }
     ],
     "configuration": {
