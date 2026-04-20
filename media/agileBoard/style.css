@@ -1,9 +1,9 @@
 body { padding: 0.5rem; }
 .toolbar { display: flex; gap: 0.5rem; padding: 0.25rem; border-bottom: 1px solid var(--vscode-panel-border); }
 
-.board { display: flex; gap: 0.5rem; overflow-x: auto; padding-top: 0.5rem; }
+.board { display: flex; gap: 0.6rem; overflow-x: auto; padding-top: 0.6rem; }
 
-.column { min-width: 240px; flex: 1; padding: 0.5rem; }
+.column { min-width: 260px; flex: 1; padding: 0.6rem; }
 .column h4 {
   display: flex;
   justify-content: space-between;
@@ -11,19 +11,17 @@ body { padding: 0.5rem; }
 }
 
 .card {
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
   cursor: grab;
   border-left: 3px solid var(--vscode-descriptionForeground);
-  font-size: 0.92em;
 }
 .card.dragging { opacity: 0.5; }
-.card .id { font-size: 0.8em; color: var(--vscode-descriptionForeground); }
-.card .summary { margin-top: 0.25rem; font-weight: 600; font-size: 1em; line-height: 1.35; }
+.card .id { color: var(--vscode-descriptionForeground); font-weight: 600; }
+.card .summary { margin-top: 0.3rem; font-weight: 600; line-height: 1.35; }
 .card .meta {
-  margin-top: 0.3rem;
+  margin-top: 0.4rem;
   display: flex; align-items: center; gap: 0.4rem;
-  font-size: 0.8em;
   color: var(--vscode-descriptionForeground);
 }
 .column.drop-target { outline: 2px dashed var(--vscode-focusBorder); }

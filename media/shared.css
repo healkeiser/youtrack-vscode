@@ -1,15 +1,17 @@
-/* Base — inherit VS Code's window font. Don't pin font-size explicitly
-   so that the webview text matches the tree / sidebar instead of the
-   larger editor font. */
+/* Base — explicitly inherit VS Code's font family, size, weight so the
+   webview matches the editor/sidebar typography exactly. Every other
+   rule uses em-relative sizes off this. */
 body {
   font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: var(--vscode-font-weight);
   color: var(--vscode-foreground);
   margin: 0;
   padding: 0;
+  line-height: 1.5;
 }
 
-/* Card surface — used by agile-board columns, agile-board cards,
-   issue-detail header, issue-detail sections, side panel. */
+/* Card surface */
 .card-surface,
 .section,
 .header,
@@ -21,52 +23,53 @@ body {
   border-radius: 4px;
 }
 
-/* Section heading — uppercase label used as section / column title */
+/* Section heading — same font-size as body; differentiated by weight,
+   color, uppercase, and letter-spacing. No shrinking. */
 .section h3,
 .side h4,
 .column h4 {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.9em;
+  margin: 0 0 0.6rem 0;
+  font-size: 1em;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--vscode-descriptionForeground);
   font-weight: 600;
 }
 
-/* Colored letter badge */
+/* Letter badge */
 .badge-letter {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%;
-  font-size: 0.8em; font-weight: 700; color: white;
+  width: 20px; height: 20px; border-radius: 50%;
+  font-size: 0.85em; font-weight: 700; color: white;
   background: var(--vscode-descriptionForeground);
   flex-shrink: 0;
   vertical-align: middle;
 }
 .state-dot {
-  width: 9px; height: 9px; border-radius: 50%;
+  width: 10px; height: 10px; border-radius: 50%;
   flex-shrink: 0;
   background: var(--vscode-descriptionForeground);
 }
 
-/* State color mapping — shared everywhere a state is shown. */
+/* State colors */
 .badge-letter.state-done,       .state-dot.state-done       { background: var(--vscode-charts-green); }
 .badge-letter.state-progress,   .state-dot.state-progress   { background: var(--vscode-charts-blue); }
 .badge-letter.state-review,     .state-dot.state-review     { background: var(--vscode-charts-yellow); color: black; }
 .badge-letter.state-cancelled,  .state-dot.state-cancelled  { background: var(--vscode-charts-red); }
 .badge-letter.state-blocked,    .state-dot.state-blocked    { background: var(--vscode-charts-orange); }
 
-/* Priority color mapping */
+/* Priority colors */
 .priority-badge.prio-critical, .priority-badge.prio-blocker { background: var(--vscode-charts-red); }
 .priority-badge.prio-major, .priority-badge.prio-high       { background: var(--vscode-charts-orange); }
 .priority-badge.prio-normal, .priority-badge.prio-medium    { background: var(--vscode-charts-yellow); color: black; }
 .priority-badge.prio-minor, .priority-badge.prio-low        { background: var(--vscode-charts-blue); }
 .priority-badge.prio-trivial                                { background: var(--vscode-descriptionForeground); }
 
-/* Avatar — circular 20px with image fallback to initials */
+/* Avatar — sized from base em so it scales with the user's font */
 .avatar {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%;
-  font-size: 0.7em; font-weight: 700; color: white;
+  width: 1.75em; height: 1.75em; border-radius: 50%;
+  font-size: 0.75em; font-weight: 700; color: white;
   background: var(--vscode-charts-blue);
   flex-shrink: 0;
   overflow: hidden;
@@ -76,22 +79,23 @@ body {
 
 /* Count badge */
 .count-badge {
-  font-size: 0.9em;
+  font-size: 1em;
   color: var(--vscode-badge-foreground);
   background: var(--vscode-badge-background);
-  padding: 0 0.45rem;
+  padding: 0 0.5rem;
   border-radius: 10px;
 }
 
-/* Inputs & buttons — shared across all forms */
+/* Inputs & buttons */
 input, select, textarea, button {
   background: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   border: 1px solid var(--vscode-input-border);
-  padding: 0.35rem 0.5rem;
+  padding: 0.4rem 0.55rem;
   border-radius: 3px;
   font-size: inherit;
   font-family: inherit;
+  line-height: 1.4;
 }
 button { cursor: pointer; border: 1px solid transparent; }
 

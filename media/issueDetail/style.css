@@ -2,7 +2,7 @@
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 1rem;
   padding: 1rem;
   align-items: start;
@@ -16,23 +16,22 @@
 .id-row {
   display: flex; align-items: center; gap: 0.4rem;
   color: var(--vscode-descriptionForeground);
-  font-size: 0.9em;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  font-weight: 600;
 }
 .id-row .id { font-weight: 600; }
 .id-row .sep { opacity: 0.5; }
 .summary {
-  font-size: 1.15em;
+  font-size: 1.3em;
   font-weight: 600;
-  margin: 0.4rem 0 0.75rem 0;
-  line-height: 1.35;
+  margin: 0.5rem 0 0.9rem 0;
+  line-height: 1.3;
 }
 
-.toolbar { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
 .toolbar button {
-  padding: 0.35rem 0.7rem;
-  font-size: 0.95em;
+  padding: 0.4rem 0.8rem;
   border-radius: 3px;
   white-space: nowrap;
 }
@@ -44,82 +43,82 @@
 .side { padding: 1rem; position: sticky; top: 1rem; }
 .side-field {
   display: grid;
-  grid-template-columns: 85px 1fr;
+  grid-template-columns: 90px 1fr;
   gap: 0.5rem;
-  padding: 0.4rem 0;
+  padding: 0.5rem 0;
   align-items: center;
-  min-height: 1.8rem;
+  min-height: 2rem;
 }
 .side-field + .side-field { border-top: 1px solid var(--vscode-panel-border); }
 .side-field .label { color: var(--vscode-descriptionForeground); }
 .side-field .value { overflow: hidden; text-overflow: ellipsis; word-break: break-word; line-height: 1.4; }
-.side-field .badge-letter { margin-right: 0.4rem; }
+.side-field .badge-letter { margin-right: 0.45rem; }
 
-.section { padding: 1rem; margin-top: 0.75rem; }
-.section h3 { padding-bottom: 0.5rem; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 0.75rem; }
+.section { padding: 1rem; margin-top: 0.85rem; }
+.section h3 { padding-bottom: 0.5rem; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 0.85rem; }
 
 .description {
   white-space: pre-wrap;
   line-height: 1.55;
-  padding-top: 0.75rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--vscode-panel-border);
-  margin-top: 0.75rem;
+  margin-top: 0.85rem;
 }
 .description.empty { color: var(--vscode-descriptionForeground); font-style: italic; }
 
-.activity-entry { padding: 0.65rem 0; border-bottom: 1px dashed var(--vscode-panel-border); }
+.activity-entry { padding: 0.75rem 0; border-bottom: 1px dashed var(--vscode-panel-border); }
 .activity-entry:last-child { border-bottom: none; padding-bottom: 0; }
 .activity-entry:first-child { padding-top: 0; }
 .activity-entry .meta {
   display: flex; align-items: center; gap: 0.4rem;
   color: var(--vscode-descriptionForeground);
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
 }
 .activity-entry .meta b { color: var(--vscode-foreground); font-weight: 600; }
 .activity-entry .body { line-height: 1.5; white-space: pre-wrap; }
 .activity-entry.work .body strong { color: var(--vscode-foreground); }
 .no-activity { color: var(--vscode-descriptionForeground); font-style: italic; }
 
-.attachment { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+.attachment { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; }
 .attachment a { color: var(--vscode-textLink-foreground); }
 
-/* Log time form — fills the section, matches card surface, no custom bg */
+/* Log time form — fills section */
 form.log-time {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
-  gap: 0.5rem 0.85rem;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 0.6rem 0.9rem;
   align-items: center;
 }
 form.log-time label { color: var(--vscode-descriptionForeground); }
-form.log-time input[name="duration"] { max-width: 160px; }
-form.log-time input[name="date"]     { max-width: 180px; }
-form.log-time select                  { max-width: 240px; }
+form.log-time input[name="duration"] { max-width: 180px; }
+form.log-time input[name="date"]     { max-width: 200px; }
+form.log-time select                  { max-width: 260px; }
 form.log-time button {
   grid-column: 2;
   justify-self: start;
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  padding: 0.4rem 1rem;
+  padding: 0.45rem 1.2rem;
   border: none;
   border-radius: 3px;
-  margin-top: 0.25rem;
+  margin-top: 0.3rem;
 }
 
-/* Comment form — fills the section */
-form.add-comment { display: flex; flex-direction: column; gap: 0.6rem; }
+/* Comment form — fills section */
+form.add-comment { display: flex; flex-direction: column; gap: 0.7rem; }
 form.add-comment textarea {
   width: 100%;
-  min-height: 5rem;
+  min-height: 6rem;
   font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
   resize: vertical;
-  padding: 0.6rem;
+  padding: 0.7rem;
   box-sizing: border-box;
 }
 form.add-comment button {
   align-self: flex-start;
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  padding: 0.4rem 1rem;
+  padding: 0.45rem 1.2rem;
   border: none;
   border-radius: 3px;
 }
