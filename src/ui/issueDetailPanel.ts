@@ -7,7 +7,7 @@ import type { Cache } from '../cache/cache';
 import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 
-marked.setOptions({ gfm: true, breaks: true });
+marked.setOptions({ gfm: true, breaks: false });
 
 function escapeHtml(s: unknown): string {
   if (s == null) return '';
