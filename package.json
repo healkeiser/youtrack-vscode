@@ -69,6 +69,16 @@
       {
         "command": "youtrack.signOut",
         "title": "YouTrack: Sign Out"
+      },
+      {
+        "command": "youtrack.filter",
+        "title": "YouTrack: Filter Sidebar...",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "youtrack.clearFilter",
+        "title": "YouTrack: Clear Sidebar Filter",
+        "icon": "$(filter-filled)"
       }
     ],
     "configuration": {
@@ -151,9 +161,19 @@
     "menus": {
       "view/title": [
         {
+          "command": "youtrack.filter",
+          "when": "view == youtrack.issues && !youtrack.filterActive",
+          "group": "navigation@1"
+        },
+        {
+          "command": "youtrack.clearFilter",
+          "when": "view == youtrack.issues && youtrack.filterActive",
+          "group": "navigation@1"
+        },
+        {
           "command": "youtrack.refresh",
           "when": "view == youtrack.issues",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ]
     },

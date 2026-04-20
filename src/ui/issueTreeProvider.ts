@@ -40,12 +40,28 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
   onDidChangeTreeData = this._emitter.event;
 
   private queries = new Map<string, Node & { kind: 'query' }>();
+  private filterText = '';
 
   constructor(private client: YouTrackClient, private cache: Cache) {}
 
   refresh(): void {
     this.queries.clear();
     this._emitter.fire(undefined);
+  }
+
+  setFilter(text: string): void {
+    this.filterText = text.trim().toLowerCase();
+    this._emitter.fire(undefined);
+  }
+
+  getFilter(): string {
+    return this.filterText;
+  }
+
+  private matchesFilter(issue: Issue): boolean {
+    if (!this.filterText) return true;
+    const hay = `${issue.idReadable} ${issue.summary} ${issue.assignee?.login ?? ''} ${issue.assignee?.fullName ?? ''} ${issue.project.shortName}`.toLowerCase();
+    return hay.includes(this.filterText);
   }
 
   async getChildren(element?: Node): Promise<Node[]> {
@@ -67,8 +83,9 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
         element.hasMore = issues.length === PAGE_SIZE;
         for (const i of issues) this.cache.putIssue(i);
       }
-      const kids: Node[] = element.loaded.map((i) => ({ kind: 'issue', issue: i, parentQueryId: element.query.id }));
-      if (element.hasMore) kids.push({ kind: 'loadMore', parentQueryId: element.query.id });
+      const visible = element.loaded.filter((i) => this.matchesFilter(i));
+      const kids: Node[] = visible.map((i) => ({ kind: 'issue', issue: i, parentQueryId: element.query.id }));
+      if (element.hasMore && !this.filterText) kids.push({ kind: 'loadMore', parentQueryId: element.query.id });
       return kids;
     }
 
@@ -80,6 +97,12 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
       const t = new vscode.TreeItem(node.query.name, vscode.TreeItemCollapsibleState.Collapsed);
       t.iconPath = new vscode.ThemeIcon('search');
       t.contextValue = 'query';
+      if (this.filterText) {
+        const matches = node.loaded.filter((i) => this.matchesFilter(i)).length;
+        t.description = `${matches} / ${node.loaded.length}`;
+      } else if (node.loaded.length) {
+        t.description = String(node.loaded.length);
+      }
       return t;
     }
     if (node.kind === 'issue') {

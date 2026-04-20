@@ -53,6 +53,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider('youtrack.issues', tree),
     vscode.commands.registerCommand('youtrack.refresh', () => tree.refresh()),
     vscode.commands.registerCommand('youtrack.loadMore', (id: string) => tree.loadMore(id)),
+    vscode.commands.registerCommand('youtrack.filter', async () => {
+      const current = tree.getFilter();
+      const text = await vscode.window.showInputBox({
+        prompt: 'Filter issues in sidebar',
+        placeHolder: 'id, summary, assignee, project',
+        value: current,
+        ignoreFocusOut: true,
+      });
+      if (text === undefined) return;
+      tree.setFilter(text);
+      await vscode.commands.executeCommand('setContext', 'youtrack.filterActive', text.trim().length > 0);
+    }),
+    vscode.commands.registerCommand('youtrack.clearFilter', async () => {
+      tree.setFilter('');
+      await vscode.commands.executeCommand('setContext', 'youtrack.filterActive', false);
+    }),
     vscode.commands.registerCommand('youtrack.openIssue', (id: string) =>
       IssueDetailPanel.show(context.extensionUri, client, cache, id),
     ),
