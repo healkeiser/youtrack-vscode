@@ -136,7 +136,7 @@ function renderSideField(f: CustomField): string {
       ? `background:${v.color.background};color:${v.color.foreground || 'white'}`
       : '';
     const extraClass = style ? '' : ` ${stateSlug(v.name)}`;
-    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+    return `<div class="side-field editable-pill" data-pill="changeState" title="Click to change state"><span class="label">${name}</span><span class="value"><span class="badge-letter${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
   }
   if (f.name === 'Priority' && v.kind === 'enum') {
     const letter = v.name[0]?.toUpperCase() ?? '?';
@@ -144,10 +144,15 @@ function renderSideField(f: CustomField): string {
       ? `background:${v.color.background};color:${v.color.foreground || 'white'}`
       : '';
     const extraClass = style ? '' : ` ${prioritySlug(v.name)}`;
-    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+    return `<div class="side-field editable-pill" data-pill="changePriority" title="Click to change priority"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
   }
   if (v.kind === 'user') {
-    return `<div class="side-field"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
+    const isAssignee = f.name === 'Assignee';
+    const extra = isAssignee ? ' editable-pill" data-pill="changeAssignee" title="Click to change assignee' : '';
+    return `<div class="side-field${extra}"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
+  }
+  if (f.name === 'Assignee' && v.kind === 'empty') {
+    return `<div class="side-field editable-pill" data-pill="changeAssignee" title="Click to assign"><span class="label">${name}</span><span class="value"><em>Unassigned</em></span></div>`;
   }
   return `<div class="side-field"><span class="label">${name}</span><span class="value">${escapeHtml(valueAsText(v))}</span></div>`;
 }
@@ -307,13 +312,11 @@ export class IssueDetailPanel {
               </form>
             </div>
             <div class="toolbar">
-              <button class="primary" data-cmd="startWork" title="Start Work (transition + branch)">▶ Start Work</button>
-              <button data-cmd="assignToMe" title="Assign to me">Assign</button>
-              <button data-cmd="changeState" title="Change state">State…</button>
-              <button data-cmd="logTime" title="Log time">Log Time</button>
+              <button class="primary" data-cmd="startWork" title="Transition state and create a branch">▶ Start Work</button>
               <button data-cmd="createBranch" title="Create git branch from issue">Branch</button>
-              <button data-cmd="copyLink" title="Copy issue link">Copy</button>
-              <button data-cmd="openInBrowser" title="Open in browser">Open</button>
+              <span class="toolbar-gap"></span>
+              <button class="icon-btn" data-cmd="copyLink" title="Copy issue link">⧉</button>
+              <button class="icon-btn" data-cmd="openInBrowser" title="Open in browser">↗</button>
             </div>
             <div class="editable" data-field="description">
               <div class="editable-view">
@@ -453,7 +456,9 @@ export class IssueDetailPanel {
       const map: Record<string, string> = {
         startWork: 'youtrack.startWork',
         assignToMe: 'youtrack.assignToMe',
+        changeAssignee: 'youtrack.changeAssignee',
         changeState: 'youtrack.changeState',
+        changePriority: 'youtrack.changePriority',
         logTime: 'youtrack.logTime',
         createBranch: 'youtrack.createBranch',
         copyLink: 'youtrack.copyLink',

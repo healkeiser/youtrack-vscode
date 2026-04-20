@@ -12,6 +12,7 @@ window.addEventListener('message', (evt) => {
     wireEditables();
     wireMdTabs();
     wireCommentEdits();
+    wirePills();
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
     const target = pendingMentionTarget ?? document.querySelector('form.add-comment textarea');
@@ -176,6 +177,14 @@ function wireMdTabs() {
         if (t.dataset.mdTab === 'preview') showPreview();
         else showWrite();
       });
+    });
+  });
+}
+
+function wirePills() {
+  document.querySelectorAll('.editable-pill[data-pill]').forEach((el) => {
+    el.addEventListener('click', () => {
+      vscode.postMessage({ type: 'cmd', id: el.dataset.pill });
     });
   });
 }

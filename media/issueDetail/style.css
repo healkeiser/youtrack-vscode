@@ -323,14 +323,31 @@ form.add-comment button[type="submit"] {
 
 /* Inline collapsible trigger (shared by Add comment and Add spent time) */
 .inline-toggle {
-  background: transparent;
-  color: var(--vscode-textLink-foreground);
-  border: none;
-  padding: 0.5rem 0;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, transparent);
+  padding: 0.4rem 0.9rem;
   cursor: pointer;
-  font-size: 1em;
+  font-size: 0.95em;
   text-align: left;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
+  border-radius: 3px;
 }
-.inline-toggle:hover { text-decoration: underline; }
+.inline-toggle:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
 .collapsed { display: none !important; }
+
+/* Clickable side-panel pills */
+.editable-pill { cursor: pointer; border-radius: 3px; transition: background 0.1s ease; margin: 0 -0.35rem; padding-left: 0.35rem; padding-right: 0.35rem; }
+.editable-pill:hover { background: var(--vscode-list-hoverBackground); }
+.editable-pill + .editable-pill { border-top: 1px solid var(--vscode-panel-border); }
+
+/* Icon-only toolbar buttons */
+.toolbar .icon-btn {
+  padding: 0.3rem 0.55rem;
+  font-size: 1.05em;
+  min-width: 2em;
+  text-align: center;
+}
+.toolbar-gap { flex: 1; }

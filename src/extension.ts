@@ -10,7 +10,9 @@ import { goToIssue } from './commands/goToIssue';
 import { search } from './commands/search';
 import { CreateIssuePanel } from './ui/createIssuePanel';
 import { assignToMe } from './commands/assignToMe';
+import { changeAssignee } from './commands/changeAssignee';
 import { changeState } from './commands/changeState';
+import { changePriority } from './commands/changePriority';
 import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
@@ -198,10 +200,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!issueId) return;
       await assignToMe(client, cache, issueId);
     }),
+    vscode.commands.registerCommand('youtrack.changeAssignee', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await changeAssignee(client, cache, issueId);
+    }),
     vscode.commands.registerCommand('youtrack.changeState', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
       if (!issueId) return;
       await changeState(client, cache, issueId);
+    }),
+    vscode.commands.registerCommand('youtrack.changePriority', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await changePriority(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.logTime', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
