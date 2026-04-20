@@ -20,7 +20,7 @@ export class AgileBoardPanel {
     this.key = `${boardId}:${sprintId}`;
     this.panel = vscode.window.createWebviewPanel(
       'youtrackBoard', boardTitle, vscode.ViewColumn.Active,
-      { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media', 'agileBoard')], retainContextWhenHidden: true },
+      { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')], retainContextWhenHidden: true },
     );
     this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack.png');
     this.panel.webview.html = this.shellHtml();
@@ -37,11 +37,13 @@ export class AgileBoardPanel {
   }
 
   private shellHtml(): string {
-    const mediaUri = vscode.Uri.joinPath(this.extensionUri, 'media', 'agileBoard');
-    const tpl = fs.readFileSync(path.join(mediaUri.fsPath, 'index.html'), 'utf-8');
+    const mediaRoot = vscode.Uri.joinPath(this.extensionUri, 'media');
+    const panelUri = vscode.Uri.joinPath(mediaRoot, 'agileBoard');
+    const tpl = fs.readFileSync(path.join(panelUri.fsPath, 'index.html'), 'utf-8');
     return tpl
-      .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'style.css')).toString())
-      .replace('{{MAIN}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'main.js')).toString());
+      .replace('{{SHARED}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'shared.css')).toString())
+      .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'style.css')).toString())
+      .replace('{{MAIN}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'main.js')).toString());
   }
 
   private async reload(): Promise<void> {

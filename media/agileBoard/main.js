@@ -53,7 +53,7 @@ function render() {
     const colEl = document.createElement('div');
     colEl.className = 'column';
     colEl.dataset.columnId = col.id;
-    colEl.innerHTML = `<h4><span>${escape(col.name)}</span><span class="count">${issues.length}</span></h4>`;
+    colEl.innerHTML = `<h4><span>${escape(col.name)}</span><span class="count-badge">${issues.length}</span></h4>`;
 
     for (const issue of issues) {
       const stateName = issueStateName(issue);
@@ -67,7 +67,7 @@ function render() {
       card.dataset.fromColumn = col.id;
 
       const metaBits = [];
-      if (stateName) metaBits.push(`<span class="state-dot"></span>${escape(stateName)}`);
+      if (stateName) metaBits.push(`<span class="state-dot ${cls}"></span>${escape(stateName)}`);
       if (assignee) metaBits.push(escape(assignee));
       const meta = metaBits.length ? `<div class="meta">${metaBits.join(' · ')}</div>` : '';
 
