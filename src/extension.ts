@@ -12,6 +12,7 @@ import { createIssue } from './commands/createIssue';
 import { assignToMe } from './commands/assignToMe';
 import { changeState } from './commands/changeState';
 import { logTime } from './commands/logTime';
+import { createBranch } from './commands/createBranch';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -65,6 +66,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
       if (!issueId) return;
       await logTime(client, issueId);
+    }),
+    vscode.commands.registerCommand('youtrack.createBranch', async (id?: string) => {
+      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
+      if (!issueId) return;
+      await createBranch(client, cache, issueId);
     }),
   );
 

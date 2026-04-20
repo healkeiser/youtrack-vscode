@@ -52,11 +52,27 @@
       {
         "command": "youtrack.logTime",
         "title": "YouTrack: Log Time..."
+      },
+      {
+        "command": "youtrack.createBranch",
+        "title": "YouTrack: Create Branch from Issue..."
       }
     ],
     "configuration": {
       "title": "YouTrack",
-      "properties": {}
+      "properties": {
+        "youtrack.baseUrl":                  { "type": "string", "default": "", "description": "YouTrack Cloud base URL." },
+        "youtrack.defaultProject":           { "type": "string", "default": "", "description": "Short name of project used by Create Issue when set." },
+        "youtrack.statusBarQuery":           { "type": "string", "default": "for: me and #Unresolved", "description": "Query for the status bar counter." },
+        "youtrack.cache.ttl.issues":         { "type": "number", "default": 60, "description": "Issue cache TTL (seconds)." },
+        "youtrack.cache.ttl.fieldSchemas":   { "type": "number", "default": 3600, "description": "Custom field schemas TTL (seconds)." },
+        "youtrack.cache.ttl.savedSearches":  { "type": "number", "default": 300, "description": "Saved searches TTL (seconds)." },
+        "youtrack.cache.pollInterval":       { "type": "number", "default": 60, "description": "Background refresh interval (seconds)." },
+        "youtrack.branch.template":          { "type": "string", "default": "{assignee}/{id}-{summary}", "description": "Branch name template." },
+        "youtrack.branch.summaryMaxLength":  { "type": "number", "default": 40, "description": "Summary token max length." },
+        "youtrack.branch.separator":         { "type": "string", "default": "-", "description": "Separator for sanitized tokens." },
+        "youtrack.branch.copyOnly":          { "type": "boolean", "default": false, "description": "Copy to clipboard instead of creating the branch." }
+      }
     },
     "viewsContainers": {
       "activitybar": [
