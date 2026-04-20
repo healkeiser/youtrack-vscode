@@ -261,23 +261,45 @@ function attachColumnDrop(el, toColumnId) {
 
 function renderFlatBoard(board) {
   board.className = 'board board-flat';
-  for (const col of state.columns) {
-    const issues = sortIssues(state.issuesByColumn[col.id] ?? []);
-    const colEl = document.createElement('div');
-    colEl.className = 'column';
-    colEl.dataset.columnId = col.id;
-    colEl.innerHTML = `<h4><span>${escape(col.name)}</span><span class="count-badge">${issues.length}</span></h4>`;
+  const cols = state.columns;
+  const colsGrid = `repeat(${cols.length}, minmax(260px, 1fr))`;
 
+  const container = document.createElement('div');
+  container.className = 'swim-container';
+
+  const header = document.createElement('div');
+  header.className = 'swim-header';
+  header.style.gridTemplateColumns = colsGrid;
+  for (const col of cols) {
+    const count = (state.issuesByColumn[col.id] ?? []).length;
+    const h = document.createElement('div');
+    h.className = 'swim-header-col';
+    h.innerHTML = `<span>${escape(col.name)}</span><span class="count-badge">${count}</span>`;
+    header.appendChild(h);
+  }
+  container.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'swim-lane-body';
+  body.style.gridTemplateColumns = colsGrid;
+  for (const col of cols) {
+    const cell = document.createElement('div');
+    cell.className = 'swim-cell';
+    cell.dataset.columnId = col.id;
+    const issues = sortIssues(state.issuesByColumn[col.id] ?? []);
     for (const issue of issues) {
       const wrapper = document.createElement('div');
       wrapper.innerHTML = renderCard(issue, col.id).trim();
       const card = wrapper.firstElementChild;
       attachCardBehavior(card, issue, col.id);
-      colEl.appendChild(card);
+      cell.appendChild(card);
     }
-    attachColumnDrop(colEl, col.id);
-    board.appendChild(colEl);
+    attachColumnDrop(cell, col.id);
+    body.appendChild(cell);
   }
+  container.appendChild(body);
+
+  board.appendChild(container);
 }
 
 const collapsedLanes = new Set();

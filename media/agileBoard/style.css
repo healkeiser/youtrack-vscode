@@ -47,11 +47,6 @@ body { padding: 0; }
   overflow-x: auto;
   padding: 0.75rem;
 }
-.board.board-flat {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-}
 
 /* Swimlane view */
 .swim-container { display: flex; flex-direction: column; min-width: max-content; }
@@ -125,14 +120,6 @@ body { padding: 0; }
 .swim-cell .card:last-child { margin-bottom: 0; }
 .board-loading { color: var(--vscode-descriptionForeground); font-style: italic; padding: 1rem; }
 
-.column { min-width: 260px; max-width: 320px; flex: 1 0 auto; padding: 0.6rem; }
-.column h4 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.4rem;
-}
-
 .card {
   padding: 0.6rem;
   margin-bottom: 0.5rem;
@@ -158,7 +145,6 @@ body { padding: 0; }
 }
 .card .meta .spacer { flex: 1; }
 
-.column.drop-target { outline: 2px dashed var(--vscode-focusBorder); }
 
 .card.state-done       { border-left-color: var(--vscode-charts-green); }
 .card.state-progress   { border-left-color: var(--vscode-charts-blue); }
