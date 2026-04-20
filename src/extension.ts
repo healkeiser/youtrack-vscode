@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { YouTrackClient } from './client/youtrackClient';
 import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
-import { IssueTreeProvider, type GroupMode } from './ui/issueTreeProvider';
+import { IssueTreeProvider, type GroupMode, type SortMode } from './ui/issueTreeProvider';
 import { BoardTreeProvider } from './ui/boardTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
@@ -85,6 +85,44 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       tree.setGroupMode('none');
       await vscode.workspace.getConfiguration('youtrack').update('sidebar.groupBy', 'none', vscode.ConfigurationTarget.Global);
       await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', false);
+    }),
+    vscode.commands.registerCommand('youtrack.filterByState', async () => {
+      const states = tree.getAvailableStates();
+      if (!states.length) {
+        vscode.window.showInformationMessage('YouTrack: expand a saved search first so the sidebar knows which states exist.');
+        return;
+      }
+      const current = new Set(tree.getStateFilter());
+      const picks = await vscode.window.showQuickPick(
+        states.map((s) => ({ label: s, picked: current.has(s) })),
+        { canPickMany: true, placeHolder: 'Pick states to show (none = show all)', ignoreFocusOut: true },
+      );
+      if (!picks) return;
+      const selected = picks.map((p) => p.label);
+      tree.setStateFilter(selected);
+      await vscode.commands.executeCommand('setContext', 'youtrack.stateFilterActive', selected.length > 0);
+    }),
+    vscode.commands.registerCommand('youtrack.clearStateFilter', async () => {
+      tree.setStateFilter([]);
+      await vscode.commands.executeCommand('setContext', 'youtrack.stateFilterActive', false);
+    }),
+    vscode.commands.registerCommand('youtrack.sortBy', async () => {
+      const labels: Record<SortMode, string> = {
+        default: 'Default (saved search order)',
+        updated: 'Recently updated',
+        created: 'Recently created',
+        id: 'Issue ID',
+      };
+      const current = tree.getSortMode();
+      const picks = (['default', 'updated', 'created', 'id'] as SortMode[]).map((m) => ({
+        label: labels[m],
+        mode: m,
+        description: m === current ? '(current)' : '',
+      }));
+      const picked = await vscode.window.showQuickPick(picks, { placeHolder: 'Sort issues by…', ignoreFocusOut: true });
+      if (!picked) return;
+      tree.setSortMode(picked.mode);
+      await vscode.commands.executeCommand('setContext', 'youtrack.sortNonDefault', picked.mode !== 'default');
     }),
     vscode.commands.registerCommand('youtrack.openIssue', (id: string) =>
       IssueDetailPanel.show(context.extensionUri, client, cache, id),

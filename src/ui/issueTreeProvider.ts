@@ -10,6 +10,7 @@ type Node =
   | { kind: 'loadMore'; parentQueryId: string };
 
 export type GroupMode = 'none' | 'project';
+export type SortMode = 'default' | 'updated' | 'created' | 'id';
 
 const PAGE_SIZE = 50;
 
@@ -56,6 +57,8 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
   private queries = new Map<string, Node & { kind: 'query' }>();
   private filterText = '';
   private groupMode: GroupMode = 'project';
+  private stateFilter = new Set<string>();
+  private sortMode: SortMode = 'default';
 
   constructor(private client: YouTrackClient, private cache: Cache) {}
 
@@ -83,10 +86,55 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
     return this.groupMode;
   }
 
+  setStateFilter(states: string[]): void {
+    this.stateFilter = new Set(states);
+    this._emitter.fire(undefined);
+  }
+
+  getStateFilter(): string[] {
+    return [...this.stateFilter];
+  }
+
+  setSortMode(mode: SortMode): void {
+    if (this.sortMode === mode) return;
+    this.sortMode = mode;
+    this._emitter.fire(undefined);
+  }
+
+  getSortMode(): SortMode {
+    return this.sortMode;
+  }
+
+  getAvailableStates(): string[] {
+    const set = new Set<string>();
+    for (const q of this.queries.values()) {
+      for (const i of q.loaded) {
+        const s = issueStateName(i);
+        if (s) set.add(s);
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }
+
   private matchesFilter(issue: Issue): boolean {
-    if (!this.filterText) return true;
-    const hay = `${issue.idReadable} ${issue.summary} ${issue.assignee?.login ?? ''} ${issue.assignee?.fullName ?? ''} ${issue.project.shortName}`.toLowerCase();
-    return hay.includes(this.filterText);
+    if (this.filterText) {
+      const hay = `${issue.idReadable} ${issue.summary} ${issue.assignee?.login ?? ''} ${issue.assignee?.fullName ?? ''} ${issue.project.shortName}`.toLowerCase();
+      if (!hay.includes(this.filterText)) return false;
+    }
+    if (this.stateFilter.size > 0) {
+      const state = issueStateName(issue);
+      if (!this.stateFilter.has(state)) return false;
+    }
+    return true;
+  }
+
+  private sortIssues(issues: Issue[]): Issue[] {
+    if (this.sortMode === 'default') return issues;
+    const sorted = [...issues];
+    if (this.sortMode === 'updated') sorted.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    else if (this.sortMode === 'created') sorted.sort((a, b) => (b.created || 0) - (a.created || 0));
+    else if (this.sortMode === 'id') sorted.sort((a, b) => a.idReadable.localeCompare(b.idReadable, undefined, { numeric: true }));
+    return sorted;
   }
 
   async getChildren(element?: Node): Promise<Node[]> {
@@ -108,9 +156,10 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
         element.hasMore = issues.length === PAGE_SIZE;
         for (const i of issues) this.cache.putIssue(i);
       }
-      const visible = element.loaded.filter((i) => this.matchesFilter(i));
+      const visible = this.sortIssues(element.loaded.filter((i) => this.matchesFilter(i)));
 
-      const loadMore: Node[] = element.hasMore && !this.filterText
+      const anyActiveFilter = this.filterText || this.stateFilter.size > 0;
+      const loadMore: Node[] = element.hasMore && !anyActiveFilter
         ? [{ kind: 'loadMore', parentQueryId: element.query.id }]
         : [];
 
@@ -138,7 +187,8 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
       const t = new vscode.TreeItem(node.query.name, vscode.TreeItemCollapsibleState.Collapsed);
       t.iconPath = new vscode.ThemeIcon('search');
       t.contextValue = 'query';
-      if (this.filterText) {
+      const anyFilter = this.filterText || this.stateFilter.size > 0;
+      if (anyFilter) {
         const matches = node.loaded.filter((i) => this.matchesFilter(i)).length;
         t.description = `${matches} / ${node.loaded.length}`;
       } else if (node.loaded.length) {
