@@ -44,11 +44,55 @@ body { padding: 0; }
 .refresh-btn:hover { background: var(--vscode-toolbar-hoverBackground); }
 
 .board {
-  display: flex;
-  gap: 0.6rem;
   overflow-x: auto;
   padding: 0.75rem;
+}
+.board.board-flat {
+  display: flex;
+  gap: 0.6rem;
   align-items: flex-start;
+}
+
+/* Swimlane grid */
+.swim-grid {
+  display: grid;
+  gap: 0.5rem;
+  align-items: start;
+  min-width: max-content;
+}
+.swim-corner { /* empty, just reserves the label column on the header row */ }
+.swim-column-header {
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.swim-lane-label {
+  font-weight: 600;
+  font-size: 0.9em;
+  padding: 0.6rem 0.5rem;
+  color: var(--vscode-foreground);
+  border-right: 1px solid var(--vscode-panel-border);
+  align-self: stretch;
+  display: flex;
+  align-items: flex-start;
+}
+.swim-cell {
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  min-height: 3rem;
+}
+.swim-cell.drop-target { outline: 2px dashed var(--vscode-focusBorder); outline-offset: -2px; }
+.swim-cell .card:last-child { margin-bottom: 0; }
+.swim-cell:empty::after {
+  content: '';
+  display: block;
+  min-height: 2rem;
 }
 .board-loading { color: var(--vscode-descriptionForeground); font-style: italic; padding: 1rem; }
 

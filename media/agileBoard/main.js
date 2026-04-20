@@ -64,17 +64,58 @@ function priorityRank(name) {
   return 99;
 }
 
+const SWIMLANE_MODES = new Set(['priority', 'assignee', 'state']);
+
+function isSwimlaneMode() { return SWIMLANE_MODES.has(sortMode); }
+
 function sortIssues(issues) {
-  if (sortMode === 'default') return issues;
+  if (sortMode === 'default' || isSwimlaneMode()) return issues;
   const sorted = [...issues];
   switch (sortMode) {
-    case 'priority': sorted.sort((a, b) => priorityRank(issuePriority(a)) - priorityRank(issuePriority(b))); break;
     case 'updated':  sorted.sort((a, b) => (b.updated || 0) - (a.updated || 0)); break;
     case 'created':  sorted.sort((a, b) => (b.created || 0) - (a.created || 0)); break;
     case 'id':       sorted.sort((a, b) => a.idReadable.localeCompare(b.idReadable, undefined, { numeric: true })); break;
     case 'summary':  sorted.sort((a, b) => a.summary.localeCompare(b.summary)); break;
   }
   return sorted;
+}
+
+function swimlaneKey(issue) {
+  if (sortMode === 'priority') return issuePriority(issue) || '—';
+  if (sortMode === 'state')    return issueStateName(issue) || '—';
+  if (sortMode === 'assignee') {
+    const u = issueAssignee(issue);
+    return u ? (u.fullName || u.login || '—') : 'Unassigned';
+  }
+  return '—';
+}
+
+function swimlaneOrder(keys) {
+  if (sortMode === 'priority') {
+    return [...keys].sort((a, b) => priorityRank(a) - priorityRank(b));
+  }
+  if (sortMode === 'state') {
+    // Preserve the column order roughly: push unresolved first, done last
+    return [...keys].sort((a, b) => {
+      const rank = (s) => {
+        const l = s.toLowerCase();
+        if (/(cancel|reject|won|invalid|duplicate|obsolete)/.test(l)) return 98;
+        if (/(done|fixed|closed|resolved|verified|complete)/.test(l)) return 99;
+        if (/(review|pending|waiting|qa|test)/.test(l)) return 20;
+        if (/(progress|develop|working|wip|active)/.test(l)) return 10;
+        if (/(block|hold|paused)/.test(l)) return 30;
+        if (/(submit|open|reopen|new|backlog|todo|to do)/.test(l)) return 1;
+        return 50;
+      };
+      const d = rank(a) - rank(b);
+      return d !== 0 ? d : a.localeCompare(b);
+    });
+  }
+  return [...keys].sort((a, b) => {
+    if (a === 'Unassigned') return 1;
+    if (b === 'Unassigned') return -1;
+    return a.localeCompare(b);
+  });
 }
 
 function stateClass(name) {
@@ -191,13 +232,35 @@ function renderCard(issue, colId) {
     </div>`;
 }
 
-function render() {
-  const board = document.getElementById('board');
-  if (!state.columns.length) {
-    board.innerHTML = '<div class="board-loading">No columns in this sprint.</div>';
-    return;
-  }
-  board.innerHTML = '';
+function attachCardBehavior(card, issue, colId) {
+  card.addEventListener('dragstart', (e) => {
+    card.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', issue.idReadable + '|' + colId);
+  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  card.addEventListener('click', () => vscode.postMessage({ type: 'openIssue', issueId: issue.idReadable }));
+}
+
+function attachColumnDrop(el, toColumnId) {
+  el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-target'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    el.classList.remove('drop-target');
+    const [issueId, fromColumnId] = (e.dataTransfer.getData('text/plain') || '').split('|');
+    if (!issueId || fromColumnId === toColumnId) return;
+    const fromList = state.issuesByColumn[fromColumnId];
+    const idx = fromList.findIndex((i) => i.idReadable === issueId);
+    if (idx === -1) return;
+    const [issue] = fromList.splice(idx, 1);
+    (state.issuesByColumn[toColumnId] ??= []).push(issue);
+    render();
+    vscode.postMessage({ type: 'moveCard', issueId, fromColumnId, toColumnId });
+  });
+}
+
+function renderFlatBoard(board) {
+  board.className = 'board board-flat';
   for (const col of state.columns) {
     const issues = sortIssues(state.issuesByColumn[col.id] ?? []);
     const colEl = document.createElement('div');
@@ -209,33 +272,82 @@ function render() {
       const wrapper = document.createElement('div');
       wrapper.innerHTML = renderCard(issue, col.id).trim();
       const card = wrapper.firstElementChild;
-      card.addEventListener('dragstart', (e) => {
-        card.classList.add('dragging');
-        e.dataTransfer.setData('text/plain', issue.idReadable + '|' + col.id);
-      });
-      card.addEventListener('dragend', () => card.classList.remove('dragging'));
-      card.addEventListener('click', () => vscode.postMessage({ type: 'openIssue', issueId: issue.idReadable }));
+      attachCardBehavior(card, issue, col.id);
       colEl.appendChild(card);
     }
-
-    colEl.addEventListener('dragover', (e) => { e.preventDefault(); colEl.classList.add('drop-target'); });
-    colEl.addEventListener('dragleave', () => colEl.classList.remove('drop-target'));
-    colEl.addEventListener('drop', (e) => {
-      e.preventDefault();
-      colEl.classList.remove('drop-target');
-      const [issueId, fromColumnId] = (e.dataTransfer.getData('text/plain') || '').split('|');
-      if (!issueId || fromColumnId === col.id) return;
-      const fromList = state.issuesByColumn[fromColumnId];
-      const idx = fromList.findIndex((i) => i.idReadable === issueId);
-      if (idx === -1) return;
-      const [issue] = fromList.splice(idx, 1);
-      (state.issuesByColumn[col.id] ??= []).push(issue);
-      render();
-      vscode.postMessage({ type: 'moveCard', issueId, fromColumnId, toColumnId: col.id });
-    });
-
+    attachColumnDrop(colEl, col.id);
     board.appendChild(colEl);
   }
+}
+
+function renderSwimlaneBoard(board) {
+  board.className = 'board board-swimlanes';
+
+  // Gather unique swimlane keys in order
+  const seenKeys = new Set();
+  for (const col of state.columns) {
+    for (const issue of state.issuesByColumn[col.id] ?? []) {
+      seenKeys.add(swimlaneKey(issue));
+    }
+  }
+  if (!seenKeys.size) {
+    board.innerHTML = '<div class="board-loading">Empty sprint.</div>';
+    return;
+  }
+  const orderedKeys = swimlaneOrder(seenKeys);
+  const cols = state.columns;
+
+  const grid = document.createElement('div');
+  grid.className = 'swim-grid';
+  grid.style.gridTemplateColumns = `minmax(130px, 160px) repeat(${cols.length}, minmax(240px, 1fr))`;
+
+  // Top-left corner spacer
+  grid.appendChild(Object.assign(document.createElement('div'), { className: 'swim-corner' }));
+  // Column headers
+  for (const col of cols) {
+    const h = document.createElement('div');
+    h.className = 'swim-column-header';
+    h.innerHTML = `<span>${escape(col.name)}</span>`;
+    grid.appendChild(h);
+  }
+
+  for (const key of orderedKeys) {
+    const laneLabel = document.createElement('div');
+    laneLabel.className = 'swim-lane-label';
+    laneLabel.textContent = key;
+    grid.appendChild(laneLabel);
+
+    for (const col of cols) {
+      const cell = document.createElement('div');
+      cell.className = 'swim-cell';
+      cell.dataset.columnId = col.id;
+
+      const issuesInCell = (state.issuesByColumn[col.id] ?? []).filter((i) => swimlaneKey(i) === key);
+      for (const issue of issuesInCell) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = renderCard(issue, col.id).trim();
+        const card = wrapper.firstElementChild;
+        attachCardBehavior(card, issue, col.id);
+        cell.appendChild(card);
+      }
+      attachColumnDrop(cell, col.id);
+      grid.appendChild(cell);
+    }
+  }
+
+  board.appendChild(grid);
+}
+
+function render() {
+  const board = document.getElementById('board');
+  if (!state.columns.length) {
+    board.className = 'board';
+    board.innerHTML = '<div class="board-loading">No columns in this sprint.</div>';
+    return;
+  }
+  board.innerHTML = '';
+  if (isSwimlaneMode()) renderSwimlaneBoard(board);
+  else renderFlatBoard(board);
 }
 
 vscode.postMessage({ type: 'ready' });

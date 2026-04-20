@@ -14,14 +14,20 @@
       <label class="sprint-label">Sprint
         <select id="sprintPicker"></select>
       </label>
-      <label class="sprint-label">Sort
+      <label class="sprint-label">Group
         <select id="sortPicker">
-          <option value="default">Default</option>
-          <option value="priority">Priority</option>
-          <option value="updated">Recently updated</option>
-          <option value="created">Recently created</option>
-          <option value="id">Issue ID</option>
-          <option value="summary">Summary</option>
+          <option value="default">Default (no swimlanes)</option>
+          <optgroup label="Swimlane by…">
+            <option value="priority">Priority</option>
+            <option value="assignee">Assignee</option>
+            <option value="state">State</option>
+          </optgroup>
+          <optgroup label="Sort columns by…">
+            <option value="updated">Recently updated</option>
+            <option value="created">Recently created</option>
+            <option value="id">Issue ID</option>
+            <option value="summary">Summary</option>
+          </optgroup>
         </select>
       </label>
       <button type="button" id="createBtn" class="refresh-btn" title="Create new issue">＋ New</button>
