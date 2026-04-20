@@ -1,0 +1,19 @@
+body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 1rem; }
+.header { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+.id { color: var(--vscode-descriptionForeground); font-size: 0.85em; }
+.summary { font-size: 1.2em; font-weight: 600; }
+.field { display: flex; gap: 0.5rem; margin: 0.25rem 0; }
+.field label { min-width: 140px; color: var(--vscode-descriptionForeground); }
+.description { white-space: pre-wrap; margin: 1rem 0; }
+.section { margin-top: 1.5rem; }
+.section h3 { margin: 0 0 0.5rem 0; font-size: 1em; }
+.comment, .work-item, .attachment { padding: 0.5rem 0; border-top: 1px dashed var(--vscode-panel-border); }
+form.log-time { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; margin-top: 0.5rem; }
+form.log-time button { grid-column: 2; justify-self: start; }
+input, select, textarea, button {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  padding: 0.25rem;
+}
+button { cursor: pointer; }

@@ -11,3 +11,4 @@ tsconfig.json
 esbuild.config.mjs
 vitest.config.ts
 .github/**
+!media/**

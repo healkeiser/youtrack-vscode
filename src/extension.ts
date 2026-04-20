@@ -5,6 +5,7 @@ import { YouTrackClient } from './client/youtrackClient';
 import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
 import { IssueTreeProvider } from './ui/issueTreeProvider';
+import { IssueDetailPanel } from './ui/issueDetailPanel';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -29,6 +30,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider('youtrack.issues', tree),
     vscode.commands.registerCommand('youtrack.refresh', () => tree.refresh()),
     vscode.commands.registerCommand('youtrack.loadMore', (id: string) => tree.loadMore(id)),
+    vscode.commands.registerCommand('youtrack.openIssue', (id: string) =>
+      IssueDetailPanel.show(context.extensionUri, client, cache, id),
+    ),
   );
 
   context.subscriptions.push({ dispose: () => db.close() });
