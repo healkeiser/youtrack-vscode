@@ -206,14 +206,26 @@ export class YouTrackClient {
   async assignIssue(issueId: string, login: string): Promise<void> {
     await this.call(`/api/issues/${issueId}`, {
       method: 'POST',
-      body: { customFields: [{ name: 'Assignee', value: { login } }] },
+      body: {
+        customFields: [{
+          $type: 'SingleUserIssueCustomField',
+          name: 'Assignee',
+          value: { $type: 'User', login },
+        }],
+      },
     });
   }
 
   async transitionState(issueId: string, stateName: string): Promise<void> {
     await this.call(`/api/issues/${issueId}`, {
       method: 'POST',
-      body: { customFields: [{ name: 'State', value: { name: stateName } }] },
+      body: {
+        customFields: [{
+          $type: 'StateIssueCustomField',
+          name: 'State',
+          value: { $type: 'StateBundleElement', name: stateName },
+        }],
+      },
     });
   }
 

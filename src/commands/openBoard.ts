@@ -28,5 +28,9 @@ export async function openBoard(extensionUri: vscode.Uri, client: YouTrackClient
       { placeHolder: `Sprint (default: ${current.name})`, ignoreFocusOut: true },
     )) ?? current;
 
-  AgileBoardPanel.show(extensionUri, client, boardPick.id, (sprintPick as { id: string }).id);
+  const sprintName = (sprintPick as { id: string; label?: string; name?: string }).label
+    ?? (sprintPick as { name?: string }).name
+    ?? '';
+  const title = sprintName ? `${boardPick.label} · ${sprintName}` : boardPick.label;
+  AgileBoardPanel.show(extensionUri, client, boardPick.id, (sprintPick as { id: string }).id, title);
 }

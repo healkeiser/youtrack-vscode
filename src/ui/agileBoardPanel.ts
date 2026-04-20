@@ -5,30 +5,35 @@ import type { YouTrackClient } from '../client/youtrackClient';
 import type { BoardView } from '../client/types';
 
 export class AgileBoardPanel {
-  private static instance: AgileBoardPanel | undefined;
+  private static panels = new Map<string, AgileBoardPanel>();
   private panel: vscode.WebviewPanel;
   private state: BoardView = { columns: [], issuesByColumn: {} };
+  private key: string;
 
   private constructor(
     private extensionUri: vscode.Uri,
     private client: YouTrackClient,
     private boardId: string,
     private sprintId: string,
+    private boardTitle: string,
   ) {
+    this.key = `${boardId}:${sprintId}`;
     this.panel = vscode.window.createWebviewPanel(
-      'youtrackBoard', 'YouTrack Board', vscode.ViewColumn.Active,
+      'youtrackBoard', boardTitle, vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media', 'agileBoard')], retainContextWhenHidden: true },
     );
     this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack.png');
     this.panel.webview.html = this.shellHtml();
-    this.panel.onDidDispose(() => { AgileBoardPanel.instance = undefined; });
+    this.panel.onDidDispose(() => { AgileBoardPanel.panels.delete(this.key); });
     this.panel.webview.onDidReceiveMessage((m) => this.onMessage(m));
   }
 
-  static show(extensionUri: vscode.Uri, client: YouTrackClient, boardId: string, sprintId: string): void {
-    if (AgileBoardPanel.instance) { AgileBoardPanel.instance.panel.reveal(); return; }
-    AgileBoardPanel.instance = new AgileBoardPanel(extensionUri, client, boardId, sprintId);
-    void AgileBoardPanel.instance.reload();
+  static show(extensionUri: vscode.Uri, client: YouTrackClient, boardId: string, sprintId: string, boardTitle = 'YouTrack Board'): void {
+    const key = `${boardId}:${sprintId}`;
+    const existing = AgileBoardPanel.panels.get(key);
+    if (existing) { existing.panel.reveal(); return; }
+    const p = new AgileBoardPanel(extensionUri, client, boardId, sprintId, boardTitle);
+    AgileBoardPanel.panels.set(key, p);
   }
 
   private shellHtml(): string {
