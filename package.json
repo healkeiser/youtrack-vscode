@@ -1,0 +1,40 @@
+{
+  "name": "ls-youtrack-vscode",
+  "displayName": "YouTrack for VS Code",
+  "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
+  "version": "0.1.0",
+  "publisher": "lotchi-studio",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [],
+    "configuration": {
+      "title": "YouTrack",
+      "properties": {}
+    },
+    "views": {},
+    "viewsContainers": {}
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "node-fetch": "^3.3.0"
+  }
+}
