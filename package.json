@@ -69,17 +69,61 @@
     "configuration": {
       "title": "YouTrack",
       "properties": {
-        "youtrack.baseUrl":                  { "type": "string", "default": "", "description": "YouTrack Cloud base URL." },
-        "youtrack.defaultProject":           { "type": "string", "default": "", "description": "Short name of project used by Create Issue when set." },
-        "youtrack.statusBarQuery":           { "type": "string", "default": "for: me and #Unresolved", "description": "Query for the status bar counter." },
-        "youtrack.cache.ttl.issues":         { "type": "number", "default": 60, "description": "Issue cache TTL (seconds)." },
-        "youtrack.cache.ttl.fieldSchemas":   { "type": "number", "default": 3600, "description": "Custom field schemas TTL (seconds)." },
-        "youtrack.cache.ttl.savedSearches":  { "type": "number", "default": 300, "description": "Saved searches TTL (seconds)." },
-        "youtrack.cache.pollInterval":       { "type": "number", "default": 60, "description": "Background refresh interval (seconds)." },
-        "youtrack.branch.template":          { "type": "string", "default": "{assignee}/{id}-{summary}", "description": "Branch name template." },
-        "youtrack.branch.summaryMaxLength":  { "type": "number", "default": 40, "description": "Summary token max length." },
-        "youtrack.branch.separator":         { "type": "string", "default": "-", "description": "Separator for sanitized tokens." },
-        "youtrack.branch.copyOnly":          { "type": "boolean", "default": false, "description": "Copy to clipboard instead of creating the branch." }
+        "youtrack.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "YouTrack Cloud base URL."
+        },
+        "youtrack.defaultProject": {
+          "type": "string",
+          "default": "",
+          "description": "Short name of project used by Create Issue when set."
+        },
+        "youtrack.statusBarQuery": {
+          "type": "string",
+          "default": "for: me and #Unresolved",
+          "description": "Query for the status bar counter."
+        },
+        "youtrack.cache.ttl.issues": {
+          "type": "number",
+          "default": 60,
+          "description": "Issue cache TTL (seconds)."
+        },
+        "youtrack.cache.ttl.fieldSchemas": {
+          "type": "number",
+          "default": 3600,
+          "description": "Custom field schemas TTL (seconds)."
+        },
+        "youtrack.cache.ttl.savedSearches": {
+          "type": "number",
+          "default": 300,
+          "description": "Saved searches TTL (seconds)."
+        },
+        "youtrack.cache.pollInterval": {
+          "type": "number",
+          "default": 60,
+          "description": "Background refresh interval (seconds)."
+        },
+        "youtrack.branch.template": {
+          "type": "string",
+          "default": "{assignee}/{id}-{summary}",
+          "description": "Branch name template."
+        },
+        "youtrack.branch.summaryMaxLength": {
+          "type": "number",
+          "default": 40,
+          "description": "Summary token max length."
+        },
+        "youtrack.branch.separator": {
+          "type": "string",
+          "default": "-",
+          "description": "Separator for sanitized tokens."
+        },
+        "youtrack.branch.copyOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Copy to clipboard instead of creating the branch."
+        }
       }
     },
     "viewsContainers": {
@@ -114,15 +158,19 @@
     "watch": "node esbuild.config.mjs --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "vsce package"
+    "package": "vsce package",
+    "test:integration": "tsc -p tsconfig.test.json && node ./test-dist/test/runTest.js"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/test-electron": "^2.3.0",
     "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.21.0",
+    "glob": "^13.0.6",
+    "mocha": "^11.7.5",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   },
