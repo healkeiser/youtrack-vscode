@@ -3,11 +3,15 @@ const vscode = acquireVsCodeApi();
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
   if (msg.type === 'init') {
-    const sel = document.getElementById('projectSel');
-    sel.innerHTML = msg.projects.map((p) =>
-      `<option value="${escape(p.id)}"${p.shortName === msg.defaultShortName ? ' selected' : ''}>${escape(p.shortName)} — ${escape(p.name)}</option>`
-    ).join('');
+    populateProjects(msg.projects, msg.defaultShortName);
+    populateUsers(msg.users || []);
+    // Fetch type/priority for the initially selected project
+    maybeFetchProjectFields();
     document.getElementById('summaryIn').focus();
+  }
+  if (msg.type === 'projectFields') {
+    populateField('typeSel', msg.typeValues || []);
+    populateField('prioritySel', msg.priorityValues || []);
   }
   if (msg.type === 'creating') {
     document.getElementById('submitBtn').disabled = true;
@@ -32,6 +36,42 @@ function setStatus(text, isError) {
 
 function escape(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function populateProjects(projects, defaultShortName) {
+  const sel = document.getElementById('projectSel');
+  sel.innerHTML = projects.map((p) =>
+    `<option value="${escape(p.id)}" data-short="${escape(p.shortName)}"${p.shortName === defaultShortName ? ' selected' : ''}>${escape(p.shortName)} — ${escape(p.name)}</option>`
+  ).join('');
+  sel.addEventListener('change', maybeFetchProjectFields);
+}
+
+function maybeFetchProjectFields() {
+  const sel = document.getElementById('projectSel');
+  const id = sel?.value;
+  if (!id) return;
+  // Reset the two dropdowns to default while the request is in flight
+  populateField('typeSel', []);
+  populateField('prioritySel', []);
+  vscode.postMessage({ type: 'fetchProjectFields', projectId: id });
+}
+
+function populateField(selectId, values) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const placeholder = selectId === 'assigneeSel' ? '(unassigned)' : '(default)';
+  sel.innerHTML = `<option value="">${placeholder}</option>` + values.map((v) =>
+    `<option value="${escape(v)}">${escape(v)}</option>`
+  ).join('');
+}
+
+function populateUsers(users) {
+  const sel = document.getElementById('assigneeSel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">(unassigned)</option>' +
+    users.map((u) =>
+      `<option value="${escape(u.login)}">${escape(u.fullName || u.login)} — ${escape(u.login)}</option>`
+    ).join('');
 }
 
 function wrapSelection(el, before, after) {
@@ -117,6 +157,9 @@ function setupForm() {
       projectId: fd.get('project'),
       summary,
       description: (fd.get('description') || '').toString(),
+      issueType: (fd.get('type') || '').toString(),
+      priority: (fd.get('priority') || '').toString(),
+      assignee: (fd.get('assignee') || '').toString(),
     });
   });
 

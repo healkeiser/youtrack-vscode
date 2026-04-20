@@ -17,6 +17,24 @@
         <label for="summaryIn">Summary</label>
         <input id="summaryIn" name="summary" type="text" placeholder="Short description of the issue" required maxlength="250">
       </div>
+
+      <div class="row row-compact">
+        <div class="row-sub">
+          <label for="typeSel">Type</label>
+          <select id="typeSel" name="type"><option value="">(default)</option></select>
+        </div>
+        <div class="row-sub">
+          <label for="prioritySel">Priority</label>
+          <select id="prioritySel" name="priority"><option value="">(default)</option></select>
+        </div>
+        <div class="row-sub">
+          <label for="assigneeSel">Assignee</label>
+          <select id="assigneeSel" name="assignee">
+            <option value="">(unassigned)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="row">
         <label>Description</label>
         <div class="desc-zone md-form" id="descForm">
@@ -41,8 +59,8 @@
         </div>
       </div>
       <div class="actions">
-        <button type="submit" id="submitBtn" class="primary">Create</button>
-        <button type="button" id="cancelBtn">Cancel</button>
+        <button type="submit" id="submitBtn" class="btn primary">Create</button>
+        <button type="button" id="cancelBtn" class="btn">Cancel</button>
         <div class="status" id="status"></div>
       </div>
     </form>

@@ -60,12 +60,25 @@ export class CreateIssuePanel {
   private async onMessage(msg: any): Promise<void> {
     if (msg.type === 'ready') {
       try {
-        const projects = await this.getProjects();
+        const [projects, users] = await Promise.all([
+          this.getProjects(),
+          this.client.listUsers('', 200).catch(() => []),
+        ]);
         const defaultShortName = vscode.workspace.getConfiguration('youtrack').get<string>('defaultProject', '');
-        this.panel.webview.postMessage({ type: 'init', projects, defaultShortName });
+        this.panel.webview.postMessage({ type: 'init', projects, defaultShortName, users });
       } catch (e) {
         this.panel.webview.postMessage({ type: 'error', message: `Failed to load projects: ${(e as Error).message}` });
       }
+      return;
+    }
+    if (msg.type === 'fetchProjectFields') {
+      const projectId = String(msg.projectId || '');
+      if (!projectId) return;
+      const [typeValues, priorityValues] = await Promise.all([
+        this.client.fetchProjectFieldValues(projectId, 'Type').catch(() => []),
+        this.client.fetchProjectFieldValues(projectId, 'Priority').catch(() => []),
+      ]);
+      this.panel.webview.postMessage({ type: 'projectFields', typeValues, priorityValues });
       return;
     }
     if (msg.type === 'renderPreview') {
@@ -91,6 +104,16 @@ export class CreateIssuePanel {
       this.panel.webview.postMessage({ type: 'creating' });
       try {
         const { idReadable } = await this.client.createIssue(projectId, summary, description);
+        const type = String(msg.issueType ?? '').trim();
+        const priority = String(msg.priority ?? '').trim();
+        const assignee = String(msg.assignee ?? '').trim();
+
+        const followUps: Array<Promise<unknown>> = [];
+        if (type)     followUps.push(this.client.setEnumField(idReadable, 'Type', type).catch((e) => vscode.window.showWarningMessage(`YouTrack: set Type failed: ${(e as Error).message}`)));
+        if (priority) followUps.push(this.client.setEnumField(idReadable, 'Priority', priority).catch((e) => vscode.window.showWarningMessage(`YouTrack: set Priority failed: ${(e as Error).message}`)));
+        if (assignee) followUps.push(this.client.assignIssue(idReadable, assignee).catch((e) => vscode.window.showWarningMessage(`YouTrack: assign failed: ${(e as Error).message}`)));
+        await Promise.all(followUps);
+
         this.panel.dispose();
         vscode.window.showInformationMessage(`YouTrack: created ${idReadable}`);
         if (this.onCreated) this.onCreated(idReadable);

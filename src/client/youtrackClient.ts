@@ -289,21 +289,29 @@ export class YouTrackClient {
   }
 
   async fetchProjectPriorityValues(projectId: string): Promise<string[]> {
+    return this.fetchProjectFieldValues(projectId, 'Priority');
+  }
+
+  async fetchProjectFieldValues(projectId: string, fieldName: string): Promise<string[]> {
     const raw = await this.call<any>(`/api/admin/projects/${projectId}/customFields`, {
       query: { fields: 'field(name),bundle(values(name))' },
     });
-    const field = (raw as any[]).find((f) => f.field?.name === 'Priority');
+    const field = (raw as any[]).find((f) => f.field?.name === fieldName);
     return field?.bundle?.values?.map((v: any) => v.name) ?? [];
   }
 
   async setPriority(issueId: string, priorityName: string): Promise<void> {
+    return this.setEnumField(issueId, 'Priority', priorityName);
+  }
+
+  async setEnumField(issueId: string, fieldName: string, value: string): Promise<void> {
     await this.call(`/api/issues/${issueId}`, {
       method: 'POST',
       body: {
         customFields: [{
           $type: 'SingleEnumIssueCustomField',
-          name: 'Priority',
-          value: { $type: 'EnumBundleElement', name: priorityName },
+          name: fieldName,
+          value: { $type: 'EnumBundleElement', name: value },
         }],
       },
     });
