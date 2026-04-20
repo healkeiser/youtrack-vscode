@@ -9,13 +9,27 @@
   "main": "./dist/extension.js",
   "activationEvents": ["onStartupFinished"],
   "contributes": {
-    "commands": [],
-    "configuration": {
-      "title": "YouTrack",
-      "properties": {}
+    "commands": [
+      { "command": "youtrack.refresh", "title": "YouTrack: Refresh", "icon": "$(refresh)" },
+      { "command": "youtrack.openIssue", "title": "YouTrack: Open Issue" },
+      { "command": "youtrack.loadMore", "title": "YouTrack: Load More" }
+    ],
+    "configuration": { "title": "YouTrack", "properties": {} },
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "youtrack", "title": "YouTrack", "icon": "$(checklist)" }
+      ]
     },
-    "views": {},
-    "viewsContainers": {}
+    "views": {
+      "youtrack": [
+        { "id": "youtrack.issues", "name": "Issues" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        { "command": "youtrack.refresh", "when": "view == youtrack.issues", "group": "navigation" }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
