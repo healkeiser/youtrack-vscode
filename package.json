@@ -10,6 +10,7 @@
   "categories": [
     "Other"
   ],
+  "icon": "media/youtrack.png",
   "main": "./dist/extension.js",
   "activationEvents": [
     "onStartupFinished"
@@ -135,7 +136,7 @@
         {
           "id": "youtrack",
           "title": "YouTrack",
-          "icon": "$(checklist)"
+          "icon": "media/youtrack_outline.svg"
         }
       ]
     },
