@@ -280,6 +280,8 @@ function renderFlatBoard(board) {
   }
 }
 
+const collapsedLanes = new Set();
+
 function renderSwimlaneBoard(board) {
   board.className = 'board board-swimlanes';
 
@@ -296,27 +298,50 @@ function renderSwimlaneBoard(board) {
   }
   const orderedKeys = swimlaneOrder(seenKeys);
   const cols = state.columns;
+  const colsGrid = `repeat(${cols.length}, minmax(260px, 1fr))`;
 
-  const grid = document.createElement('div');
-  grid.className = 'swim-grid';
-  grid.style.gridTemplateColumns = `minmax(130px, 160px) repeat(${cols.length}, minmax(240px, 1fr))`;
+  const container = document.createElement('div');
+  container.className = 'swim-container';
 
-  // Top-left corner spacer
-  grid.appendChild(Object.assign(document.createElement('div'), { className: 'swim-corner' }));
-  // Column headers
+  // Sticky top header row
+  const header = document.createElement('div');
+  header.className = 'swim-header';
+  header.style.gridTemplateColumns = colsGrid;
   for (const col of cols) {
+    const total = state.issuesByColumn[col.id]?.length ?? 0;
     const h = document.createElement('div');
-    h.className = 'swim-column-header';
-    h.innerHTML = `<span>${escape(col.name)}</span>`;
-    grid.appendChild(h);
+    h.className = 'swim-header-col';
+    h.innerHTML = `<span>${escape(col.name)}</span><span class="count-badge">${total}</span>`;
+    header.appendChild(h);
   }
+  container.appendChild(header);
 
   for (const key of orderedKeys) {
-    const laneLabel = document.createElement('div');
-    laneLabel.className = 'swim-lane-label';
-    laneLabel.textContent = key;
-    grid.appendChild(laneLabel);
+    const laneIssueCount = cols.reduce(
+      (acc, col) => acc + (state.issuesByColumn[col.id] ?? []).filter((i) => swimlaneKey(i) === key).length,
+      0,
+    );
+    const laneEl = document.createElement('section');
+    laneEl.className = 'swim-lane';
+    if (collapsedLanes.has(key)) laneEl.classList.add('collapsed');
 
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'swim-lane-head';
+    head.innerHTML = `
+      <span class="swim-chevron">▾</span>
+      <span class="swim-lane-title">${escape(key)}</span>
+      <span class="swim-lane-count">${laneIssueCount}</span>
+    `;
+    head.addEventListener('click', () => {
+      if (collapsedLanes.has(key)) { collapsedLanes.delete(key); laneEl.classList.remove('collapsed'); }
+      else                         { collapsedLanes.add(key);    laneEl.classList.add('collapsed'); }
+    });
+    laneEl.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'swim-lane-body';
+    body.style.gridTemplateColumns = colsGrid;
     for (const col of cols) {
       const cell = document.createElement('div');
       cell.className = 'swim-cell';
@@ -331,11 +356,13 @@ function renderSwimlaneBoard(board) {
         cell.appendChild(card);
       }
       attachColumnDrop(cell, col.id);
-      grid.appendChild(cell);
+      body.appendChild(cell);
     }
+    laneEl.appendChild(body);
+    container.appendChild(laneEl);
   }
 
-  board.appendChild(grid);
+  board.appendChild(container);
 }
 
 function render() {
