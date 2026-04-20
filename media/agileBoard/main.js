@@ -47,6 +47,12 @@ function issuePriority(issue) {
   return '';
 }
 
+function issuePriorityColor(issue) {
+  const f = customField(issue, 'Priority');
+  if (!f || !f.value || f.value.kind !== 'enum') return null;
+  return f.value.color || null;
+}
+
 function priorityRank(name) {
   const s = (name || '').toLowerCase();
   if (/show-?stopper|blocker/.test(s)) return 0;
@@ -157,8 +163,13 @@ function renderCard(issue, colId) {
     return `<span class="tag-pill" style="background:${escape(bg)};color:${escape(fg)}">${escape(tag.name)}</span>`;
   }).join('');
 
+  const priColor = issuePriorityColor(issue);
+  const priStyle = priColor && priColor.background
+    ? `background:${priColor.background};color:${priColor.foreground || 'white'}`
+    : '';
+  const priClass = priStyle ? '' : ` ${pCls}`;
   const priorityBadge = priority
-    ? `<span class="badge-letter priority-badge ${pCls}" title="${escape(priority)}">${escape((priority[0] || '?').toUpperCase())}</span>`
+    ? `<span class="badge-letter priority-badge${priClass}" style="${escape(priStyle)}" title="${escape(priority)}">${escape((priority[0] || '?').toUpperCase())}</span>`
     : '';
 
   const metaBits = [];

@@ -131,14 +131,20 @@ function renderSideField(f: CustomField): string {
   const v = f.value;
   const name = escapeHtml(f.name);
   if (f.name === 'State' && (v.kind === 'state' || v.kind === 'enum')) {
-    const slug = stateSlug(v.name);
     const letter = v.name[0]?.toUpperCase() ?? '?';
-    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter ${slug}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+    const style = v.color?.background
+      ? `background:${v.color.background};color:${v.color.foreground || 'white'}`
+      : '';
+    const extraClass = style ? '' : ` ${stateSlug(v.name)}`;
+    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
   }
-  if (f.name === 'Priority' && (v.kind === 'enum')) {
-    const slug = prioritySlug(v.name);
+  if (f.name === 'Priority' && v.kind === 'enum') {
     const letter = v.name[0]?.toUpperCase() ?? '?';
-    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge ${slug}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+    const style = v.color?.background
+      ? `background:${v.color.background};color:${v.color.foreground || 'white'}`
+      : '';
+    const extraClass = style ? '' : ` ${prioritySlug(v.name)}`;
+    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
   }
   if (v.kind === 'user') {
     return `<div class="side-field"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;

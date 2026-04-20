@@ -11,7 +11,7 @@ const ISSUE_FIELDS = [
   'project(id,shortName)',
   'reporter(id,login,fullName,avatarUrl)',
   'tags(id,name,color(id,background,foreground))',
-  'customFields(name,$type,value(id,name,login,fullName,avatarUrl,text,presentation,minutes))',
+  'customFields(name,$type,value(id,name,login,fullName,avatarUrl,text,presentation,minutes,color(id,background,foreground)))',
 ].join(',');
 
 function mapUser(u: any, baseUrl?: string): User | null {
@@ -29,9 +29,10 @@ function mapUser(u: any, baseUrl?: string): User | null {
 
 function mapCustomFieldValue(raw: any, type: CustomFieldType, baseUrl?: string): CustomFieldValue {
   if (raw === null || raw === undefined) return { kind: 'empty' };
+  const color = raw.color ? { background: raw.color.background, foreground: raw.color.foreground } : undefined;
   switch (type) {
-    case 'enum':    return { kind: 'enum', id: raw.id, name: raw.name };
-    case 'state':   return { kind: 'state', id: raw.id, name: raw.name };
+    case 'enum':    return { kind: 'enum', id: raw.id, name: raw.name, color };
+    case 'state':   return { kind: 'state', id: raw.id, name: raw.name, color };
     case 'user':    {
       const u = mapUser(raw, baseUrl);
       return { kind: 'user', login: u?.login ?? raw.login ?? '', fullName: u?.fullName ?? raw.fullName ?? raw.login ?? '', avatarUrl: u?.avatarUrl ?? '' };

@@ -24,10 +24,12 @@ export type CustomFieldType =
   | 'version'
   | 'unknown';
 
+export type EnumColor = { background?: string; foreground?: string };
+
 export type CustomFieldValue =
-  | { kind: 'enum'; id: string; name: string }
+  | { kind: 'enum'; id: string; name: string; color?: EnumColor }
   | { kind: 'user'; login: string; fullName: string; avatarUrl: string }
-  | { kind: 'state'; id: string; name: string }
+  | { kind: 'state'; id: string; name: string; color?: EnumColor }
   | { kind: 'string'; text: string }
   | { kind: 'date'; iso: string }
   | { kind: 'period'; seconds: number }

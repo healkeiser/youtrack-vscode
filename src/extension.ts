@@ -8,7 +8,7 @@ import { BoardTreeProvider } from './ui/boardTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
 import { search } from './commands/search';
-import { createIssue } from './commands/createIssue';
+import { CreateIssuePanel } from './ui/createIssuePanel';
 import { assignToMe } from './commands/assignToMe';
 import { changeState } from './commands/changeState';
 import { logTime } from './commands/logTime';
@@ -190,9 +190,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const id = await search(client);
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
     }),
-    vscode.commands.registerCommand('youtrack.createIssue', async () => {
-      const id = await createIssue(client);
-      if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
+    vscode.commands.registerCommand('youtrack.createIssue', () => {
+      CreateIssuePanel.show(context.extensionUri, client);
     }),
     vscode.commands.registerCommand('youtrack.assignToMe', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
