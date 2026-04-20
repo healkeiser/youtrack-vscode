@@ -107,6 +107,11 @@
         "command": "youtrack.groupFlat",
         "title": "YouTrack: Show Flat List",
         "icon": "$(list-flat)"
+      },
+      {
+        "command": "youtrack.refreshBoards",
+        "title": "YouTrack: Refresh Boards",
+        "icon": "$(refresh)"
       }
     ],
     "configuration": {
@@ -189,6 +194,10 @@
         {
           "id": "youtrack.issues",
           "name": "Issues"
+        },
+        {
+          "id": "youtrack.boards",
+          "name": "Agile Boards"
         }
       ]
     },
@@ -218,6 +227,11 @@
           "command": "youtrack.refresh",
           "when": "view == youtrack.issues",
           "group": "navigation@3"
+        },
+        {
+          "command": "youtrack.refreshBoards",
+          "when": "view == youtrack.boards",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -277,6 +291,11 @@
       {
         "view": "youtrack.issues",
         "contents": "You're not signed in to YouTrack Cloud.\n[Sign In](command:youtrack.signIn)",
+        "when": "!youtrack.signedIn"
+      },
+      {
+        "view": "youtrack.boards",
+        "contents": "Sign in to see your agile boards.",
         "when": "!youtrack.signedIn"
       }
     ]

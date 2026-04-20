@@ -2,12 +2,20 @@ import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
 import { AgileBoardPanel } from '../ui/agileBoardPanel';
 
-export async function openBoard(extensionUri: vscode.Uri, client: YouTrackClient): Promise<void> {
+export async function openBoard(extensionUri: vscode.Uri, client: YouTrackClient, preferredBoardId?: string): Promise<void> {
   const boards = await client.fetchAgileBoards();
   if (!boards.length) { vscode.window.showInformationMessage('YouTrack: no agile boards'); return; }
 
-  const boardPick = boards.length === 1 ? { id: boards[0].id, label: boards[0].name } :
-    await vscode.window.showQuickPick(boards.map((b) => ({ id: b.id, label: b.name })), { placeHolder: 'Board', ignoreFocusOut: true });
+  let boardPick: { id: string; label: string } | undefined;
+  if (preferredBoardId) {
+    const found = boards.find((b) => b.id === preferredBoardId);
+    if (found) boardPick = { id: found.id, label: found.name };
+  }
+  if (!boardPick) {
+    boardPick = boards.length === 1
+      ? { id: boards[0].id, label: boards[0].name }
+      : await vscode.window.showQuickPick(boards.map((b) => ({ id: b.id, label: b.name })), { placeHolder: 'Board', ignoreFocusOut: true });
+  }
   if (!boardPick) return;
 
   const sprints = await client.fetchSprints(boardPick.id);

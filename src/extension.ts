@@ -3,6 +3,7 @@ import { YouTrackClient } from './client/youtrackClient';
 import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
 import { IssueTreeProvider, type GroupMode } from './ui/issueTreeProvider';
+import { BoardTreeProvider } from './ui/boardTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
 import { search } from './commands/search';
@@ -145,7 +146,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await changeState(client, cache, issueId);
       await createBranch(client, cache, issueId);
     }),
-    vscode.commands.registerCommand('youtrack.openBoard', () => openBoard(context.extensionUri, client)),
+    vscode.commands.registerCommand('youtrack.openBoard', (boardId?: string) =>
+      openBoard(context.extensionUri, client, typeof boardId === 'string' ? boardId : undefined),
+    ),
+  );
+
+  const boardTree = new BoardTreeProvider(client);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('youtrack.boards', boardTree),
+    vscode.commands.registerCommand('youtrack.refreshBoards', () => boardTree.refresh()),
   );
 
   await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', true);
