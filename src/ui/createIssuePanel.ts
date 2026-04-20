@@ -43,6 +43,7 @@ export class CreateIssuePanel {
     const panelUri = vscode.Uri.joinPath(mediaRoot, 'createIssue');
     const tpl = fs.readFileSync(path.join(panelUri.fsPath, 'index.html'), 'utf-8');
     return tpl
+      .replace('{{CODICONS}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')).toString())
       .replace('{{SHARED}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'shared.css')).toString())
       .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'style.css')).toString())
       .replace('{{MAIN}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'main.js')).toString());

@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="{{CODICONS}}">
   <link rel="stylesheet" href="{{SHARED}}">
   <link rel="stylesheet" href="{{STYLE}}">
 </head>
@@ -43,16 +44,16 @@
             <button type="button" class="md-tab" data-md-tab="preview">Preview</button>
           </div>
           <div class="comment-toolbar">
-            <button type="button" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
-            <button type="button" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
-            <button type="button" data-md="strike" title="Strikethrough"><s>S</s></button>
-            <button type="button" data-md="code" title="Inline code (Ctrl+E)">&lt;/&gt;</button>
-            <button type="button" data-md="codeblock" title="Code block">{ }</button>
-            <button type="button" data-md="link" title="Link (Ctrl+K)">🔗</button>
+            <button type="button" data-md="bold" title="Bold (Ctrl+B)"><i class="codicon codicon-bold"></i></button>
+            <button type="button" data-md="italic" title="Italic (Ctrl+I)"><i class="codicon codicon-italic"></i></button>
+            <button type="button" data-md="strike" title="Strikethrough"><i class="codicon codicon-symbol-string"></i></button>
+            <button type="button" data-md="code" title="Inline code (Ctrl+E)"><i class="codicon codicon-code"></i></button>
+            <button type="button" data-md="codeblock" title="Code block"><i class="codicon codicon-json"></i></button>
+            <button type="button" data-md="link" title="Link (Ctrl+K)"><i class="codicon codicon-link"></i></button>
             <span class="sep"></span>
-            <button type="button" data-md="ul" title="Bulleted list">•</button>
-            <button type="button" data-md="ol" title="Numbered list">1.</button>
-            <button type="button" data-md="quote" title="Quote">&gt;</button>
+            <button type="button" data-md="ul" title="Bulleted list"><i class="codicon codicon-list-unordered"></i></button>
+            <button type="button" data-md="ol" title="Numbered list"><i class="codicon codicon-list-ordered"></i></button>
+            <button type="button" data-md="quote" title="Quote"><i class="codicon codicon-quote"></i></button>
           </div>
           <textarea id="descIn" name="description" placeholder="Add more context (markdown supported)" rows="10"></textarea>
           <div class="md-preview md-body" hidden></div>

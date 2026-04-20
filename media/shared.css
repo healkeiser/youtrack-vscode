@@ -190,6 +190,8 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
   text-align: center;
 }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn .codicon { vertical-align: middle; margin-right: 0.35em; font-size: 1em; line-height: 1; }
+.btn.icon .codicon { margin-right: 0; }
 
 /* Back-compat aliases */
 .btn-primary   { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }

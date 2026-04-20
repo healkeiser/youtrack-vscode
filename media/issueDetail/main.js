@@ -281,11 +281,17 @@ function wireLogTimeToggle() {
     const key = trigger.dataset.inlineToggle;
     const form = document.querySelector(`[data-collapsible="${key}"]`);
     if (!form) return;
-    const openLabel = trigger.textContent?.trim() ?? '';
-    const closeLabel = openLabel.replace(/^\+/, '−').replace('Add', 'Hide');
+    const labelEl = trigger.querySelector('.toggle-label');
+    const icon = trigger.querySelector('i.codicon');
+    const openLabel = labelEl?.textContent?.trim() ?? '';
+    const closeLabel = openLabel.replace(/^Add/, 'Hide');
     trigger.addEventListener('click', () => {
       const collapsed = form.classList.toggle('collapsed');
-      trigger.textContent = collapsed ? openLabel : closeLabel;
+      if (labelEl) labelEl.textContent = collapsed ? openLabel : closeLabel;
+      if (icon) {
+        icon.classList.toggle('codicon-add', collapsed);
+        icon.classList.toggle('codicon-chevron-up', !collapsed);
+      }
       if (!collapsed) {
         const firstField = form.querySelector('input, textarea, select');
         firstField?.focus();

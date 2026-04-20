@@ -101,18 +101,18 @@ function formattingToolbarHtml(): string {
       <button type="button" class="md-tab" data-md-tab="preview">Preview</button>
     </div>
     <div class="comment-toolbar">
-      <button type="button" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
-      <button type="button" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
-      <button type="button" data-md="strike" title="Strikethrough"><s>S</s></button>
-      <button type="button" data-md="code" title="Inline code (Ctrl+E)">&lt;/&gt;</button>
-      <button type="button" data-md="codeblock" title="Code block">{ }</button>
-      <button type="button" data-md="link" title="Link (Ctrl+K)">🔗</button>
+      <button type="button" data-md="bold" title="Bold (Ctrl+B)"><i class="codicon codicon-bold"></i></button>
+      <button type="button" data-md="italic" title="Italic (Ctrl+I)"><i class="codicon codicon-italic"></i></button>
+      <button type="button" data-md="strike" title="Strikethrough"><i class="codicon codicon-symbol-string"></i></button>
+      <button type="button" data-md="code" title="Inline code (Ctrl+E)"><i class="codicon codicon-code"></i></button>
+      <button type="button" data-md="codeblock" title="Code block"><i class="codicon codicon-json"></i></button>
+      <button type="button" data-md="link" title="Link (Ctrl+K)"><i class="codicon codicon-link"></i></button>
       <span class="sep"></span>
-      <button type="button" data-md="ul" title="Bulleted list">•</button>
-      <button type="button" data-md="ol" title="Numbered list">1.</button>
-      <button type="button" data-md="quote" title="Quote">&gt;</button>
+      <button type="button" data-md="ul" title="Bulleted list"><i class="codicon codicon-list-unordered"></i></button>
+      <button type="button" data-md="ol" title="Numbered list"><i class="codicon codicon-list-ordered"></i></button>
+      <button type="button" data-md="quote" title="Quote"><i class="codicon codicon-quote"></i></button>
       <span class="sep"></span>
-      <button type="button" data-md="mention" title="Mention user">@</button>
+      <button type="button" data-md="mention" title="Mention user"><i class="codicon codicon-mention"></i></button>
     </div>
   `;
 }
@@ -192,6 +192,7 @@ export class IssueDetailPanel {
     const panelUri = vscode.Uri.joinPath(mediaRoot, 'issueDetail');
     const tpl = fs.readFileSync(path.join(panelUri.fsPath, 'index.html'), 'utf-8');
     return tpl
+      .replace('{{CODICONS}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')).toString())
       .replace('{{SHARED}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'shared.css')).toString())
       .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'style.css')).toString())
       .replace('{{MAIN}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'main.js')).toString());
@@ -267,7 +268,7 @@ export class IssueDetailPanel {
                 <button type="button" class="btn" data-comment-edit-cancel>Cancel</button>
               </div>
             </form>` : '';
-      const editBtn = isMine ? `<button type="button" class="comment-edit-btn" data-edit-comment="${escapeHtml(c.id)}" title="Edit">✎</button>` : '';
+      const editBtn = isMine ? `<button type="button" class="comment-edit-btn" data-edit-comment="${escapeHtml(c.id)}" title="Edit"><i class="codicon codicon-edit"></i></button>` : '';
       entries.push({
         ts: c.created,
         html: `
@@ -307,7 +308,7 @@ export class IssueDetailPanel {
             <div class="editable" data-field="summary">
               <div class="editable-view">
                 <div class="summary">${escapeHtml(issue.summary)}</div>
-                <button class="edit-btn" data-edit="summary" title="Edit summary">✎</button>
+                <button class="edit-btn" data-edit="summary" title="Edit summary"><i class="codicon codicon-edit"></i></button>
               </div>
               <form class="editable-edit summary-edit" data-edit-form="summary" hidden>
                 <input type="text" name="text" value="${escapeHtml(issue.summary)}" required>
@@ -318,17 +319,17 @@ export class IssueDetailPanel {
               </form>
             </div>
             <div class="toolbar">
-              <button class="btn primary" data-cmd="startWork" title="Transition state and create a branch">▶ Start Work</button>
-              <button class="btn" data-cmd="startTimer" title="Start a timer on this issue">⏱ Timer</button>
-              <button class="btn" data-cmd="createBranch" title="Create git branch from issue">Branch</button>
+              <button class="btn primary" data-cmd="startWork" title="Transition state and create a branch"><i class="codicon codicon-play"></i>Start Work</button>
+              <button class="btn" data-cmd="startTimer" title="Start a timer on this issue"><i class="codicon codicon-watch"></i>Timer</button>
+              <button class="btn" data-cmd="createBranch" title="Create git branch from issue"><i class="codicon codicon-git-branch"></i>Branch</button>
               <span class="toolbar-gap"></span>
-              <button class="btn icon" data-cmd="copyLink" title="Copy issue link">⧉</button>
-              <button class="btn icon" data-cmd="openInBrowser" title="Open in browser">↗</button>
+              <button class="btn icon" data-cmd="copyLink" title="Copy issue link"><i class="codicon codicon-link"></i></button>
+              <button class="btn icon" data-cmd="openInBrowser" title="Open in browser"><i class="codicon codicon-link-external"></i></button>
             </div>
             <div class="editable" data-field="description">
               <div class="editable-view">
                 ${descriptionBody}
-                <button class="edit-btn edit-btn-floating" data-edit="description" title="Edit description">✎</button>
+                <button class="edit-btn edit-btn-floating" data-edit="description" title="Edit description"><i class="codicon codicon-edit"></i></button>
               </div>
               <form class="editable-edit description-edit md-form" data-edit-form="description" hidden>
                 ${formattingToolbarHtml()}
@@ -345,7 +346,7 @@ export class IssueDetailPanel {
           <div class="section">
             <h3>Activity</h3>
             ${activityHtml}
-            <button type="button" class="btn inline-toggle" data-inline-toggle="comment">+ Add a comment</button>
+            <button type="button" class="btn inline-toggle" data-inline-toggle="comment"><i class="codicon codicon-add"></i><span class="toggle-label">Add a comment</span></button>
             <form class="add-comment md-form collapsed" data-collapsible="comment">
               ${formattingToolbarHtml()}
               <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
@@ -355,7 +356,7 @@ export class IssueDetailPanel {
           </div>
           <div class="section">
             <h3>Log time</h3>
-            <button type="button" class="btn inline-toggle" data-inline-toggle="logtime">+ Add spent time</button>
+            <button type="button" class="btn inline-toggle" data-inline-toggle="logtime"><i class="codicon codicon-add"></i><span class="toggle-label">Add spent time</span></button>
             <form class="log-time collapsed" data-collapsible="logtime">
               <label>Duration</label><input name="duration" placeholder="1h30m" required>
               <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
