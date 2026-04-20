@@ -187,11 +187,12 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
       const t = new vscode.TreeItem(node.query.name, vscode.TreeItemCollapsibleState.Collapsed);
       t.iconPath = new vscode.ThemeIcon('search');
       t.contextValue = 'query';
-      const anyFilter = this.filterText || this.stateFilter.size > 0;
-      if (anyFilter) {
+      if (node.loaded.length === 0) {
+        // nothing fetched yet — omit the badge entirely
+      } else if (this.filterText || this.stateFilter.size > 0) {
         const matches = node.loaded.filter((i) => this.matchesFilter(i)).length;
         t.description = `${matches} / ${node.loaded.length}`;
-      } else if (node.loaded.length) {
+      } else {
         t.description = String(node.loaded.length);
       }
       return t;
