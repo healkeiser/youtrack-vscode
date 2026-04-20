@@ -143,6 +143,9 @@ export class IssueDetailPanel {
       return;
     }
 
+    const truncated = issue.summary.length > 60 ? issue.summary.slice(0, 60).trimEnd() + '…' : issue.summary;
+    this.panel.title = `${issue.idReadable}: ${truncated}`;
+
     const [comments, attachments, workItems, types] = await Promise.all([
       this.client.fetchComments(this.issueId).catch(() => [] as Comment[]),
       this.client.fetchAttachments(this.issueId).catch(() => [] as Attachment[]),
