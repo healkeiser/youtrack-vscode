@@ -106,6 +106,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       tree.setStateFilter([]);
       await vscode.commands.executeCommand('setContext', 'youtrack.stateFilterActive', false);
     }),
+    vscode.commands.registerCommand('youtrack.filterByTag', async () => {
+      const tags = tree.getAvailableTags();
+      if (!tags.length) {
+        vscode.window.showInformationMessage('YouTrack: expand a saved search first so the sidebar knows which tags exist.');
+        return;
+      }
+      const current = new Set(tree.getTagFilter());
+      const picks = await vscode.window.showQuickPick(
+        tags.map((t) => ({ label: t, picked: current.has(t) })),
+        { canPickMany: true, placeHolder: 'Pick tags to show (none = show all)', ignoreFocusOut: true },
+      );
+      if (!picks) return;
+      const selected = picks.map((p) => p.label);
+      tree.setTagFilter(selected);
+      await vscode.commands.executeCommand('setContext', 'youtrack.tagFilterActive', selected.length > 0);
+    }),
+    vscode.commands.registerCommand('youtrack.clearTagFilter', async () => {
+      tree.setTagFilter([]);
+      await vscode.commands.executeCommand('setContext', 'youtrack.tagFilterActive', false);
+    }),
     vscode.commands.registerCommand('youtrack.sortBy', async () => {
       const labels: Record<SortMode, string> = {
         default: 'Default (saved search order)',

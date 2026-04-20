@@ -1,7 +1,7 @@
 import { request } from './request';
 import type {
   Issue, User, Comment, Attachment, WorkItem, SavedQuery,
-  CustomField, CustomFieldValue, CustomFieldType,
+  CustomField, CustomFieldValue, CustomFieldType, Tag,
   AgileBoard, Sprint, BoardView, BoardColumn,
 } from './types';
 
@@ -10,14 +10,20 @@ const ISSUE_FIELDS = [
   'created', 'updated',
   'project(id,shortName)',
   'reporter(id,login,fullName,avatarUrl)',
+  'tags(id,name,color(id,background,foreground))',
   'customFields(name,$type,value(id,name,login,fullName,avatarUrl,text,presentation,minutes))',
 ].join(',');
 
-function mapUser(u: any): User | null {
+function mapUser(u: any, baseUrl?: string): User | null {
   if (!u) return null;
+  let avatarUrl: string = u.avatarUrl ?? '';
+  if (avatarUrl && baseUrl && !/^https?:/i.test(avatarUrl)) {
+    const origin = baseUrl.replace(/\/+$/, '');
+    avatarUrl = `${origin}${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+  }
   return {
     id: u.id, login: u.login, fullName: u.fullName ?? u.login,
-    avatarUrl: u.avatarUrl ?? '',
+    avatarUrl,
   };
 }
 
@@ -57,13 +63,25 @@ function mapCustomField(raw: any): CustomField {
   return { name: raw.name, type, value: mapCustomFieldValue(raw.value, type) };
 }
 
-function extractAssignee(rawCustomFields: any[]): User | null {
+function extractAssignee(rawCustomFields: any[], baseUrl?: string): User | null {
   const field = rawCustomFields.find((f) => f?.name === 'Assignee');
   if (!field?.value) return null;
-  return mapUser(field.value);
+  return mapUser(field.value, baseUrl);
 }
 
-function mapIssue(raw: any): Issue {
+function mapTag(raw: any): Tag {
+  return {
+    id: raw.id,
+    name: raw.name,
+    color: raw.color ? {
+      id: raw.color.id,
+      background: raw.color.background,
+      foreground: raw.color.foreground,
+    } : null,
+  };
+}
+
+function mapIssue(raw: any, baseUrl?: string): Issue {
   const rawFields: any[] = raw.customFields ?? [];
   return {
     id: raw.id,
@@ -71,11 +89,12 @@ function mapIssue(raw: any): Issue {
     summary: raw.summary,
     description: raw.description ?? '',
     project: { id: raw.project.id, shortName: raw.project.shortName },
-    reporter: mapUser(raw.reporter),
-    assignee: extractAssignee(rawFields),
+    reporter: mapUser(raw.reporter, baseUrl),
+    assignee: extractAssignee(rawFields, baseUrl),
     created: raw.created,
     updated: raw.updated,
     customFields: rawFields.map(mapCustomField),
+    tags: (raw.tags ?? []).map(mapTag),
   };
 }
 
@@ -95,24 +114,24 @@ export class YouTrackClient {
 
   async getMe(): Promise<User> {
     const raw = await this.call<any>('/api/users/me', { query: { fields: 'id,login,fullName,avatarUrl' } });
-    return mapUser(raw)!;
+    return mapUser(raw, this.baseUrl)!;
   }
 
   async fetchIssue(idReadable: string): Promise<Issue> {
     const raw = await this.call<any>(`/api/issues/${idReadable}`, { query: { fields: ISSUE_FIELDS } });
-    return mapIssue(raw);
+    return mapIssue(raw, this.baseUrl);
   }
 
   async searchIssues(query: string, skip = 0, top = 50): Promise<Issue[]> {
     const raw = await this.call<any[]>('/api/issues', { query: { query, $skip: skip, $top: top, fields: ISSUE_FIELDS } });
-    return raw.map(mapIssue);
+    return raw.map((r) => mapIssue(r, this.baseUrl));
   }
 
   async searchSavedQueryIssues(savedQueryId: string, skip = 0, top = 50): Promise<Issue[]> {
     const raw = await this.call<any[]>('/api/issues', {
       query: { folder: savedQueryId, $skip: skip, $top: top, fields: ISSUE_FIELDS },
     });
-    return raw.map(mapIssue);
+    return raw.map((r) => mapIssue(r, this.baseUrl));
   }
 
   async fetchSavedQueries(): Promise<SavedQuery[]> {
@@ -124,7 +143,7 @@ export class YouTrackClient {
     const raw = await this.call<any[]>('/api/users', {
       query: { query, $top: top, fields: 'id,login,fullName,avatarUrl' },
     });
-    return raw.map((r) => mapUser(r)).filter((u): u is User => u !== null);
+    return raw.map((r) => mapUser(r, this.baseUrl)).filter((u): u is User => u !== null);
   }
 
   async addComment(issueId: string, text: string): Promise<Comment> {
@@ -136,7 +155,7 @@ export class YouTrackClient {
     return {
       id: raw.id,
       text: raw.text ?? '',
-      author: mapUser(raw.author) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
+      author: mapUser(raw.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
       created: raw.created,
     };
   }
@@ -145,7 +164,7 @@ export class YouTrackClient {
     const raw = await this.call<any[]>(`/api/issues/${issueId}/comments`, {
       query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
     });
-    return raw.map((r) => ({ id: r.id, text: r.text ?? '', author: mapUser(r.author)!, created: r.created }));
+    return raw.map((r) => ({ id: r.id, text: r.text ?? '', author: mapUser(r.author, this.baseUrl)!, created: r.created }));
   }
 
   async fetchAttachments(issueId: string): Promise<Attachment[]> {
@@ -167,7 +186,7 @@ export class YouTrackClient {
     });
     return raw.map((r) => ({
       id: r.id,
-      author: mapUser(r.author)!,
+      author: mapUser(r.author, this.baseUrl)!,
       duration: Number(r.duration?.minutes ?? 0) * 60,
       date: r.date,
       type: r.type ? { id: r.type.id, name: r.type.name } : null,
@@ -188,7 +207,7 @@ export class YouTrackClient {
     });
     return {
       id: raw.id,
-      author: mapUser(raw.author)!,
+      author: mapUser(raw.author, this.baseUrl)!,
       duration: Number(raw.duration?.minutes ?? 0) * 60,
       date: raw.date,
       type: raw.type ? { id: raw.type.id, name: raw.type.name } : null,
@@ -308,7 +327,7 @@ export class YouTrackClient {
       const colId = cell.column?.id;
       if (!colId || !issuesByColumn[colId]) continue;
       for (const rawIssue of cell.issues ?? []) {
-        issuesByColumn[colId].push(mapIssue(rawIssue));
+        issuesByColumn[colId].push(mapIssue(rawIssue, this.baseUrl));
       }
     }
 

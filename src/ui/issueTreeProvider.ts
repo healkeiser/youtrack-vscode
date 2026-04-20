@@ -58,6 +58,7 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
   private filterText = '';
   private groupMode: GroupMode = 'project';
   private stateFilter = new Set<string>();
+  private tagFilter = new Set<string>();
   private sortMode: SortMode = 'default';
 
   constructor(private client: YouTrackClient, private cache: Cache) {}
@@ -116,6 +117,25 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
     return [...set].sort((a, b) => a.localeCompare(b));
   }
 
+  getAvailableTags(): string[] {
+    const set = new Set<string>();
+    for (const q of this.queries.values()) {
+      for (const i of q.loaded) {
+        for (const t of i.tags) set.add(t.name);
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }
+
+  setTagFilter(tags: string[]): void {
+    this.tagFilter = new Set(tags);
+    this._emitter.fire(undefined);
+  }
+
+  getTagFilter(): string[] {
+    return [...this.tagFilter];
+  }
+
   private matchesFilter(issue: Issue): boolean {
     if (this.filterText) {
       const hay = `${issue.idReadable} ${issue.summary} ${issue.assignee?.login ?? ''} ${issue.assignee?.fullName ?? ''} ${issue.project.shortName}`.toLowerCase();
@@ -124,6 +144,10 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
     if (this.stateFilter.size > 0) {
       const state = issueStateName(issue);
       if (!this.stateFilter.has(state)) return false;
+    }
+    if (this.tagFilter.size > 0) {
+      const names = issue.tags.map((t) => t.name);
+      if (!names.some((n) => this.tagFilter.has(n))) return false;
     }
     return true;
   }
@@ -207,15 +231,26 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
     if (node.kind === 'issue') {
       const state = issueStateName(node.issue);
       const { icon, color } = stateVisuals(state);
-      const t = new vscode.TreeItem(
-        `${node.issue.idReadable}  ${node.issue.summary}`,
-        vscode.TreeItemCollapsibleState.None,
-      );
+      const idLen = node.issue.idReadable.length;
+      const label: vscode.TreeItemLabel = {
+        label: `${node.issue.idReadable}  ${node.issue.summary}`,
+        highlights: [[0, idLen]],
+      };
+      const t = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
       t.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
-      t.description = state || undefined;
+      const tagNames = node.issue.tags.map((t) => t.name);
+      const descParts: string[] = [];
+      if (state) descParts.push(state);
+      if (tagNames.length) descParts.push(tagNames.map((n) => `#${n}`).join(' '));
+      t.description = descParts.length ? descParts.join('  ·  ') : undefined;
       t.command = { command: 'youtrack.openIssue', title: 'Open', arguments: [node.issue.idReadable] };
       t.contextValue = 'issue';
-      t.tooltip = state ? `[${state}] ${node.issue.summary}` : node.issue.summary;
+      const tooltip = new vscode.MarkdownString();
+      tooltip.supportThemeIcons = true;
+      if (state) tooltip.appendMarkdown(`**${state}**  \n`);
+      tooltip.appendMarkdown(`${node.issue.summary}\n`);
+      if (tagNames.length) tooltip.appendMarkdown(`\n\n_Tags:_ ${tagNames.map((n) => `\`#${n}\``).join(' ')}`);
+      t.tooltip = tooltip;
       return t;
     }
     const t = new vscode.TreeItem('Load more...', vscode.TreeItemCollapsibleState.None);

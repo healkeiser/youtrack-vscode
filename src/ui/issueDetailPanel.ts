@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
-import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue } from '../client/types';
+import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 
 function escapeHtml(s: unknown): string {
@@ -58,10 +58,11 @@ function initials(user: User): string {
 
 function renderAvatar(user: User | null | undefined): string {
   if (!user) return `<span class="avatar">?</span>`;
+  const init = escapeHtml(initials(user));
   if (user.avatarUrl && /^https?:/.test(user.avatarUrl)) {
-    return `<span class="avatar"><img src="${escapeHtml(user.avatarUrl)}" alt=""></span>`;
+    return `<span class="avatar">${init}<img src="${escapeHtml(user.avatarUrl)}" referrerpolicy="no-referrer" onerror="this.style.display='none'" alt=""></span>`;
   }
-  return `<span class="avatar">${escapeHtml(initials(user))}</span>`;
+  return `<span class="avatar">${init}</span>`;
 }
 
 function renderUserChip(user: User | null | undefined): string {
@@ -93,6 +94,16 @@ function valueAsText(v: CustomFieldValue): string {
     case 'version': return v.name ?? '—';
     case 'unknown': return v.raw ?? '—';
   }
+}
+
+function renderTag(tag: Tag): string {
+  const bg = tag.color?.background || '';
+  const fg = tag.color?.foreground || '';
+  const style = [
+    bg ? `background:${bg}` : 'background:var(--vscode-editor-inactiveSelectionBackground)',
+    fg ? `color:${fg}` : 'color:var(--vscode-foreground)',
+  ].join(';');
+  return `<span class="tag-pill" style="${escapeHtml(style)}">${escapeHtml(tag.name)}</span>`;
 }
 
 function renderSideField(f: CustomField): string {
@@ -190,6 +201,9 @@ export class IssueDetailPanel {
     const projectRow = `<div class="side-field"><span class="label">Project</span><span class="value">${escapeHtml(issue.project.shortName)}</span></div>`;
     const reporterRow = issue.reporter
       ? `<div class="side-field"><span class="label">Reporter</span><span class="value">${renderUserChip(issue.reporter)}</span></div>`
+      : '';
+    const tagsRow = issue.tags.length
+      ? `<div class="side-field"><span class="label">Tags</span><span class="value tags-value">${issue.tags.map(renderTag).join('')}</span></div>`
       : '';
 
     const attachHtml = attachments.map((a) =>
@@ -289,6 +303,7 @@ export class IssueDetailPanel {
           ${projectRow}
           ${reporterRow}
           ${sideFields}
+          ${tagsRow}
         </aside>
       </div>
     `;

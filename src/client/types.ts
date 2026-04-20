@@ -37,6 +37,12 @@ export type CustomFieldValue =
   | { kind: 'unknown'; raw: string }
   | { kind: 'empty' };
 
+export interface Tag {
+  id: string;
+  name: string;
+  color: { id?: string; background?: string; foreground?: string } | null;
+}
+
 export interface Issue {
   id: string;
   idReadable: string;
@@ -48,6 +54,7 @@ export interface Issue {
   created: number;
   updated: number;
   customFields: CustomField[];
+  tags: Tag[];
 }
 
 export interface Comment {
