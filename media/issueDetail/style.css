@@ -123,15 +123,6 @@
   white-space: nowrap;
 }
 
-.tag-pill {
-  display: inline-block;
-  padding: 0.05em 0.55em;
-  border-radius: 10px;
-  font-size: 0.88em;
-  margin: 0.15em 0.2em 0.15em 0;
-  white-space: nowrap;
-  line-height: 1.45;
-}
 .side-field .tags-value { line-height: 1.6; }
 
 /* Editable blocks (summary + description) */
