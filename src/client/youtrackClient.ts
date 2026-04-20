@@ -150,6 +150,20 @@ export class YouTrackClient {
     return raw.map((r) => mapUser(r, this.baseUrl)).filter((u): u is User => u !== null);
   }
 
+  async updateComment(issueId: string, commentId: string, text: string): Promise<Comment> {
+    const raw = await this.call<any>(`/api/issues/${issueId}/comments/${commentId}`, {
+      method: 'POST',
+      query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
+      body: { text },
+    });
+    return {
+      id: raw.id,
+      text: raw.text ?? '',
+      author: mapUser(raw.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
+      created: raw.created,
+    };
+  }
+
   async addComment(issueId: string, text: string): Promise<Comment> {
     const raw = await this.call<any>(`/api/issues/${issueId}/comments`, {
       method: 'POST',

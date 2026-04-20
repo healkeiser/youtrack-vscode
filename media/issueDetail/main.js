@@ -11,6 +11,7 @@ window.addEventListener('message', (evt) => {
     wireLogTimeToggle();
     wireEditables();
     wireMdTabs();
+    wireCommentEdits();
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
     const target = pendingMentionTarget ?? document.querySelector('form.add-comment textarea');
@@ -175,6 +176,38 @@ function wireMdTabs() {
         if (t.dataset.mdTab === 'preview') showPreview();
         else showWrite();
       });
+    });
+  });
+}
+
+function wireCommentEdits() {
+  document.querySelectorAll('[data-activity-comment]').forEach((entry) => {
+    const editBtn = entry.querySelector('[data-edit-comment]');
+    const cancelBtn = entry.querySelector('[data-comment-edit-cancel]');
+    const view = entry.querySelector('.comment-view');
+    const form = entry.querySelector('form.comment-edit');
+    const input = form?.querySelector('textarea[name="text"]');
+    if (!form) return;
+
+    editBtn?.addEventListener('click', () => {
+      view.hidden = true;
+      form.hidden = false;
+      input?.focus();
+    });
+    cancelBtn?.addEventListener('click', () => {
+      form.hidden = true;
+      view.hidden = false;
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const commentId = form.dataset.commentId;
+      const text = input?.value ?? '';
+      if (!text.trim()) return;
+      vscode.postMessage({ type: 'updateComment', commentId, text });
+    });
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { form.hidden = true; view.hidden = false; }
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { form.requestSubmit(); }
     });
   });
 }

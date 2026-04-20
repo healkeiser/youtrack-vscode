@@ -157,6 +157,7 @@ export class IssueDetailPanel {
   private panel: vscode.WebviewPanel;
   private workTypes: Array<{ id: string; name: string }> = [];
   private userLookup = new Map<string, User>();
+  private currentUserLogin = '';
 
   private constructor(
     private extensionUri: vscode.Uri,
@@ -206,7 +207,7 @@ export class IssueDetailPanel {
     const truncated = issue.summary.length > 60 ? issue.summary.slice(0, 60).trimEnd() + '…' : issue.summary;
     this.panel.title = `${issue.idReadable}: ${truncated}`;
 
-    const [comments, attachments, workItems, types, users] = await Promise.all([
+    const [comments, attachments, workItems, types, users, me] = await Promise.all([
       this.client.fetchComments(this.issueId).catch(() => [] as Comment[]),
       this.client.fetchAttachments(this.issueId).catch(() => [] as Attachment[]),
       this.client.fetchWorkItems(this.issueId).catch(() => [] as WorkItem[]),
@@ -216,9 +217,13 @@ export class IssueDetailPanel {
       this.userLookup.size
         ? Promise.resolve([] as User[])
         : this.client.listUsers('', 200).catch(() => [] as User[]),
+      this.currentUserLogin
+        ? Promise.resolve(null)
+        : this.client.getMe().catch(() => null),
     ]);
     this.workTypes = types;
     for (const u of users) this.userLookup.set(u.login, u);
+    if (me && me.login) this.currentUserLogin = me.login;
 
     this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems) });
   }
@@ -240,12 +245,25 @@ export class IssueDetailPanel {
     type Entry = { ts: number; html: string };
     const entries: Entry[] = [];
     for (const c of comments) {
+      const isMine = !!c.author?.login && c.author.login === this.currentUserLogin;
+      const editForm = isMine ? `
+            <form class="comment-edit md-form" data-comment-id="${escapeHtml(c.id)}" hidden>
+              ${formattingToolbarHtml()}
+              <textarea name="text" required>${escapeHtml(c.text)}</textarea>
+              <div class="md-preview md-body" hidden></div>
+              <div class="edit-actions">
+                <button type="submit" class="primary">Save</button>
+                <button type="button" data-comment-edit-cancel>Cancel</button>
+              </div>
+            </form>` : '';
+      const editBtn = isMine ? `<button type="button" class="comment-edit-btn" data-edit-comment="${escapeHtml(c.id)}" title="Edit">✎</button>` : '';
       entries.push({
         ts: c.created,
         html: `
-          <div class="activity-entry">
-            <div class="meta">${renderAvatar(c.author)}<b>${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>commented · ${escapeHtml(new Date(c.created).toLocaleString())}</div>
-            <div class="body md-body">${renderBody(c.text, this.userLookup)}</div>
+          <div class="activity-entry" data-activity-comment="${escapeHtml(c.id)}">
+            <div class="meta">${renderAvatar(c.author)}<b>${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>commented · ${escapeHtml(new Date(c.created).toLocaleString())}<span class="spacer"></span>${editBtn}</div>
+            <div class="body md-body comment-view">${renderBody(c.text, this.userLookup)}</div>
+            ${editForm}
           </div>`,
       });
     }
@@ -380,6 +398,18 @@ export class IssueDetailPanel {
         await this.reload();
       } catch (e) {
         vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+    if (msg.type === 'updateComment') {
+      const commentId = String(msg.commentId ?? '');
+      const text = String(msg.text ?? '').trim();
+      if (!commentId || !text) return;
+      try {
+        await this.client.updateComment(this.issueId, commentId, text);
+        await this.reload();
+      } catch (e) {
+        vscode.window.showErrorMessage(`YouTrack: update comment failed: ${(e as Error).message}`);
       }
       return;
     }

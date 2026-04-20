@@ -73,7 +73,32 @@
 }
 .description.empty { color: var(--vscode-descriptionForeground); font-style: italic; }
 
-.activity-entry { padding: 0.75rem 0; border-bottom: 1px dashed var(--vscode-panel-border); }
+.activity-entry { padding: 0.75rem 0; border-bottom: 1px dashed var(--vscode-panel-border); position: relative; }
+.activity-entry .meta .spacer { flex: 1; }
+.comment-edit-btn {
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  border: 1px solid transparent;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.activity-entry:hover .comment-edit-btn { opacity: 1; }
+.comment-edit-btn:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--vscode-foreground); }
+.comment-edit { margin-top: 0.4rem; }
+.comment-edit textarea {
+  min-height: 5rem;
+  font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+  padding: 0.6rem;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
 .activity-entry:last-child { border-bottom: none; padding-bottom: 0; }
 .activity-entry:first-child { padding-top: 0; }
 .activity-entry .meta {
