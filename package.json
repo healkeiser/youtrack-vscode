@@ -44,6 +44,10 @@
       {
         "command": "youtrack.assignToMe",
         "title": "YouTrack: Assign to Me"
+      },
+      {
+        "command": "youtrack.changeState",
+        "title": "YouTrack: Change State..."
       }
     ],
     "configuration": {
