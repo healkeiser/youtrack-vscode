@@ -73,6 +73,11 @@ export class AgileBoardPanel {
       void this.reload();
       return;
     }
+    if (msg.type === 'createIssue') {
+      await vscode.commands.executeCommand('youtrack.createIssue');
+      void this.reload();
+      return;
+    }
     if (msg.type === 'switchSprint' && typeof msg.sprintId === 'string') {
       this.sprintId = msg.sprintId;
       const newKey = `${this.boardId}:${this.sprintId}`;

@@ -130,6 +130,8 @@ function renderHeader() {
 
   const refresh = document.getElementById('refreshBtn');
   if (refresh) refresh.onclick = () => vscode.postMessage({ type: 'refresh' });
+  const create = document.getElementById('createBtn');
+  if (create) create.onclick = () => vscode.postMessage({ type: 'createIssue' });
 
   const sortSelect = document.getElementById('sortPicker');
   if (sortSelect) {

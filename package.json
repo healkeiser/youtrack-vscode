@@ -44,7 +44,8 @@
       },
       {
         "command": "youtrack.createIssue",
-        "title": "YouTrack: Create Issue..."
+        "title": "YouTrack: Create Issue...",
+        "icon": "$(add)"
       },
       {
         "command": "youtrack.assignToMe",
@@ -255,6 +256,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "youtrack.createIssue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets|boards)$/",
+          "group": "navigation@0"
+        },
         {
           "command": "youtrack.filter",
           "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && !youtrack.filterActive",
