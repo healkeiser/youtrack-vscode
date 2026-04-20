@@ -11,6 +11,27 @@ function escapeHtml(s: unknown): string {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
 
+function renderBody(raw: string | null | undefined, userLookup: Map<string, User>): string {
+  if (!raw) return '';
+  const MENTION_RE = /@([A-Za-z0-9._\-]+)/g;
+  let out = '';
+  let lastIdx = 0;
+  for (const match of raw.matchAll(MENTION_RE)) {
+    const start = match.index ?? 0;
+    out += escapeHtml(raw.slice(lastIdx, start));
+    const login = match[1];
+    const user = userLookup.get(login);
+    if (user) {
+      out += `<span class="mention" title="@${escapeHtml(login)}">@${escapeHtml(user.fullName || user.login)}</span>`;
+    } else {
+      out += escapeHtml(match[0]);
+    }
+    lastIdx = start + match[0].length;
+  }
+  out += escapeHtml(raw.slice(lastIdx));
+  return out;
+}
+
 function stateSlug(name: string): string {
   const s = name.toLowerCase();
   if (/(done|fixed|closed|resolved|verified|complete)/.test(s)) return 'state-done';
@@ -97,6 +118,7 @@ export class IssueDetailPanel {
   private static panels = new Map<string, IssueDetailPanel>();
   private panel: vscode.WebviewPanel;
   private workTypes: Array<{ id: string; name: string }> = [];
+  private userLookup = new Map<string, User>();
 
   private constructor(
     private extensionUri: vscode.Uri,
@@ -146,15 +168,19 @@ export class IssueDetailPanel {
     const truncated = issue.summary.length > 60 ? issue.summary.slice(0, 60).trimEnd() + '…' : issue.summary;
     this.panel.title = `${issue.idReadable}: ${truncated}`;
 
-    const [comments, attachments, workItems, types] = await Promise.all([
+    const [comments, attachments, workItems, types, users] = await Promise.all([
       this.client.fetchComments(this.issueId).catch(() => [] as Comment[]),
       this.client.fetchAttachments(this.issueId).catch(() => [] as Attachment[]),
       this.client.fetchWorkItems(this.issueId).catch(() => [] as WorkItem[]),
       this.workTypes.length
         ? Promise.resolve(this.workTypes)
         : this.client.listWorkItemTypes().catch(() => [] as Array<{ id: string; name: string }>),
+      this.userLookup.size
+        ? Promise.resolve([] as User[])
+        : this.client.listUsers('', 200).catch(() => [] as User[]),
     ]);
     this.workTypes = types;
+    for (const u of users) this.userLookup.set(u.login, u);
 
     this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems) });
   }
@@ -178,7 +204,7 @@ export class IssueDetailPanel {
         html: `
           <div class="activity-entry">
             <div class="meta">${renderAvatar(c.author)}<b>${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>commented · ${escapeHtml(new Date(c.created).toLocaleString())}</div>
-            <div class="body">${escapeHtml(c.text)}</div>
+            <div class="body">${renderBody(c.text, this.userLookup)}</div>
           </div>`,
       });
     }
@@ -190,7 +216,7 @@ export class IssueDetailPanel {
         html: `
           <div class="activity-entry work">
             <div class="meta">${renderAvatar(w.author)}<b>${escapeHtml(w.author?.fullName ?? w.author?.login ?? '')}</b>logged <strong>${dur}</strong>${typeLabel} · ${escapeHtml(new Date(w.date).toLocaleDateString())}</div>
-            ${w.text ? `<div class="body">${escapeHtml(w.text)}</div>` : ''}
+            ${w.text ? `<div class="body">${renderBody(w.text, this.userLookup)}</div>` : ''}
           </div>`,
       });
     }
@@ -200,7 +226,7 @@ export class IssueDetailPanel {
     const typeOpts = this.workTypes.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
 
     const descriptionHtml = issue.description
-      ? `<div class="description">${escapeHtml(issue.description)}</div>`
+      ? `<div class="description">${renderBody(issue.description, this.userLookup)}</div>`
       : `<div class="description empty">No description.</div>`;
 
     return `

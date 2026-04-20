@@ -90,6 +90,15 @@
 .attachment { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; }
 .attachment a { color: var(--vscode-textLink-foreground); }
 
+.mention {
+  color: var(--vscode-textLink-foreground);
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* Log time form — fills section */
 form.log-time {
   display: grid;
