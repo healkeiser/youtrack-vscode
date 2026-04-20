@@ -232,6 +232,13 @@ export class YouTrackClient {
     });
   }
 
+  async updateIssue(issueId: string, patch: { summary?: string; description?: string }): Promise<void> {
+    await this.call(`/api/issues/${issueId}`, {
+      method: 'POST',
+      body: patch,
+    });
+  }
+
   async assignIssue(issueId: string, login: string): Promise<void> {
     await this.call(`/api/issues/${issueId}`, {
       method: 'POST',

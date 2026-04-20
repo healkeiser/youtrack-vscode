@@ -203,7 +203,10 @@
         },
         "youtrack.sidebar.groupBy": {
           "type": "string",
-          "enum": ["none", "project"],
+          "enum": [
+            "none",
+            "project"
+          ],
           "default": "project",
           "description": "How to group issues within each saved search in the sidebar."
         }
@@ -375,6 +378,7 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
+    "marked": "^18.0.2",
     "node-fetch": "^3.3.0"
   }
 }

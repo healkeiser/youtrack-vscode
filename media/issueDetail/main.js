@@ -8,6 +8,7 @@ window.addEventListener('message', (evt) => {
     wireToolbar();
     wireCommentToolbar();
     wireLogTimeToggle();
+    wireEditables();
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
     insertAtCursor(getCommentTextarea(), '@' + msg.login + ' ');
@@ -129,6 +130,36 @@ function wireCommentToolbar() {
       else if (e.key === 'e') { e.preventDefault(); wrapSelection(ta, '`', '`'); }
     });
   }
+}
+
+function wireEditables() {
+  document.querySelectorAll('.editable').forEach((block) => {
+    const field = block.dataset.field;
+    const view = block.querySelector('.editable-view');
+    const form = block.querySelector('.editable-edit');
+    const input = form?.querySelector('input[name="text"], textarea[name="text"]');
+    const cancel = form?.querySelector('[data-edit-cancel]');
+    const editBtn = view?.querySelector('[data-edit]');
+
+    editBtn?.addEventListener('click', () => {
+      view.hidden = true;
+      form.hidden = false;
+      input?.focus();
+    });
+    cancel?.addEventListener('click', () => {
+      form.hidden = true;
+      view.hidden = false;
+    });
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const value = input?.value ?? '';
+      vscode.postMessage({ type: 'updateField', field, value });
+    });
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { form.hidden = true; view.hidden = false; }
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { form.requestSubmit(); }
+    });
+  });
 }
 
 function wireLogTimeToggle() {

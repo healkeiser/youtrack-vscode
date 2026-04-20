@@ -1,35 +1,33 @@
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
 import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
+
+marked.setOptions({ gfm: true, breaks: true });
 
 function escapeHtml(s: unknown): string {
   if (s == null) return '';
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
 
+function resolveMentions(raw: string, userLookup: Map<string, User>): string {
+  const MENTION_RE = /@([A-Za-z0-9._\-]+)/g;
+  return raw.replace(MENTION_RE, (full, login: string) => {
+    const user = userLookup.get(login);
+    if (!user) return full;
+    return `<span class="mention" title="@${escapeHtml(login)}">@${escapeHtml(user.fullName || user.login)}</span>`;
+  });
+}
+
 function renderBody(raw: string | null | undefined, userLookup: Map<string, User>): string {
   if (!raw) return '';
-  const MENTION_RE = /@([A-Za-z0-9._\-]+)/g;
-  let out = '';
-  let lastIdx = 0;
-  for (const match of raw.matchAll(MENTION_RE)) {
-    const start = match.index ?? 0;
-    out += escapeHtml(raw.slice(lastIdx, start));
-    const login = match[1];
-    const user = userLookup.get(login);
-    if (user) {
-      out += `<span class="mention" title="@${escapeHtml(login)}">@${escapeHtml(user.fullName || user.login)}</span>`;
-    } else {
-      out += escapeHtml(match[0]);
-    }
-    lastIdx = start + match[0].length;
-  }
-  out += escapeHtml(raw.slice(lastIdx));
-  return out;
+  const withMentions = resolveMentions(raw, userLookup);
+  const html = marked.parse(withMentions, { async: false }) as string;
+  return html;
 }
 
 function stateSlug(name: string): string {
@@ -218,7 +216,7 @@ export class IssueDetailPanel {
         html: `
           <div class="activity-entry">
             <div class="meta">${renderAvatar(c.author)}<b>${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>commented · ${escapeHtml(new Date(c.created).toLocaleString())}</div>
-            <div class="body">${renderBody(c.text, this.userLookup)}</div>
+            <div class="body md-body">${renderBody(c.text, this.userLookup)}</div>
           </div>`,
       });
     }
@@ -239,8 +237,8 @@ export class IssueDetailPanel {
 
     const typeOpts = this.workTypes.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
 
-    const descriptionHtml = issue.description
-      ? `<div class="description">${renderBody(issue.description, this.userLookup)}</div>`
+    const descriptionBody = issue.description
+      ? `<div class="description md-body">${renderBody(issue.description, this.userLookup)}</div>`
       : `<div class="description empty">No description.</div>`;
 
     return `
@@ -248,7 +246,19 @@ export class IssueDetailPanel {
         <div class="main">
           <div class="header">
             <div class="id-row"><span class="id">${escapeHtml(issue.idReadable)}</span><span class="sep">·</span><span>${escapeHtml(issue.project.shortName)}</span></div>
-            <div class="summary">${escapeHtml(issue.summary)}</div>
+            <div class="editable" data-field="summary">
+              <div class="editable-view">
+                <div class="summary">${escapeHtml(issue.summary)}</div>
+                <button class="edit-btn" data-edit="summary" title="Edit summary">✎</button>
+              </div>
+              <form class="editable-edit summary-edit" data-edit-form="summary" hidden>
+                <input type="text" name="text" value="${escapeHtml(issue.summary)}" required>
+                <div class="edit-actions">
+                  <button type="submit" class="primary">Save</button>
+                  <button type="button" data-edit-cancel="summary">Cancel</button>
+                </div>
+              </form>
+            </div>
             <div class="toolbar">
               <button class="primary" data-cmd="startWork" title="Start Work (transition + branch)">▶ Start Work</button>
               <button data-cmd="assignToMe" title="Assign to me">Assign</button>
@@ -258,7 +268,19 @@ export class IssueDetailPanel {
               <button data-cmd="copyLink" title="Copy issue link">Copy</button>
               <button data-cmd="openInBrowser" title="Open in browser">Open</button>
             </div>
-            ${descriptionHtml}
+            <div class="editable" data-field="description">
+              <div class="editable-view">
+                ${descriptionBody}
+                <button class="edit-btn edit-btn-floating" data-edit="description" title="Edit description">✎</button>
+              </div>
+              <form class="editable-edit description-edit" data-edit-form="description" hidden>
+                <textarea name="text" placeholder="Markdown supported">${escapeHtml(issue.description)}</textarea>
+                <div class="edit-actions">
+                  <button type="submit" class="primary">Save</button>
+                  <button type="button" data-edit-cancel="description">Cancel</button>
+                </div>
+              </form>
+            </div>
           </div>
           ${attachments.length ? `<div class="section"><h3>Attachments</h3>${attachHtml}</div>` : ''}
           <div class="section">
@@ -341,6 +363,23 @@ export class IssueDetailPanel {
         await this.reload();
       } catch (e) {
         vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+    if (msg.type === 'updateField') {
+      const field = msg.field === 'summary' || msg.field === 'description' ? msg.field : null;
+      if (!field) return;
+      const value = String(msg.value ?? '');
+      if (field === 'summary' && !value.trim()) {
+        vscode.window.showErrorMessage('YouTrack: summary cannot be empty');
+        return;
+      }
+      try {
+        await this.client.updateIssue(this.issueId, { [field]: value });
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        vscode.window.showErrorMessage(`YouTrack: update failed: ${(e as Error).message}`);
       }
       return;
     }

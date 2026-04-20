@@ -110,6 +110,79 @@
 }
 .side-field .tags-value { line-height: 1.6; }
 
+/* Editable blocks (summary + description) */
+.editable { position: relative; }
+.editable-view { position: relative; }
+.editable .edit-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.2rem 0.45rem;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  color: var(--vscode-descriptionForeground);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.editable-view:hover .edit-btn { opacity: 1; }
+.editable .edit-btn:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--vscode-foreground); }
+.editable .edit-btn-floating { top: 0.5rem; right: 0.5rem; }
+
+.editable-edit { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.5rem 0; }
+.editable-edit input[type="text"] { font-size: 1.15em; font-weight: 600; padding: 0.4rem 0.55rem; }
+.editable-edit textarea {
+  min-height: 8rem;
+  font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+  padding: 0.6rem;
+  resize: vertical;
+}
+.edit-actions { display: flex; gap: 0.35rem; }
+.edit-actions button { padding: 0.35rem 0.9rem; border-radius: 3px; border: none; }
+.edit-actions button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.edit-actions button.primary:hover { background: var(--vscode-button-hoverBackground); }
+.edit-actions button:not(.primary) { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+.edit-actions button:not(.primary):hover { background: var(--vscode-button-secondaryHoverBackground); }
+
+/* Rendered markdown body */
+.md-body p { margin: 0.4rem 0; }
+.md-body p:first-child { margin-top: 0; }
+.md-body p:last-child { margin-bottom: 0; }
+.md-body h1, .md-body h2, .md-body h3, .md-body h4 { margin: 1rem 0 0.4rem 0; line-height: 1.3; }
+.md-body h1 { font-size: 1.3em; }
+.md-body h2 { font-size: 1.15em; }
+.md-body h3 { font-size: 1.05em; }
+.md-body ul, .md-body ol { margin: 0.4rem 0; padding-left: 1.5rem; }
+.md-body code {
+  font-family: var(--vscode-editor-font-family);
+  background: var(--vscode-textBlockQuote-background, var(--vscode-editor-inactiveSelectionBackground));
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.md-body pre {
+  background: var(--vscode-textBlockQuote-background, var(--vscode-editor-inactiveSelectionBackground));
+  padding: 0.7rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.9em;
+}
+.md-body pre code { background: transparent; padding: 0; }
+.md-body blockquote {
+  border-left: 3px solid var(--vscode-panel-border);
+  margin: 0.5rem 0;
+  padding-left: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+}
+.md-body a { color: var(--vscode-textLink-foreground); }
+.md-body img { max-width: 100%; }
+.md-body table { border-collapse: collapse; margin: 0.5rem 0; }
+.md-body th, .md-body td { border: 1px solid var(--vscode-panel-border); padding: 0.3rem 0.6rem; }
+.md-body th { background: var(--vscode-editor-inactiveSelectionBackground); }
+.md-body hr { border: none; border-top: 1px solid var(--vscode-panel-border); margin: 1rem 0; }
+
 /* Log time form — fills section */
 form.log-time {
   display: grid;
