@@ -62,6 +62,10 @@
         "title": "YouTrack: Open Agile Board..."
       },
       {
+        "command": "youtrack.signIn",
+        "title": "YouTrack: Sign In..."
+      },
+      {
         "command": "youtrack.signOut",
         "title": "YouTrack: Sign Out"
       }

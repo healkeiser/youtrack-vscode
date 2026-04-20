@@ -19,6 +19,21 @@ import { UriHandler } from './ui/uriHandler';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('youtrack.signIn', async () => {
+      const signed = await auth.promptAndValidate();
+      if (!signed) return;
+      const pick = await vscode.window.showInformationMessage(
+        'YouTrack: signed in. Reload the window to finish activation.',
+        'Reload Window',
+      );
+      if (pick === 'Reload Window') {
+        vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+    }),
+  );
+
   let creds = await auth.getCredentials();
   if (!creds) creds = await auth.promptAndValidate();
   if (!creds) return;
