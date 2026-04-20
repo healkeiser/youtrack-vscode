@@ -244,37 +244,35 @@ form.add-comment button[type="submit"] {
 
 .md-tabs {
   display: flex;
-  gap: 0;
-  margin-bottom: -1px;
+  gap: 0.5rem;
+  padding: 0 0.1rem;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  margin-bottom: 0;
 }
 .md-tab {
   background: transparent;
   color: var(--vscode-descriptionForeground);
-  border: 1px solid transparent;
-  border-bottom: none;
-  padding: 0.3rem 0.9rem;
-  border-top-left-radius: 3px;
-  border-top-right-radius: 3px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: -1px;
   cursor: pointer;
+  font-size: 0.95em;
 }
 .md-tab.active {
-  background: var(--vscode-editor-inactiveSelectionBackground);
-  border-color: var(--vscode-input-border);
   color: var(--vscode-foreground);
+  border-bottom-color: var(--vscode-focusBorder);
   font-weight: 500;
+  background: transparent;
 }
 .md-tab:not(.active):hover { color: var(--vscode-foreground); }
 
 .md-preview {
   min-height: 5rem;
-  padding: 0.7rem;
-  border: 1px solid var(--vscode-input-border);
-  border-top-left-radius: 0;
-  border-radius: 3px;
-  border-top-left-radius: 0;
-  background: var(--vscode-editorWidget-background);
+  padding: 0.7rem 0.2rem;
+  background: transparent;
 }
-.md-form .md-preview { border-top-left-radius: 0; }
 
 .comment-toolbar {
   display: flex;
@@ -284,7 +282,7 @@ form.add-comment button[type="submit"] {
   background: var(--vscode-editor-inactiveSelectionBackground);
   border: 1px solid var(--vscode-input-border);
   border-bottom: none;
-  border-top-left-radius: 0;
+  border-top-left-radius: 3px;
   border-top-right-radius: 3px;
 }
 .comment-toolbar button {
@@ -299,14 +297,16 @@ form.add-comment button[type="submit"] {
 .comment-toolbar button:hover { background: var(--vscode-toolbar-hoverBackground, var(--vscode-editorWidget-background)); }
 .comment-toolbar .sep { width: 1px; background: var(--vscode-panel-border); margin: 0.15rem 0.3rem; }
 
-/* Log-time toggle + collapsible form */
-.log-time-toggle {
+/* Inline collapsible trigger (shared by Add comment and Add spent time) */
+.inline-toggle {
   background: transparent;
   color: var(--vscode-textLink-foreground);
   border: none;
-  padding: 0.4rem 0;
+  padding: 0.5rem 0;
   cursor: pointer;
   font-size: 1em;
+  text-align: left;
+  margin-top: 0.5rem;
 }
-.log-time-toggle:hover { text-decoration: underline; }
-form.log-time.collapsed { display: none; }
+.inline-toggle:hover { text-decoration: underline; }
+.collapsed { display: none !important; }

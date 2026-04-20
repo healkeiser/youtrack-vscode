@@ -225,13 +225,20 @@ function wireEditables() {
 }
 
 function wireLogTimeToggle() {
-  const trigger = document.querySelector('[data-log-toggle]');
-  const form = document.querySelector('form.log-time');
-  if (!trigger || !form) return;
-  trigger.addEventListener('click', () => {
-    const collapsed = form.classList.toggle('collapsed');
-    trigger.textContent = collapsed ? '+ Add spent time' : '− Hide form';
-    if (!collapsed) form.querySelector('input[name="duration"]')?.focus();
+  document.querySelectorAll('[data-inline-toggle]').forEach((trigger) => {
+    const key = trigger.dataset.inlineToggle;
+    const form = document.querySelector(`[data-collapsible="${key}"]`);
+    if (!form) return;
+    const openLabel = trigger.textContent?.trim() ?? '';
+    const closeLabel = openLabel.replace(/^\+/, '−').replace('Add', 'Hide');
+    trigger.addEventListener('click', () => {
+      const collapsed = form.classList.toggle('collapsed');
+      trigger.textContent = collapsed ? openLabel : closeLabel;
+      if (!collapsed) {
+        const firstField = form.querySelector('input, textarea, select');
+        firstField?.focus();
+      }
+    });
   });
 }
 

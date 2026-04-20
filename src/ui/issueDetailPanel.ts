@@ -311,25 +311,23 @@ export class IssueDetailPanel {
           <div class="section">
             <h3>Activity</h3>
             ${activityHtml}
+            <button type="button" class="inline-toggle" data-inline-toggle="comment">+ Add a comment</button>
+            <form class="add-comment md-form collapsed" data-collapsible="comment">
+              ${formattingToolbarHtml()}
+              <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
+              <div class="md-preview md-body" hidden></div>
+              <button type="submit">Post Comment</button>
+            </form>
           </div>
           <div class="section">
             <h3>Log time</h3>
-            <button type="button" class="log-time-toggle" data-log-toggle>+ Add spent time</button>
-            <form class="log-time collapsed">
+            <button type="button" class="inline-toggle" data-inline-toggle="logtime">+ Add spent time</button>
+            <form class="log-time collapsed" data-collapsible="logtime">
               <label>Duration</label><input name="duration" placeholder="1h30m" required>
               <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
               <label>Type</label><select name="type">${typeOpts}</select>
               <label>Note</label><input name="text" placeholder="optional">
               <button type="submit">Log</button>
-            </form>
-          </div>
-          <div class="section">
-            <h3>Add comment</h3>
-            <form class="add-comment md-form">
-              ${formattingToolbarHtml()}
-              <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
-              <div class="md-preview md-body" hidden></div>
-              <button type="submit">Post Comment</button>
             </form>
           </div>
         </div>
