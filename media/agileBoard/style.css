@@ -53,8 +53,8 @@ body { padding: 0; }
 
 .swim-header {
   display: grid;
-  gap: 0.6rem;
-  padding: 0 0.6rem 0.4rem 0.6rem;
+  gap: 0;
+  padding: 0;
   position: sticky;
   top: 0;
   background: var(--vscode-editor-background);
@@ -65,13 +65,14 @@ body { padding: 0; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.35rem 0.2rem;
+  padding: 0.45rem 0.8rem;
   font-size: 1em;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--vscode-descriptionForeground);
   font-weight: 600;
 }
+.swim-header-col:not(:last-child) { border-right: 1px solid var(--vscode-panel-border); }
 
 .swim-lane { display: flex; flex-direction: column; }
 .swim-lane + .swim-lane { border-top: 1px solid var(--vscode-panel-border); }
@@ -106,18 +107,20 @@ body { padding: 0; }
 
 .swim-lane-body {
   display: grid;
-  gap: 0 0.6rem;
-  padding: 0.6rem;
-  align-items: start;
+  gap: 0;
+  padding: 0;
+  align-items: stretch;
 }
 .swim-cell {
-  min-height: 2.5rem;
-  padding: 0.15rem;
-  border-radius: 3px;
-  transition: background 0.1s ease;
+  min-height: 4rem;
+  padding: 0.6rem 0.55rem;
+  transition: background 0.1s ease, min-height 0.15s ease;
 }
-.swim-cell.drop-target { background: var(--vscode-list-dropBackground, rgba(100,149,237,0.15)); outline: 1px dashed var(--vscode-focusBorder); outline-offset: -1px; }
+.swim-cell:not(:last-child) { border-right: 1px solid var(--vscode-panel-border); }
+.swim-cell.drop-target { background: var(--vscode-list-dropBackground, rgba(100,149,237,0.15)); }
 .swim-cell .card:last-child { margin-bottom: 0; }
+/* Expand empty cells while something is being dragged so they remain easy drop targets */
+body.is-dragging .swim-cell { min-height: 9rem; }
 .board-loading { color: var(--vscode-descriptionForeground); font-style: italic; padding: 1rem; }
 
 .card {

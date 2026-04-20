@@ -235,9 +235,13 @@ function renderCard(issue, colId) {
 function attachCardBehavior(card, issue, colId) {
   card.addEventListener('dragstart', (e) => {
     card.classList.add('dragging');
+    document.body.classList.add('is-dragging');
     e.dataTransfer.setData('text/plain', issue.idReadable + '|' + colId);
   });
-  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.body.classList.remove('is-dragging');
+  });
   card.addEventListener('click', () => vscode.postMessage({ type: 'openIssue', issueId: issue.idReadable }));
 }
 
