@@ -287,17 +287,17 @@
         "youtrack.branch.template": {
           "type": "string",
           "default": "{assignee}/{id}-{summary}",
-          "description": "Branch name template."
+          "markdownDescription": "Branch name template. Available placeholders:\n\n- `{id}` — issue id (e.g. `ABC-123`)\n- `{summary}` — issue summary (slugified, truncated by `#youtrack.branch.summaryMaxLength#`)\n- `{type}` — issue type (e.g. `bug`, `feature`)\n- `{state}` — current state (e.g. `in-progress`)\n- `{assignee}` — assignee login\n- `{project}` — project short name\n- `{field:<Name>}` — any custom field by its YouTrack name (e.g. `{field:Subsystem}`)\n\nAll tokens except `{id}` are sanitized: lowercased, diacritics stripped, non-alphanumerics replaced with `#youtrack.branch.separator#`.\n\nExample: `{assignee}/{id}-{summary}` → `alice/ABC-123-fix-login-crash`."
         },
         "youtrack.branch.summaryMaxLength": {
           "type": "number",
           "default": 40,
-          "description": "Summary token max length."
+          "markdownDescription": "Maximum character length of the `{summary}` token after sanitization."
         },
         "youtrack.branch.separator": {
           "type": "string",
           "default": "-",
-          "description": "Separator for sanitized tokens."
+          "markdownDescription": "Character used to join words inside sanitized tokens (`{summary}`, `{type}`, `{state}`, `{field:…}`)."
         },
         "youtrack.branch.copyOnly": {
           "type": "boolean",
