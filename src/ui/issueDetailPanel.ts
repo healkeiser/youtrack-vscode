@@ -27,7 +27,7 @@ export class IssueDetailPanel {
       'youtrackIssue', issueId, vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media', 'issueDetail')], retainContextWhenHidden: true },
     );
-    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack_outline.svg');
+    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack.png');
     this.panel.webview.html = this.shellHtml();
     this.panel.onDidDispose(() => IssueDetailPanel.panels.delete(issueId));
     this.panel.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
@@ -93,9 +93,17 @@ export class IssueDetailPanel {
         <div class="id">${escapeHtml(issue.idReadable)}</div>
         <div class="summary">${escapeHtml(issue.summary)}</div>
       </div>
+      <div class="toolbar">
+        <button class="primary" data-cmd="startWork">Start Work</button>
+        <button data-cmd="assignToMe">Assign to Me</button>
+        <button data-cmd="changeState">Change State…</button>
+        <button data-cmd="logTime">Log Time…</button>
+        <button data-cmd="createBranch">Create Branch</button>
+        <button data-cmd="copyLink">Copy Link</button>
+        <button data-cmd="openInBrowser">Open in Browser</button>
+      </div>
       <div class="description">${escapeHtml(issue.description)}</div>
       <div class="section"><h3>Fields</h3>${fields}</div>
-      <div class="section"><h3>Comments</h3>${commentHtml || '<i>None</i>'}</div>
       <div class="section"><h3>Attachments</h3>${attachHtml || '<i>None</i>'}</div>
       <div class="section">
         <h3>Time logged</h3>
@@ -106,6 +114,14 @@ export class IssueDetailPanel {
           <label>Type</label><select name="type">${typeOpts}</select>
           <label>Note</label><input name="text">
           <button type="submit">Log</button>
+        </form>
+      </div>
+      <div class="section">
+        <h3>Comments</h3>
+        ${commentHtml || '<i>None</i>'}
+        <form class="add-comment">
+          <textarea name="text" placeholder="Add a comment..." required></textarea>
+          <button type="submit">Post Comment</button>
         </form>
       </div>
     `;
@@ -133,6 +149,34 @@ export class IssueDetailPanel {
       } catch (e) {
         vscode.window.showErrorMessage(`YouTrack: log time failed: ${(e as Error).message}`);
       }
+      return;
+    }
+    if (msg.type === 'addComment') {
+      const text = String(msg.text ?? '').trim();
+      if (!text) return;
+      try {
+        await this.client.addComment(this.issueId, text);
+        await this.reload();
+      } catch (e) {
+        vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+    if (msg.type === 'cmd') {
+      const map: Record<string, string> = {
+        startWork: 'youtrack.startWork',
+        assignToMe: 'youtrack.assignToMe',
+        changeState: 'youtrack.changeState',
+        logTime: 'youtrack.logTime',
+        createBranch: 'youtrack.createBranch',
+        copyLink: 'youtrack.copyLink',
+        openInBrowser: 'youtrack.openInBrowser',
+      };
+      const cmd = map[msg.id];
+      if (!cmd) return;
+      await vscode.commands.executeCommand(cmd, this.issueId);
+      await this.reload();
+      return;
     }
   }
 }

@@ -120,6 +120,20 @@ export class YouTrackClient {
     return raw.map((r) => ({ id: r.id, name: r.name, query: r.query ?? '' }));
   }
 
+  async addComment(issueId: string, text: string): Promise<Comment> {
+    const raw = await this.call<any>(`/api/issues/${issueId}/comments`, {
+      method: 'POST',
+      query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
+      body: { text },
+    });
+    return {
+      id: raw.id,
+      text: raw.text ?? '',
+      author: mapUser(raw.author) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
+      created: raw.created,
+    };
+  }
+
   async fetchComments(issueId: string): Promise<Comment[]> {
     const raw = await this.call<any[]>(`/api/issues/${issueId}/comments`, {
       query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
