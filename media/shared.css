@@ -11,6 +11,9 @@ body {
   line-height: 1.5;
 }
 
+/* The HTML `hidden` attribute must win over any later display rule. */
+[hidden] { display: none !important; }
+
 /* Tell native form controls (date picker, select dropdowns) to follow
    the active VS Code theme so their icons aren't rendered as black
    on a dark background. */
