@@ -40,19 +40,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (!creds) creds = await auth.promptAndValidate();
   if (!creds) return;
 
-  await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', true);
-
   const client = new YouTrackClient(creds.baseUrl, creds.token);
-  const dbPath = path.join(context.globalStorageUri.fsPath, 'cache.sqlite');
-  await vscode.workspace.fs.createDirectory(context.globalStorageUri);
-  const db = new Database(dbPath);
   const cfg = vscode.workspace.getConfiguration('youtrack');
-  const cache = new Cache(db, {
-    issuesTtlMs: cfg.get<number>('cache.ttl.issues', 60) * 1000,
-    maxIssues: 10_000,
-    fieldSchemasTtlMs: cfg.get<number>('cache.ttl.fieldSchemas', 3600) * 1000,
-    savedQueriesTtlMs: cfg.get<number>('cache.ttl.savedSearches', 300) * 1000,
-  });
+
+  let db: Database.Database;
+  let cache: Cache;
+  try {
+    const dbPath = path.join(context.globalStorageUri.fsPath, 'cache.sqlite');
+    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+    db = new Database(dbPath);
+    cache = new Cache(db, {
+      issuesTtlMs: cfg.get<number>('cache.ttl.issues', 60) * 1000,
+      maxIssues: 10_000,
+      fieldSchemasTtlMs: cfg.get<number>('cache.ttl.fieldSchemas', 3600) * 1000,
+      savedQueriesTtlMs: cfg.get<number>('cache.ttl.savedSearches', 300) * 1000,
+    });
+  } catch (e) {
+    vscode.window.showErrorMessage(`YouTrack: failed to open cache: ${(e as Error).message}`);
+    return;
+  }
 
   const tree = new IssueTreeProvider(client, cache);
   context.subscriptions.push(
@@ -96,6 +102,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('youtrack.openBoard', () => openBoard(context.extensionUri, client)),
   );
+
+  await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', true);
 
   const pollMs = cfg.get<number>('cache.pollInterval', 60) * 1000;
   const statusBar = new StatusBar(client, pollMs);
