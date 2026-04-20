@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
 import { Cache } from '../../src/cache/cache';
 import type { Issue } from '../../src/client/types';
 
@@ -17,9 +16,8 @@ describe('Cache', () => {
   let fetcher: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    const db = new Database(':memory:');
     fetcher = vi.fn(async (id: string) => makeIssue(id));
-    cache = new Cache(db, { issuesTtlMs: 1000, maxIssues: 3, now: () => 0 });
+    cache = new Cache({ issuesTtlMs: 1000, maxIssues: 3, now: () => 0 });
   });
 
   it('fetches on miss and returns same on hit', async () => {
@@ -32,7 +30,7 @@ describe('Cache', () => {
 
   it('refetches after TTL expiry', async () => {
     let now = 0;
-    cache = new Cache(new Database(':memory:'), { issuesTtlMs: 100, maxIssues: 10, now: () => now });
+    cache = new Cache({ issuesTtlMs: 100, maxIssues: 10, now: () => now });
     await cache.getIssue('A', fetcher);
     now = 200;
     await cache.getIssue('A', fetcher);

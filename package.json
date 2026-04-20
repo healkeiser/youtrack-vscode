@@ -174,7 +174,6 @@
     "test:integration": "tsc -p tsconfig.test.json && node ./test-dist/test/runTest.js"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
@@ -187,7 +186,6 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "better-sqlite3": "^11.0.0",
     "node-fetch": "^3.3.0"
   }
 }

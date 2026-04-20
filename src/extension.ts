@@ -1,6 +1,4 @@
 import * as vscode from 'vscode';
-import Database from 'better-sqlite3';
-import * as path from 'node:path';
 import { YouTrackClient } from './client/youtrackClient';
 import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
@@ -43,22 +41,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const client = new YouTrackClient(creds.baseUrl, creds.token);
   const cfg = vscode.workspace.getConfiguration('youtrack');
 
-  let db: Database.Database;
-  let cache: Cache;
-  try {
-    const dbPath = path.join(context.globalStorageUri.fsPath, 'cache.sqlite');
-    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
-    db = new Database(dbPath);
-    cache = new Cache(db, {
-      issuesTtlMs: cfg.get<number>('cache.ttl.issues', 60) * 1000,
-      maxIssues: 10_000,
-      fieldSchemasTtlMs: cfg.get<number>('cache.ttl.fieldSchemas', 3600) * 1000,
-      savedQueriesTtlMs: cfg.get<number>('cache.ttl.savedSearches', 300) * 1000,
-    });
-  } catch (e) {
-    vscode.window.showErrorMessage(`YouTrack: failed to open cache: ${(e as Error).message}`);
-    return;
-  }
+  const cache = new Cache({
+    issuesTtlMs: cfg.get<number>('cache.ttl.issues', 60) * 1000,
+    maxIssues: 10_000,
+    fieldSchemasTtlMs: cfg.get<number>('cache.ttl.fieldSchemas', 3600) * 1000,
+    savedQueriesTtlMs: cfg.get<number>('cache.ttl.savedSearches', 300) * 1000,
+  });
 
   const tree = new IssueTreeProvider(client, cache);
   context.subscriptions.push(
@@ -122,7 +110,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  context.subscriptions.push({ dispose: () => db.close() });
 }
 
 export function deactivate(): void {
