@@ -62,4 +62,4 @@ Run before each release.
 - [ ] Click opens QuickPick of assigned issues
 
 ## URI handler
-- [ ] `vscode://lotchi-studio.ls-youtrack-vscode/FOO-123` opens the issue
+- [ ] `vscode://valentinbeaumont.youtrack-vscode/FOO-123` opens the issue

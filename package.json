@@ -1,9 +1,13 @@
 {
-  "name": "ls-youtrack-vscode",
+  "name": "youtrack-vscode",
   "displayName": "YouTrack for VS Code",
   "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
   "version": "0.1.0",
-  "publisher": "lotchi-studio",
+  "publisher": "valentinbeaumont",
+  "author": {
+    "name": "Valentin Beaumont",
+    "email": "valentin.onze@gmail.com"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

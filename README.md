@@ -1,6 +1,6 @@
-# ls-youtrack-vscode
+# youtrack-vscode
 
-VS Code extension for YouTrack Cloud.
+VS Code extension for YouTrack Cloud by Valentin Beaumont.
 
 ## Features
 - Sidebar with saved searches and issues
@@ -12,7 +12,7 @@ VS Code extension for YouTrack Cloud.
 ## Install
 Download the latest `.vsix` from Releases, then:
 
-    code --install-extension ls-youtrack-vscode-<version>.vsix
+    code --install-extension youtrack-vscode-<version>.vsix
 
 ## Configure
 On first run you are prompted for your YouTrack Cloud base URL and a permanent token (Profile -> Account Security -> New token).
