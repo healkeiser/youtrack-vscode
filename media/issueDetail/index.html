@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{CSP_SOURCE}} 'unsafe-inline'; font-src {{CSP_SOURCE}}; script-src 'nonce-{{NONCE}}'; img-src {{CSP_SOURCE}} https: data:; connect-src {{CSP_SOURCE}}; frame-src 'none';">
   <link rel="stylesheet" href="{{CODICONS}}">
   <link rel="stylesheet" href="{{SHARED}}">
   <link rel="stylesheet" href="{{STYLE}}">
@@ -16,6 +17,6 @@
       <div class="skeleton" style="width:60%;height:0.9em"></div>
     </div>
   </div>
-  <script src="{{MAIN}}"></script>
+  <script nonce="{{NONCE}}" src="{{MAIN}}"></script>
 </body>
 </html>

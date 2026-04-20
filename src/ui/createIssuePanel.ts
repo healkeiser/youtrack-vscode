@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
+import { getNonce } from './webviewSecurity';
 
 export class CreateIssuePanel {
   private static current: CreateIssuePanel | undefined;
@@ -42,7 +43,10 @@ export class CreateIssuePanel {
     const mediaRoot = vscode.Uri.joinPath(this.extensionUri, 'media');
     const panelUri = vscode.Uri.joinPath(mediaRoot, 'createIssue');
     const tpl = fs.readFileSync(path.join(panelUri.fsPath, 'index.html'), 'utf-8');
+    const nonce = getNonce();
     return tpl
+      .replace('{{CSP_SOURCE}}', this.panel.webview.cspSource)
+      .replace(/\{\{NONCE\}\}/g, nonce)
       .replace('{{CODICONS}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')).toString())
       .replace('{{SHARED}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'shared.css')).toString())
       .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'style.css')).toString())
