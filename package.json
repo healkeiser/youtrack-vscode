@@ -142,7 +142,13 @@
         "command": "youtrack.clearTagFilter",
         "title": "YouTrack: Clear Tag Filter",
         "icon": "$(tag)"
-      }
+      },
+      { "command": "youtrack.refreshRecents", "title": "YouTrack: Refresh Recents", "icon": "$(refresh)" },
+      { "command": "youtrack.clearRecents", "title": "YouTrack: Clear Recents", "icon": "$(clear-all)" },
+      { "command": "youtrack.refreshNotifications", "title": "YouTrack: Refresh Notifications", "icon": "$(refresh)" },
+      { "command": "youtrack.startTimer", "title": "YouTrack: Start Timer on Issue…" },
+      { "command": "youtrack.stopTimer", "title": "YouTrack: Stop Timer and Log" },
+      { "command": "youtrack.timerClick", "title": "YouTrack: Timer Menu" }
     ],
     "configuration": {
       "title": "YouTrack",
@@ -249,6 +255,14 @@
           "name": "All tickets"
         },
         {
+          "id": "youtrack.recents",
+          "name": "Recently opened"
+        },
+        {
+          "id": "youtrack.notifications",
+          "name": "Notifications"
+        },
+        {
           "id": "youtrack.boards",
           "name": "Agile Boards"
         }
@@ -315,7 +329,10 @@
           "command": "youtrack.refreshBoards",
           "when": "view == youtrack.boards",
           "group": "navigation"
-        }
+        },
+        { "command": "youtrack.refreshRecents", "when": "view == youtrack.recents", "group": "navigation@2" },
+        { "command": "youtrack.clearRecents",   "when": "view == youtrack.recents", "group": "navigation@1" },
+        { "command": "youtrack.refreshNotifications", "when": "view == youtrack.notifications", "group": "navigation" }
       ],
       "view/item/context": [
         {
@@ -370,6 +387,12 @@
         }
       ]
     },
+    "keybindings": [
+      { "command": "youtrack.createIssue", "key": "ctrl+alt+n", "mac": "cmd+alt+n", "when": "!terminalFocus && !editorTextFocus" },
+      { "command": "youtrack.goToIssue",   "key": "ctrl+alt+g", "mac": "cmd+alt+g", "when": "!terminalFocus" },
+      { "command": "youtrack.search",      "key": "ctrl+alt+y", "mac": "cmd+alt+y", "when": "!terminalFocus" },
+      { "command": "youtrack.openBoard",   "key": "ctrl+alt+b", "mac": "cmd+alt+b", "when": "!terminalFocus && !editorTextFocus" }
+    ],
     "viewsWelcome": [
       {
         "view": "youtrack.assignedToMe",
@@ -404,6 +427,16 @@
       {
         "view": "youtrack.boards",
         "contents": "Sign in to see your agile boards.",
+        "when": "!youtrack.signedIn"
+      },
+      {
+        "view": "youtrack.recents",
+        "contents": "No recently opened issues yet. Open one from any section and it will show up here.",
+        "when": "youtrack.signedIn"
+      },
+      {
+        "view": "youtrack.notifications",
+        "contents": "Sign in to see your YouTrack notifications.",
         "when": "!youtrack.signedIn"
       }
     ]

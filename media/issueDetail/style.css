@@ -117,6 +117,37 @@
 
 .side-field .tags-value { line-height: 1.6; }
 
+.link-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.link-chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.88em;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  text-decoration: none;
+}
+.link-chip:hover { background: var(--vscode-list-hoverBackground); }
+.link-chip.resolved { opacity: 0.7; text-decoration: line-through; }
+
+body.drop-active::after {
+  content: 'Drop to attach';
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(100, 149, 237, 0.15);
+  outline: 2px dashed var(--vscode-focusBorder);
+  outline-offset: -10px;
+  color: var(--vscode-foreground);
+  font-size: 1.3em;
+  font-weight: 600;
+  z-index: 10000;
+  pointer-events: none;
+}
+
 /* Editable blocks (summary + description) */
 .editable { position: relative; }
 .editable-view { position: relative; }

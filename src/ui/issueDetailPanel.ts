@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
-import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag } from '../client/types';
+import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag, IssueLink } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 
 marked.setOptions({ gfm: true, breaks: false });
@@ -242,6 +242,12 @@ export class IssueDetailPanel {
     const tagsRow = `<div class="side-field"><span class="label">Tags</span><span class="value tags-value">${
       issue.tags.length ? issue.tags.map(renderTag).join('') : '—'
     }</span></div>`;
+    const linksRows = issue.links.length
+      ? issue.links.map((link: IssueLink) => {
+          const chips = link.issues.map((i) => `<a class="link-chip${i.resolved ? ' resolved' : ''}" data-open-issue="${escapeHtml(i.idReadable)}" title="${escapeHtml(i.summary)}">${escapeHtml(i.idReadable)}</a>`).join('');
+          return `<div class="side-field side-link-row"><span class="label">${escapeHtml(link.name)}</span><span class="value link-chips">${chips}</span></div>`;
+        }).join('')
+      : '';
 
     const attachHtml = attachments.map((a) =>
       `<div class="attachment"><span>📎</span><a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a><span style="color:var(--vscode-descriptionForeground);font-size:0.85em">${a.size} B</span></div>`
@@ -313,6 +319,7 @@ export class IssueDetailPanel {
             </div>
             <div class="toolbar">
               <button class="btn primary" data-cmd="startWork" title="Transition state and create a branch">▶ Start Work</button>
+              <button class="btn" data-cmd="startTimer" title="Start a timer on this issue">⏱ Timer</button>
               <button class="btn" data-cmd="createBranch" title="Create git branch from issue">Branch</button>
               <span class="toolbar-gap"></span>
               <button class="btn icon" data-cmd="copyLink" title="Copy issue link">⧉</button>
@@ -364,6 +371,7 @@ export class IssueDetailPanel {
           ${reporterRow}
           ${sideFields}
           ${tagsRow}
+          ${linksRows}
         </aside>
       </div>
     `;
@@ -460,6 +468,7 @@ export class IssueDetailPanel {
         changeState: 'youtrack.changeState',
         changePriority: 'youtrack.changePriority',
         logTime: 'youtrack.logTime',
+        startTimer: 'youtrack.startTimer',
         createBranch: 'youtrack.createBranch',
         copyLink: 'youtrack.copyLink',
         openInBrowser: 'youtrack.openInBrowser',
@@ -468,6 +477,23 @@ export class IssueDetailPanel {
       if (!cmd) return;
       await vscode.commands.executeCommand(cmd, this.issueId);
       await this.reload();
+      return;
+    }
+    if (msg.type === 'uploadAttachment') {
+      try {
+        const bytes = Buffer.from(String(msg.dataBase64 ?? ''), 'base64');
+        const filename = String(msg.name ?? 'file');
+        const mime = String(msg.mime ?? 'application/octet-stream');
+        await this.client.uploadAttachment(this.issueId, filename, bytes, mime);
+        vscode.window.showInformationMessage(`YouTrack: uploaded ${filename}`);
+        await this.reload();
+      } catch (e) {
+        vscode.window.showErrorMessage(`YouTrack: upload failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+    if (msg.type === 'openLinkedIssue' && typeof msg.id === 'string') {
+      vscode.commands.executeCommand('youtrack.openIssue', msg.id);
       return;
     }
   }

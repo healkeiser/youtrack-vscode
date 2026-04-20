@@ -107,6 +107,36 @@ body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
   border-radius: 10px;
 }
 
+/* Skeleton shimmer for loading states */
+@keyframes ytvsc-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  display: inline-block;
+  height: 1em;
+  border-radius: 3px;
+  background: linear-gradient(90deg,
+    var(--vscode-editorWidget-background) 0%,
+    var(--vscode-input-background) 50%,
+    var(--vscode-editorWidget-background) 100%);
+  background-size: 800px 100%;
+  animation: ytvsc-shimmer 1.4s linear infinite;
+  vertical-align: middle;
+}
+.skeleton-card {
+  padding: 0.6rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+.skeleton-card .skeleton.line { height: 0.9em; }
+.skeleton-card .skeleton.line.short { width: 40%; }
+.skeleton-card .skeleton.line.long  { width: 90%; }
+
 /* Tag pill — used in the issue detail side panel, agile-board cards,
    and anywhere a named color-coded chip is needed. */
 .tag-pill {

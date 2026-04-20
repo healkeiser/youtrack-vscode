@@ -19,6 +19,10 @@ import { StatusBar } from './ui/statusBar';
 import { openBoard } from './commands/openBoard';
 import { UriHandler } from './ui/uriHandler';
 import { IssueHoverProvider } from './ui/hoverProvider';
+import { RecentsTreeProvider } from './ui/recentsTreeProvider';
+import { NotificationsTreeProvider } from './ui/notificationsTreeProvider';
+import { TimerService } from './ui/timer';
+import { CurrentIssueBadge } from './ui/currentIssueBadge';
 import { resolveIssueId } from './commands/resolveIssueId';
 
 interface SectionDef {
@@ -181,9 +185,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       state.setSortMode(picked.mode);
       await vscode.commands.executeCommand('setContext', 'youtrack.sortNonDefault', picked.mode !== 'default');
     }),
-    vscode.commands.registerCommand('youtrack.openIssue', (id: string) =>
-      IssueDetailPanel.show(context.extensionUri, client, cache, id),
-    ),
+    vscode.commands.registerCommand('youtrack.openIssue', async (id: string) => {
+      IssueDetailPanel.show(context.extensionUri, client, cache, id);
+      try {
+        const issue = await cache.getIssue(id, (x) => client.fetchIssue(x));
+        await recents.touch(issue.idReadable, issue.summary);
+      } catch { /* opening shouldn't fail because of recents */ }
+    }),
     vscode.commands.registerCommand('youtrack.goToIssue', async () => {
       const id = await goToIssue();
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
@@ -256,9 +264,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   const boardTree = new BoardTreeProvider(client);
+  const recents = new RecentsTreeProvider(context);
+  const notifs = new NotificationsTreeProvider(client);
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('youtrack.boards', boardTree),
+    vscode.window.registerTreeDataProvider('youtrack.recents', recents),
+    vscode.window.registerTreeDataProvider('youtrack.notifications', notifs),
     vscode.commands.registerCommand('youtrack.refreshBoards', () => boardTree.refresh()),
+    vscode.commands.registerCommand('youtrack.refreshRecents', () => recents['_emitter'].fire(undefined)),
+    vscode.commands.registerCommand('youtrack.clearRecents', () => recents.clear()),
+    vscode.commands.registerCommand('youtrack.refreshNotifications', () => notifs.refresh()),
+  );
+
+  const timer = new TimerService(context, client);
+  const currentIssue = new CurrentIssueBadge(client, cache);
+  context.subscriptions.push(
+    timer,
+    currentIssue,
+    vscode.commands.registerCommand('youtrack.startTimer', async (arg?: unknown) => {
+      const id = await resolveIssueId(arg);
+      if (id) await timer.start(id);
+    }),
+    vscode.commands.registerCommand('youtrack.stopTimer', () => timer.stop()),
+    vscode.commands.registerCommand('youtrack.timerClick', () => timer.toggleFromStatusBar()),
   );
 
   await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', true);

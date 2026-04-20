@@ -45,6 +45,12 @@ export interface Tag {
   color: { id?: string; background?: string; foreground?: string } | null;
 }
 
+export interface IssueLink {
+  direction: string;               // e.g. 'OUTWARD', 'INWARD', 'BOTH'
+  name: string;                    // human label (e.g. 'relates to', 'is blocked by')
+  issues: Array<{ idReadable: string; summary: string; resolved: number | null }>;
+}
+
 export interface Issue {
   id: string;
   idReadable: string;
@@ -57,6 +63,7 @@ export interface Issue {
   updated: number;
   customFields: CustomField[];
   tags: Tag[];
+  links: IssueLink[];
 }
 
 export interface Comment {

@@ -13,6 +13,7 @@ window.addEventListener('message', (evt) => {
     wireMdTabs();
     wireCommentEdits();
     wirePills();
+    wireLinkChips();
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
     const target = pendingMentionTarget ?? document.querySelector('form.add-comment textarea');
@@ -189,6 +190,15 @@ function wirePills() {
   });
 }
 
+function wireLinkChips() {
+  document.querySelectorAll('[data-open-issue]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      vscode.postMessage({ type: 'openLinkedIssue', id: el.dataset.openIssue });
+    });
+  });
+}
+
 function wireCommentEdits() {
   document.querySelectorAll('[data-activity-comment]').forEach((entry) => {
     const editBtn = entry.querySelector('[data-edit-comment]');
@@ -283,5 +293,39 @@ function wireLogTimeToggle() {
     });
   });
 }
+
+// Drag-and-drop attachments onto the panel
+function toBase64(bytes) {
+  let bin = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+document.addEventListener('dragover', (e) => {
+  if (e.dataTransfer?.types?.includes('Files')) {
+    e.preventDefault();
+    document.body.classList.add('drop-active');
+  }
+});
+document.addEventListener('dragleave', (e) => {
+  if (e.target === document.body || e.target === document.documentElement) {
+    document.body.classList.remove('drop-active');
+  }
+});
+document.addEventListener('drop', async (e) => {
+  document.body.classList.remove('drop-active');
+  const files = e.dataTransfer?.files;
+  if (!files || !files.length) return;
+  e.preventDefault();
+  for (const file of files) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    vscode.postMessage({
+      type: 'uploadAttachment',
+      name: file.name,
+      mime: file.type || 'application/octet-stream',
+      dataBase64: toBase64(buf),
+    });
+  }
+});
 
 vscode.postMessage({ type: 'ready' });

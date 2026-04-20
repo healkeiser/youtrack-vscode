@@ -7,7 +7,7 @@ function makeIssue(id: string): Issue {
     id, idReadable: id, summary: `Issue ${id}`, description: '',
     project: { id: 'p', shortName: 'P' },
     reporter: null, assignee: null,
-    created: 0, updated: 0, customFields: [], tags: [],
+    created: 0, updated: 0, customFields: [], tags: [], links: [],
   };
 }
 

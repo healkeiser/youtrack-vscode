@@ -1,7 +1,7 @@
 import { request } from './request';
 import type {
   Issue, User, Comment, Attachment, WorkItem, SavedQuery,
-  CustomField, CustomFieldValue, CustomFieldType, Tag,
+  CustomField, CustomFieldValue, CustomFieldType, Tag, IssueLink,
   AgileBoard, Sprint, BoardView, BoardColumn,
 } from './types';
 
@@ -11,6 +11,7 @@ const ISSUE_FIELDS = [
   'project(id,shortName)',
   'reporter(id,login,fullName,avatarUrl)',
   'tags(id,name,color(id,background,foreground))',
+  'links(direction,linkType(name,sourceToTarget,targetToSource),issues(idReadable,summary,resolved))',
   'customFields(name,$type,value(id,name,login,fullName,avatarUrl,text,presentation,minutes,color(id,background,foreground)))',
 ].join(',');
 
@@ -85,6 +86,26 @@ function mapTag(raw: any): Tag {
   };
 }
 
+function mapLinks(raw: any[]): IssueLink[] {
+  const out: IssueLink[] = [];
+  for (const l of raw ?? []) {
+    const direction = l.direction ?? 'BOTH';
+    const lt = l.linkType ?? {};
+    const name = direction === 'OUTWARD'
+      ? (lt.sourceToTarget ?? lt.name ?? 'relates to')
+      : direction === 'INWARD'
+      ? (lt.targetToSource ?? lt.name ?? 'relates to')
+      : (lt.name ?? 'relates to');
+    const issues = (l.issues ?? []).map((i: any) => ({
+      idReadable: i.idReadable,
+      summary: i.summary ?? '',
+      resolved: i.resolved ?? null,
+    }));
+    if (issues.length) out.push({ direction, name, issues });
+  }
+  return out;
+}
+
 function mapIssue(raw: any, baseUrl?: string): Issue {
   const rawFields: any[] = raw.customFields ?? [];
   return {
@@ -99,6 +120,7 @@ function mapIssue(raw: any, baseUrl?: string): Issue {
     updated: raw.updated,
     customFields: rawFields.map((f) => mapCustomField(f, baseUrl)),
     tags: (raw.tags ?? []).map(mapTag),
+    links: mapLinks(raw.links ?? []),
   };
 }
 
@@ -143,6 +165,20 @@ export class YouTrackClient {
     return raw.map((r) => ({ id: r.id, name: r.name, query: r.query ?? '' }));
   }
 
+  async fetchNotifications(top = 50): Promise<Array<{ id: string; content: string; issue: { idReadable: string; summary: string } | null; sender: User | null; created: number; recipient: User | null }>> {
+    const raw = await this.call<any[]>('/api/users/notifications', {
+      query: { fields: 'id,content,sender(id,login,fullName,avatarUrl),issue(idReadable,summary),created,recipient(id,login,fullName,avatarUrl)', $top: top },
+    }).catch(() => []);
+    return raw.map((r) => ({
+      id: r.id,
+      content: r.content ?? '',
+      issue: r.issue ? { idReadable: r.issue.idReadable, summary: r.issue.summary ?? '' } : null,
+      sender: mapUser(r.sender, this.baseUrl),
+      recipient: mapUser(r.recipient, this.baseUrl),
+      created: r.created ?? 0,
+    }));
+  }
+
   async listUsers(query = '', top = 30): Promise<User[]> {
     const raw = await this.call<any[]>('/api/users', {
       query: { query, $top: top, fields: 'id,login,fullName,avatarUrl' },
@@ -183,6 +219,31 @@ export class YouTrackClient {
       query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
     });
     return raw.map((r) => ({ id: r.id, text: r.text ?? '', author: mapUser(r.author, this.baseUrl)!, created: r.created }));
+  }
+
+  async uploadAttachment(issueId: string, filename: string, bytes: Uint8Array, mimeType = 'application/octet-stream'): Promise<void> {
+    const boundary = `----ytvsc-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+    const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename.replace(/"/g, '\\"')}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
+    const footer = `\r\n--${boundary}--\r\n`;
+    const encoder = new TextEncoder();
+    const headerBytes = encoder.encode(header);
+    const footerBytes = encoder.encode(footer);
+    const body = new Uint8Array(headerBytes.length + bytes.length + footerBytes.length);
+    body.set(headerBytes, 0);
+    body.set(bytes, headerBytes.length);
+    body.set(footerBytes, headerBytes.length + bytes.length);
+
+    const url = `${this.baseUrl.replace(/\/$/, '')}/api/issues/${issueId}/attachments`;
+    const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: 'application/json',
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   }
 
   async fetchAttachments(issueId: string): Promise<Attachment[]> {
