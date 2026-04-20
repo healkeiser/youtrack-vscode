@@ -7,8 +7,9 @@ import type { Issue, Comment, Attachment, WorkItem } from '../client/types';
 import { renderField } from './fieldRenderer';
 import { parseDuration } from '../domain/timeTracker';
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+function escapeHtml(s: unknown): string {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
 
 export class IssueDetailPanel {
@@ -74,7 +75,7 @@ export class IssueDetailPanel {
   private renderHtml(issue: Issue, comments: Comment[], attachments: Attachment[], workItems: WorkItem[]): string {
     const fields = issue.customFields.map(renderField).join('');
     const commentHtml = comments.map((c) =>
-      `<div class="comment"><b>${escapeHtml(c.author.fullName)}</b> — ${new Date(c.created).toLocaleString()}<br>${escapeHtml(c.text)}</div>`
+      `<div class="comment"><b>${escapeHtml(c.author?.fullName)}</b> — ${new Date(c.created).toLocaleString()}<br>${escapeHtml(c.text)}</div>`
     ).join('');
     const attachHtml = attachments.map((a) =>
       `<div class="attachment"><a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a> <span>${a.size} B</span></div>`
@@ -83,7 +84,7 @@ export class IssueDetailPanel {
       const h = Math.floor(w.duration / 3600);
       const m = Math.floor((w.duration % 3600) / 60);
       const dur = h ? `${h}h ${m}m` : `${m}m`;
-      return `<div class="work-item"><b>${escapeHtml(w.author.fullName)}</b> — ${new Date(w.date).toLocaleDateString()} — ${dur} — ${escapeHtml(w.type?.name ?? '')}<br>${escapeHtml(w.text)}</div>`;
+      return `<div class="work-item"><b>${escapeHtml(w.author?.fullName)}</b> — ${new Date(w.date).toLocaleDateString()} — ${dur} — ${escapeHtml(w.type?.name ?? '')}<br>${escapeHtml(w.text)}</div>`;
     }).join('');
     const typeOpts = this.workTypes.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
     return `
