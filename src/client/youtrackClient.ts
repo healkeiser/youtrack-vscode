@@ -219,6 +219,20 @@ export class YouTrackClient {
     }));
   }
 
+  async listProjects(): Promise<Array<{ id: string; shortName: string; name: string }>> {
+    const raw = await this.call<any[]>('/api/admin/projects', { query: { fields: 'id,shortName,name' } });
+    return raw.map((r) => ({ id: r.id, shortName: r.shortName, name: r.name }));
+  }
+
+  async createIssue(projectId: string, summary: string, description: string): Promise<{ idReadable: string }> {
+    const raw = await this.call<any>('/api/issues', {
+      method: 'POST',
+      query: { fields: 'idReadable' },
+      body: { project: { id: projectId }, summary, description },
+    });
+    return { idReadable: raw.idReadable };
+  }
+
   async fetchBoardView(boardId: string, sprintId: string): Promise<BoardView> {
     const raw = await this.call<any>(`/api/agiles/${boardId}/sprints/${sprintId}/board`, {
       query: {

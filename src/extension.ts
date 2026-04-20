@@ -8,6 +8,7 @@ import { IssueTreeProvider } from './ui/issueTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
 import { search } from './commands/search';
+import { createIssue } from './commands/createIssue';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -41,6 +42,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('youtrack.search', async () => {
       const id = await search(client);
+      if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
+    }),
+    vscode.commands.registerCommand('youtrack.createIssue', async () => {
+      const id = await createIssue(client);
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
     }),
   );

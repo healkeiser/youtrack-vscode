@@ -36,6 +36,10 @@
       {
         "command": "youtrack.search",
         "title": "YouTrack: Search..."
+      },
+      {
+        "command": "youtrack.createIssue",
+        "title": "YouTrack: Create Issue..."
       }
     ],
     "configuration": {
