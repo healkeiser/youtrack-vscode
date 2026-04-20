@@ -47,14 +47,27 @@ export class IssueDetailPanel {
   }
 
   private async reload(): Promise<void> {
-    const [issue, comments, attachments, workItems, types] = await Promise.all([
-      this.cache.getIssue(this.issueId, (id) => this.client.fetchIssue(id)),
-      this.client.fetchComments(this.issueId),
-      this.client.fetchAttachments(this.issueId),
-      this.client.fetchWorkItems(this.issueId),
-      this.workTypes.length ? Promise.resolve(this.workTypes) : this.client.listWorkItemTypes(),
+    let issue: Issue;
+    try {
+      issue = await this.cache.getIssue(this.issueId, (id) => this.client.fetchIssue(id));
+    } catch (e) {
+      this.panel.webview.postMessage({
+        type: 'render',
+        html: `<div class="header"><div class="summary">Failed to load ${escapeHtml(this.issueId)}</div></div><pre>${escapeHtml((e as Error).message)}</pre>`,
+      });
+      return;
+    }
+
+    const [comments, attachments, workItems, types] = await Promise.all([
+      this.client.fetchComments(this.issueId).catch(() => [] as Comment[]),
+      this.client.fetchAttachments(this.issueId).catch(() => [] as Attachment[]),
+      this.client.fetchWorkItems(this.issueId).catch(() => [] as WorkItem[]),
+      this.workTypes.length
+        ? Promise.resolve(this.workTypes)
+        : this.client.listWorkItemTypes().catch(() => [] as Array<{ id: string; name: string }>),
     ]);
     this.workTypes = types;
+
     this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems) });
   }
 
