@@ -1,29 +1,97 @@
-body { padding: 0.5rem; }
-.toolbar { display: flex; gap: 0.5rem; padding: 0.25rem; border-bottom: 1px solid var(--vscode-panel-border); }
+body { padding: 0; }
 
-.board { display: flex; gap: 0.6rem; overflow-x: auto; padding-top: 0.6rem; }
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorWidget-background);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.board-title { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.board-title h1 {
+  margin: 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-title .icon { font-size: 1em; color: var(--vscode-descriptionForeground); }
+.board-controls { display: flex; align-items: center; gap: 0.75rem; }
+.sprint-label {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sprint-label select { padding: 0.3rem 0.5rem; }
+.refresh-btn {
+  background: transparent;
+  color: var(--vscode-foreground);
+  border: 1px solid transparent;
+  padding: 0.3rem 0.55rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 1em;
+}
+.refresh-btn:hover { background: var(--vscode-toolbar-hoverBackground); }
 
-.column { min-width: 260px; flex: 1; padding: 0.6rem; }
+.board {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding: 0.75rem;
+  align-items: flex-start;
+}
+.board-loading { color: var(--vscode-descriptionForeground); font-style: italic; padding: 1rem; }
+
+.column { min-width: 260px; max-width: 320px; flex: 1 0 auto; padding: 0.6rem; }
 .column h4 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.4rem;
 }
 
 .card {
   padding: 0.6rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.5rem;
   cursor: grab;
   border-left: 3px solid var(--vscode-descriptionForeground);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
+.card:last-child { margin-bottom: 0; }
 .card.dragging { opacity: 0.5; }
-.card .id { color: var(--vscode-descriptionForeground); font-weight: 600; }
-.card .summary { margin-top: 0.3rem; font-weight: 600; line-height: 1.35; }
-.card .meta {
-  margin-top: 0.4rem;
-  display: flex; align-items: center; gap: 0.4rem;
-  color: var(--vscode-descriptionForeground);
+.card .id-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; color: var(--vscode-descriptionForeground); }
+.card .id { font-size: 0.85em; font-weight: 600; letter-spacing: 0.02em; }
+.card .summary { font-weight: 500; line-height: 1.35; }
+.card .tags { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.card .tag-pill {
+  display: inline-block;
+  padding: 0.02em 0.45em;
+  border-radius: 10px;
+  font-size: 0.82em;
+  line-height: 1.4;
+  white-space: nowrap;
 }
+.card .meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.88em;
+}
+.card .meta .spacer { flex: 1; }
+
 .column.drop-target { outline: 2px dashed var(--vscode-focusBorder); }
 
 .card.state-done       { border-left-color: var(--vscode-charts-green); }

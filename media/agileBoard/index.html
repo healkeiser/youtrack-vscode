@@ -6,8 +6,21 @@
   <link rel="stylesheet" href="{{STYLE}}">
 </head>
 <body>
-  <div class="toolbar"><b>Agile Board</b></div>
-  <div id="board" class="board"></div>
+  <header class="board-header">
+    <div class="board-title">
+      <span class="icon">$(checklist)</span>
+      <h1 id="boardTitle">Agile Board</h1>
+    </div>
+    <div class="board-controls">
+      <label class="sprint-label">Sprint
+        <select id="sprintPicker"></select>
+      </label>
+      <button type="button" id="refreshBtn" class="refresh-btn" title="Refresh board">↻</button>
+    </div>
+  </header>
+  <div id="board" class="board">
+    <div class="board-loading">Loading…</div>
+  </div>
   <script src="{{MAIN}}"></script>
 </body>
 </html>

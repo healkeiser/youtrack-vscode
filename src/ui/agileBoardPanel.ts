@@ -47,12 +47,38 @@ export class AgileBoardPanel {
   }
 
   private async reload(): Promise<void> {
-    this.state = await this.client.fetchBoardView(this.boardId, this.sprintId);
-    this.panel.webview.postMessage({ type: 'render', state: this.state });
+    const [state, sprints] = await Promise.all([
+      this.client.fetchBoardView(this.boardId, this.sprintId),
+      this.client.fetchSprints(this.boardId).catch(() => []),
+    ]);
+    this.state = state;
+    this.panel.webview.postMessage({
+      type: 'render',
+      state,
+      meta: {
+        boardTitle: this.boardTitle,
+        boardId: this.boardId,
+        sprintId: this.sprintId,
+        sprints,
+      },
+    });
   }
 
   private async onMessage(msg: any): Promise<void> {
     if (msg.type === 'ready') {
+      void this.reload();
+      return;
+    }
+    if (msg.type === 'refresh') {
+      void this.reload();
+      return;
+    }
+    if (msg.type === 'switchSprint' && typeof msg.sprintId === 'string') {
+      this.sprintId = msg.sprintId;
+      const newKey = `${this.boardId}:${this.sprintId}`;
+      AgileBoardPanel.panels.delete(this.key);
+      AgileBoardPanel.panels.set(newKey, this);
+      this.key = newKey;
       void this.reload();
       return;
     }

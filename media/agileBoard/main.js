@@ -1,9 +1,15 @@
 const vscode = acquireVsCodeApi();
 let state = { columns: [], issuesByColumn: {} };
+let meta = { boardTitle: '', boardId: '', sprintId: '', sprints: [] };
 
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
-  if (msg.type === 'render') { state = msg.state; render(); }
+  if (msg.type === 'render') {
+    state = msg.state;
+    if (msg.meta) meta = msg.meta;
+    renderHeader();
+    render();
+  }
   if (msg.type === 'rollback') {
     const { issueId, fromColumnId } = msg;
     for (const cid of Object.keys(state.issuesByColumn)) {
@@ -18,12 +24,25 @@ window.addEventListener('message', (evt) => {
   }
 });
 
+function escape(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function customField(issue, name) {
+  return (issue.customFields || []).find((f) => f && f.name === name);
+}
+
 function issueStateName(issue) {
-  const f = (issue.customFields || []).find((x) => x && x.name === 'State');
-  if (!f) return '';
-  const v = f.value;
-  if (!v) return '';
-  if (v.kind === 'state' || v.kind === 'enum') return v.name || '';
+  const f = customField(issue, 'State');
+  if (!f || !f.value) return '';
+  if (f.value.kind === 'state' || f.value.kind === 'enum') return f.value.name || '';
+  return '';
+}
+
+function issuePriority(issue) {
+  const f = customField(issue, 'Priority');
+  if (!f || !f.value) return '';
+  if (f.value.kind === 'enum') return f.value.name || '';
   return '';
 }
 
@@ -38,15 +57,98 @@ function stateClass(name) {
   return '';
 }
 
+function priorityClass(name) {
+  const s = (name || '').toLowerCase().replace(/\s+/g, '-');
+  return s ? `prio-${s}` : '';
+}
+
 function issueAssignee(issue) {
-  if (issue.assignee) return issue.assignee.fullName || issue.assignee.login || '';
-  const f = (issue.customFields || []).find((x) => x && x.name === 'Assignee');
-  if (f && f.value && f.value.kind === 'user') return f.value.fullName || f.value.login || '';
-  return '';
+  if (issue.assignee) return issue.assignee;
+  const f = customField(issue, 'Assignee');
+  if (f && f.value && f.value.kind === 'user') {
+    return { fullName: f.value.fullName, login: f.value.login, avatarUrl: f.value.avatarUrl };
+  }
+  return null;
+}
+
+function initials(user) {
+  if (user.fullName) {
+    const parts = user.fullName.split(/\s+/).filter(Boolean).slice(0, 2);
+    const out = parts.map((p) => p[0] || '').join('').toUpperCase();
+    if (out) return out;
+  }
+  return (user.login || '?').slice(0, 2).toUpperCase();
+}
+
+function avatarHtml(user) {
+  if (!user) return '';
+  const init = escape(initials(user));
+  if (user.avatarUrl && /^https?:/.test(user.avatarUrl)) {
+    return `<span class="avatar">${init}<img src="${escape(user.avatarUrl)}" referrerpolicy="no-referrer" onerror="this.style.display='none'" alt=""></span>`;
+  }
+  return `<span class="avatar">${init}</span>`;
+}
+
+function renderHeader() {
+  const titleEl = document.getElementById('boardTitle');
+  if (titleEl) titleEl.textContent = meta.boardTitle || 'Agile Board';
+
+  const picker = document.getElementById('sprintPicker');
+  if (picker && Array.isArray(meta.sprints)) {
+    picker.innerHTML = meta.sprints.map((s) =>
+      `<option value="${escape(s.id)}"${s.id === meta.sprintId ? ' selected' : ''}>${escape(s.name)}${s.current ? ' (current)' : ''}</option>`
+    ).join('');
+    picker.onchange = () => {
+      vscode.postMessage({ type: 'switchSprint', sprintId: picker.value });
+    };
+  }
+
+  const refresh = document.getElementById('refreshBtn');
+  if (refresh) refresh.onclick = () => vscode.postMessage({ type: 'refresh' });
+}
+
+function renderCard(issue, colId) {
+  const stateName = issueStateName(issue);
+  const priority = issuePriority(issue);
+  const assignee = issueAssignee(issue);
+  const sCls = stateClass(stateName);
+  const pCls = priorityClass(priority);
+
+  const tagsHtml = (issue.tags || []).map((tag) => {
+    const bg = tag.color && tag.color.background ? tag.color.background : 'var(--vscode-editor-inactiveSelectionBackground)';
+    const fg = tag.color && tag.color.foreground ? tag.color.foreground : 'var(--vscode-foreground)';
+    return `<span class="tag-pill" style="background:${escape(bg)};color:${escape(fg)}">${escape(tag.name)}</span>`;
+  }).join('');
+
+  const priorityBadge = priority
+    ? `<span class="badge-letter priority-badge ${pCls}" title="${escape(priority)}">${escape((priority[0] || '?').toUpperCase())}</span>`
+    : '';
+
+  const metaBits = [];
+  if (stateName) metaBits.push(`<span class="user-chip"><span class="state-dot ${sCls}"></span>${escape(stateName)}</span>`);
+
+  const metaRight = assignee
+    ? `<span class="spacer"></span><span class="user-chip">${avatarHtml(assignee)}${escape(assignee.fullName || assignee.login || '')}</span>`
+    : '';
+
+  return `
+    <div class="card ${sCls}" draggable="true" data-issue-id="${escape(issue.idReadable)}" data-from-column="${escape(colId)}">
+      <div class="id-row">
+        <span class="id">${escape(issue.idReadable)}</span>
+        ${priorityBadge}
+      </div>
+      <div class="summary">${escape(issue.summary)}</div>
+      ${tagsHtml ? `<div class="tags">${tagsHtml}</div>` : ''}
+      <div class="meta">${metaBits.join('  ·  ')}${metaRight}</div>
+    </div>`;
 }
 
 function render() {
   const board = document.getElementById('board');
+  if (!state.columns.length) {
+    board.innerHTML = '<div class="board-loading">No columns in this sprint.</div>';
+    return;
+  }
   board.innerHTML = '';
   for (const col of state.columns) {
     const issues = state.issuesByColumn[col.id] ?? [];
@@ -56,23 +158,13 @@ function render() {
     colEl.innerHTML = `<h4><span>${escape(col.name)}</span><span class="count-badge">${issues.length}</span></h4>`;
 
     for (const issue of issues) {
-      const stateName = issueStateName(issue);
-      const assignee = issueAssignee(issue);
-      const cls = stateClass(stateName);
-
-      const card = document.createElement('div');
-      card.className = 'card' + (cls ? ' ' + cls : '');
-      card.draggable = true;
-      card.dataset.issueId = issue.idReadable;
-      card.dataset.fromColumn = col.id;
-
-      const metaBits = [];
-      if (stateName) metaBits.push(`<span class="state-dot ${cls}"></span>${escape(stateName)}`);
-      if (assignee) metaBits.push(escape(assignee));
-      const meta = metaBits.length ? `<div class="meta">${metaBits.join(' · ')}</div>` : '';
-
-      card.innerHTML = `<div class="id">${escape(issue.idReadable)}</div><div class="summary">${escape(issue.summary)}</div>${meta}`;
-      card.addEventListener('dragstart', (e) => { card.classList.add('dragging'); e.dataTransfer.setData('text/plain', issue.idReadable + '|' + col.id); });
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderCard(issue, col.id).trim();
+      const card = wrapper.firstElementChild;
+      card.addEventListener('dragstart', (e) => {
+        card.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', issue.idReadable + '|' + col.id);
+      });
       card.addEventListener('dragend', () => card.classList.remove('dragging'));
       card.addEventListener('click', () => vscode.postMessage({ type: 'openIssue', issueId: issue.idReadable }));
       colEl.appendChild(card);
@@ -96,10 +188,6 @@ function render() {
 
     board.appendChild(colEl);
   }
-}
-
-function escape(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 vscode.postMessage({ type: 'ready' });
