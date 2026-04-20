@@ -14,6 +14,8 @@ import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
 import { openBoard } from './commands/openBoard';
 import { UriHandler } from './ui/uriHandler';
+import { IssueHoverProvider } from './ui/hoverProvider';
+import { resolveIssueId } from './commands/resolveIssueId';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -84,30 +86,62 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const id = await createIssue(client);
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
     }),
-    vscode.commands.registerCommand('youtrack.assignToMe', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
+    vscode.commands.registerCommand('youtrack.assignToMe', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
       if (!issueId) return;
       await assignToMe(client, cache, issueId);
     }),
-    vscode.commands.registerCommand('youtrack.changeState', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
+    vscode.commands.registerCommand('youtrack.changeState', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
       if (!issueId) return;
       await changeState(client, cache, issueId);
     }),
-    vscode.commands.registerCommand('youtrack.logTime', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
+    vscode.commands.registerCommand('youtrack.logTime', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
       if (!issueId) return;
       await logTime(client, issueId);
     }),
-    vscode.commands.registerCommand('youtrack.createBranch', async (id?: string) => {
-      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123', ignoreFocusOut: true });
+    vscode.commands.registerCommand('youtrack.createBranch', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
       if (!issueId) return;
+      await createBranch(client, cache, issueId);
+    }),
+    vscode.commands.registerCommand('youtrack.copyId', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await vscode.env.clipboard.writeText(issueId);
+      vscode.window.showInformationMessage(`YouTrack: copied ${issueId}`);
+    }),
+    vscode.commands.registerCommand('youtrack.copyLink', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      const url = `${creds!.baseUrl.replace(/\/$/, '')}/issue/${issueId}`;
+      await vscode.env.clipboard.writeText(url);
+      vscode.window.showInformationMessage(`YouTrack: copied ${url}`);
+    }),
+    vscode.commands.registerCommand('youtrack.openInBrowser', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      const url = `${creds!.baseUrl.replace(/\/$/, '')}/issue/${issueId}`;
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    }),
+    vscode.commands.registerCommand('youtrack.startWork', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await changeState(client, cache, issueId);
       await createBranch(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.openBoard', () => openBoard(context.extensionUri, client)),
   );
 
   await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', true);
+
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider(
+      { scheme: 'file' },
+      new IssueHoverProvider(client, cache, creds.baseUrl),
+    ),
+  );
 
   const pollMs = cfg.get<number>('cache.pollInterval', 60) * 1000;
   const statusBar = new StatusBar(client, pollMs);

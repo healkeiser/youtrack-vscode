@@ -79,6 +79,22 @@
         "command": "youtrack.clearFilter",
         "title": "YouTrack: Clear Sidebar Filter",
         "icon": "$(filter-filled)"
+      },
+      {
+        "command": "youtrack.copyId",
+        "title": "YouTrack: Copy Issue ID"
+      },
+      {
+        "command": "youtrack.copyLink",
+        "title": "YouTrack: Copy Issue Link"
+      },
+      {
+        "command": "youtrack.openInBrowser",
+        "title": "YouTrack: Open in Browser"
+      },
+      {
+        "command": "youtrack.startWork",
+        "title": "YouTrack: Start Work on Issue..."
       }
     ],
     "configuration": {
@@ -174,6 +190,48 @@
           "command": "youtrack.refresh",
           "when": "view == youtrack.issues",
           "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "youtrack.startWork",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "1_work@1"
+        },
+        {
+          "command": "youtrack.assignToMe",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "1_work@2"
+        },
+        {
+          "command": "youtrack.changeState",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "1_work@3"
+        },
+        {
+          "command": "youtrack.logTime",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "1_work@4"
+        },
+        {
+          "command": "youtrack.createBranch",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "2_branch@1"
+        },
+        {
+          "command": "youtrack.copyId",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "youtrack.copyLink",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "3_copy@2"
+        },
+        {
+          "command": "youtrack.openInBrowser",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "3_copy@3"
         }
       ]
     },
