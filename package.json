@@ -230,99 +230,68 @@
     },
     "views": {
       "youtrack": [
-        {
-          "id": "youtrack.assignedToMe",
-          "name": "Assigned to me"
-        },
-        {
-          "id": "youtrack.openIssues",
-          "name": "Open issues"
-        },
-        {
-          "id": "youtrack.reportedByMe",
-          "name": "Reported by me"
-        },
-        {
-          "id": "youtrack.commentedByMe",
-          "name": "Commented by me"
-        },
-        {
-          "id": "youtrack.allIssues",
-          "name": "All issues"
-        },
-        {
-          "id": "youtrack.allTickets",
-          "name": "All tickets"
-        },
-        {
-          "id": "youtrack.recents",
-          "name": "Recently opened"
-        },
-        {
-          "id": "youtrack.notifications",
-          "name": "Notifications"
-        },
-        {
-          "id": "youtrack.boards",
-          "name": "Agile Boards"
-        }
+        { "id": "youtrack.notifications", "name": "Notifications" },
+        { "id": "youtrack.assignedToMe",  "name": "Assigned to me" },
+        { "id": "youtrack.recents",       "name": "Recently opened" },
+        { "id": "youtrack.issues",        "name": "Issues" },
+        { "id": "youtrack.boards",        "name": "Agile Boards" }
       ]
     },
     "menus": {
       "view/title": [
         {
           "command": "youtrack.createIssue",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets|boards)$/",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues|boards)$/",
           "group": "navigation@0"
         },
         {
           "command": "youtrack.filter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && !youtrack.filterActive",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.filterActive",
           "group": "navigation@1"
         },
         {
           "command": "youtrack.clearFilter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && youtrack.filterActive",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.filterActive",
           "group": "navigation@1"
         },
         {
           "command": "youtrack.filterByState",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && !youtrack.stateFilterActive",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.stateFilterActive",
           "group": "navigation@2"
         },
         {
           "command": "youtrack.clearStateFilter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && youtrack.stateFilterActive",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.stateFilterActive",
           "group": "navigation@2"
         },
         {
           "command": "youtrack.filterByTag",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && !youtrack.tagFilterActive",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.tagFilterActive",
           "group": "navigation@3"
         },
         {
           "command": "youtrack.clearTagFilter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && youtrack.tagFilterActive",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.tagFilterActive",
           "group": "navigation@3"
         },
         {
           "command": "youtrack.sortBy",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/",
           "group": "navigation@4"
         },
         {
           "command": "youtrack.groupFlat",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && youtrack.groupedByProject",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.groupedByProject",
           "group": "navigation@5"
         },
         {
           "command": "youtrack.groupByProject",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && !youtrack.groupedByProject",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.groupedByProject",
           "group": "navigation@5"
         },
         {
           "command": "youtrack.refresh",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/",
           "group": "navigation@6"
         },
         {
@@ -337,52 +306,52 @@
       "view/item/context": [
         {
           "command": "youtrack.createBranch",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "inline@1"
         },
         {
           "command": "youtrack.openInBrowser",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "inline@2"
         },
         {
           "command": "youtrack.startWork",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "1_work@1"
         },
         {
           "command": "youtrack.assignToMe",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "1_work@2"
         },
         {
           "command": "youtrack.changeState",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "1_work@3"
         },
         {
           "command": "youtrack.logTime",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "1_work@4"
         },
         {
           "command": "youtrack.createBranch",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "2_branch@1"
         },
         {
           "command": "youtrack.copyId",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "3_copy@1"
         },
         {
           "command": "youtrack.copyLink",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "3_copy@2"
         },
         {
           "command": "youtrack.openInBrowser",
-          "when": "view =~ /^youtrack\\.(assignedToMe|openIssues|reportedByMe|commentedByMe|allIssues|allTickets)$/ && viewItem == issue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "3_copy@3"
         }
       ]
@@ -400,28 +369,8 @@
         "when": "!youtrack.signedIn"
       },
       {
-        "view": "youtrack.openIssues",
-        "contents": "Sign in to see open issues.",
-        "when": "!youtrack.signedIn"
-      },
-      {
-        "view": "youtrack.reportedByMe",
-        "contents": "Sign in to see issues you reported.",
-        "when": "!youtrack.signedIn"
-      },
-      {
-        "view": "youtrack.commentedByMe",
-        "contents": "Sign in to see issues you commented on.",
-        "when": "!youtrack.signedIn"
-      },
-      {
-        "view": "youtrack.allIssues",
-        "contents": "Sign in to see all issues.",
-        "when": "!youtrack.signedIn"
-      },
-      {
-        "view": "youtrack.allTickets",
-        "contents": "Sign in to see all tickets.",
+        "view": "youtrack.issues",
+        "contents": "Sign in to browse issues.",
         "when": "!youtrack.signedIn"
       },
       {

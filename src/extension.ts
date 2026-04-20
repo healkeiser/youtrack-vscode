@@ -4,6 +4,7 @@ import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
 import { SidebarState, type GroupMode, type SortMode } from './ui/sidebarState';
 import { QueryTreeProvider, type QuerySource } from './ui/queryTreeProvider';
+import { MultiQueryTreeProvider } from './ui/multiQueryTreeProvider';
 import { BoardTreeProvider } from './ui/boardTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
@@ -30,13 +31,16 @@ interface SectionDef {
   source: QuerySource;
 }
 
-const SECTIONS: SectionDef[] = [
-  { viewId: 'youtrack.assignedToMe',  source: { label: 'Assigned to me',  savedQueryName: 'Assigned to me',  directQuery: 'for: me #Unresolved' } },
-  { viewId: 'youtrack.openIssues',    source: { label: 'Open issues',                                        directQuery: '#Unresolved' } },
-  { viewId: 'youtrack.reportedByMe',  source: { label: 'Reported by me',  savedQueryName: 'Reported by me',  directQuery: 'reporter: me' } },
-  { viewId: 'youtrack.commentedByMe', source: { label: 'Commented by me', savedQueryName: 'Commented by me', directQuery: 'commented by: me' } },
-  { viewId: 'youtrack.allIssues',     source: { label: 'All issues',      savedQueryName: 'All issues',      directQuery: '' } },
-  { viewId: 'youtrack.allTickets',    source: { label: 'All tickets',     savedQueryName: 'All tickets',     directQuery: '' } },
+const TOP_SECTIONS: SectionDef[] = [
+  { viewId: 'youtrack.assignedToMe', source: { label: 'Assigned to me', savedQueryName: 'Assigned to me', directQuery: 'for: me #Unresolved' } },
+];
+
+const ISSUES_SUBSECTIONS: Array<{ id: string; label: string; source: QuerySource }> = [
+  { id: 'openIssues',    label: 'Open issues',     source: { label: 'Open issues',     directQuery: '#Unresolved' } },
+  { id: 'reportedByMe',  label: 'Reported by me',  source: { label: 'Reported by me',  savedQueryName: 'Reported by me',  directQuery: 'reporter: me' } },
+  { id: 'commentedByMe', label: 'Commented by me', source: { label: 'Commented by me', savedQueryName: 'Commented by me', directQuery: 'commented by: me' } },
+  { id: 'allIssues',     label: 'All issues',      source: { label: 'All issues',      savedQueryName: 'All issues',      directQuery: '' } },
+  { id: 'allTickets',    label: 'All tickets',     source: { label: 'All tickets',     savedQueryName: 'All tickets',     directQuery: '' } },
 ];
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -78,16 +82,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', initialGroup === 'project');
 
   const providers = new Map<string, QueryTreeProvider>();
-  for (const section of SECTIONS) {
+  for (const section of TOP_SECTIONS) {
     const provider = new QueryTreeProvider(section.viewId, client, cache, state, section.source);
     providers.set(section.viewId, provider);
     context.subscriptions.push(vscode.window.registerTreeDataProvider(section.viewId, provider));
   }
 
-  const refreshAll = () => { for (const p of providers.values()) p.refresh(); };
+  const multi = new MultiQueryTreeProvider('youtrack.issues', client, cache, state, ISSUES_SUBSECTIONS);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('youtrack.issues', multi),
+    vscode.commands.registerCommand('youtrack.loadMoreInSection', (sectionId: string) => multi.loadMore(sectionId)),
+  );
+
+  const refreshAll = () => { for (const p of providers.values()) p.refresh(); multi.refresh(); };
   const collectLoadedIssues = () => {
     const out: import('./client/types').Issue[] = [];
     for (const p of providers.values()) out.push(...p.getAllLoaded());
+    out.push(...multi.getAllLoaded());
     return out;
   };
 
