@@ -168,6 +168,10 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
    theme colors. .btn is the secondary style; add .primary for the
    accented variant; add .icon for compact icon-only buttons. */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
   border: 1px solid var(--vscode-button-border, transparent);
@@ -190,8 +194,7 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
   text-align: center;
 }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn .codicon { vertical-align: middle; margin-right: 0.35em; font-size: 1em; line-height: 1; }
-.btn.icon .codicon { margin-right: 0; }
+.btn .codicon { font-size: 1em; line-height: 1; }
 
 /* Back-compat aliases */
 .btn-primary   { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }
