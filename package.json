@@ -32,6 +32,10 @@
       {
         "command": "youtrack.goToIssue",
         "title": "YouTrack: Go to Issue..."
+      },
+      {
+        "command": "youtrack.search",
+        "title": "YouTrack: Search..."
       }
     ],
     "configuration": {
