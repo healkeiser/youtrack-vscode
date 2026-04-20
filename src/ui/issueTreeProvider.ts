@@ -40,12 +40,14 @@ function stateVisuals(state: string): StateVisuals {
 }
 
 function toUnicodeBold(s: string): string {
+  // Mathematical Sans-Serif Bold block — renders closer to the VS Code UI font
+  // than the serif Mathematical Bold block (U+1D400+).
   let out = '';
   for (const ch of s) {
     const code = ch.codePointAt(0) ?? 0;
-    if (code >= 65 && code <= 90) out += String.fromCodePoint(0x1D400 + (code - 65));
-    else if (code >= 97 && code <= 122) out += String.fromCodePoint(0x1D41A + (code - 97));
-    else if (code >= 48 && code <= 57) out += String.fromCodePoint(0x1D7CE + (code - 48));
+    if (code >= 65 && code <= 90) out += String.fromCodePoint(0x1D5D4 + (code - 65));       // A-Z
+    else if (code >= 97 && code <= 122) out += String.fromCodePoint(0x1D5EE + (code - 97)); // a-z
+    else if (code >= 48 && code <= 57) out += String.fromCodePoint(0x1D7EC + (code - 48));  // 0-9
     else out += ch;
   }
   return out;
