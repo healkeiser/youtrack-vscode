@@ -4,30 +4,60 @@
   "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
   "version": "0.1.0",
   "publisher": "lotchi-studio",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
-      { "command": "youtrack.refresh", "title": "YouTrack: Refresh", "icon": "$(refresh)" },
-      { "command": "youtrack.openIssue", "title": "YouTrack: Open Issue" },
-      { "command": "youtrack.loadMore", "title": "YouTrack: Load More" }
+      {
+        "command": "youtrack.refresh",
+        "title": "YouTrack: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "youtrack.openIssue",
+        "title": "YouTrack: Open Issue"
+      },
+      {
+        "command": "youtrack.loadMore",
+        "title": "YouTrack: Load More"
+      }
     ],
-    "configuration": { "title": "YouTrack", "properties": {} },
+    "configuration": {
+      "title": "YouTrack",
+      "properties": {}
+    },
     "viewsContainers": {
       "activitybar": [
-        { "id": "youtrack", "title": "YouTrack", "icon": "$(checklist)" }
+        {
+          "id": "youtrack",
+          "title": "YouTrack",
+          "icon": "$(checklist)"
+        }
       ]
     },
     "views": {
       "youtrack": [
-        { "id": "youtrack.issues", "name": "Issues" }
+        {
+          "id": "youtrack.issues",
+          "name": "Issues"
+        }
       ]
     },
     "menus": {
       "view/title": [
-        { "command": "youtrack.refresh", "when": "view == youtrack.issues", "group": "navigation" }
+        {
+          "command": "youtrack.refresh",
+          "when": "view == youtrack.issues",
+          "group": "navigation"
+        }
       ]
     }
   },
@@ -39,6 +69,7 @@
     "package": "vsce package"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/test-electron": "^2.3.0",
