@@ -103,8 +103,8 @@ export class YouTrackClient {
   }
 
   async searchSavedQueryIssues(savedQueryId: string, skip = 0, top = 50): Promise<Issue[]> {
-    const raw = await this.call<any[]>(`/api/savedQueries/${savedQueryId}/issues`, {
-      query: { $skip: skip, $top: top, fields: ISSUE_FIELDS },
+    const raw = await this.call<any[]>('/api/issues', {
+      query: { folder: savedQueryId, $skip: skip, $top: top, fields: ISSUE_FIELDS },
     });
     return raw.map(mapIssue);
   }

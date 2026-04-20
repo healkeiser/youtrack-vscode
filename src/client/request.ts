@@ -1,6 +1,6 @@
 export class HttpError extends Error {
-  constructor(public status: number, public body: string) {
-    super(`HTTP ${status}: ${body}`);
+  constructor(public status: number, public body: string, public url?: string) {
+    super(`HTTP ${status}${url ? ` ${url}` : ''}: ${body}`);
   }
 }
 
@@ -61,7 +61,7 @@ export async function request<T>(opts: RequestOptions): Promise<T> {
     }
 
     if (!res.ok) {
-      throw new HttpError(res.status, await res.text());
+      throw new HttpError(res.status, await res.text(), url);
     }
 
     return (await res.json()) as T;
