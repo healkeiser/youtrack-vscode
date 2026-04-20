@@ -9,6 +9,7 @@ import { IssueDetailPanel } from './ui/issueDetailPanel';
 import { goToIssue } from './commands/goToIssue';
 import { search } from './commands/search';
 import { createIssue } from './commands/createIssue';
+import { assignToMe } from './commands/assignToMe';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -47,6 +48,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.createIssue', async () => {
       const id = await createIssue(client);
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
+    }),
+    vscode.commands.registerCommand('youtrack.assignToMe', async (id?: string) => {
+      const issueId = id ?? await vscode.window.showInputBox({ prompt: 'Issue ID', placeHolder: 'FOO-123' });
+      if (!issueId) return;
+      await assignToMe(client, cache, issueId);
     }),
   );
 

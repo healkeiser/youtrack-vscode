@@ -40,6 +40,10 @@
       {
         "command": "youtrack.createIssue",
         "title": "YouTrack: Create Issue..."
+      },
+      {
+        "command": "youtrack.assignToMe",
+        "title": "YouTrack: Assign to Me"
       }
     ],
     "configuration": {
