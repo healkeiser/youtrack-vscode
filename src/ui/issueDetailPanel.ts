@@ -201,18 +201,20 @@ export class IssueDetailPanel {
     return `
       <div class="layout">
         <div class="main">
-          <div class="id-row"><span class="id">${escapeHtml(issue.idReadable)}</span><span class="sep">·</span><span>${escapeHtml(issue.project.shortName)}</span></div>
-          <h1 class="summary">${escapeHtml(issue.summary)}</h1>
-          <div class="toolbar">
-            <button class="primary" data-cmd="startWork">▶ Start Work</button>
-            <button data-cmd="assignToMe">Assign to Me</button>
-            <button data-cmd="changeState">Change State…</button>
-            <button data-cmd="logTime">Log Time…</button>
-            <button data-cmd="createBranch">Create Branch</button>
-            <button data-cmd="copyLink">Copy Link</button>
-            <button data-cmd="openInBrowser">Open in Browser</button>
+          <div class="header">
+            <div class="id-row"><span class="id">${escapeHtml(issue.idReadable)}</span><span class="sep">·</span><span>${escapeHtml(issue.project.shortName)}</span></div>
+            <div class="summary">${escapeHtml(issue.summary)}</div>
+            <div class="toolbar">
+              <button class="primary" data-cmd="startWork">▶ Start Work</button>
+              <button data-cmd="assignToMe">Assign to Me</button>
+              <button data-cmd="changeState">Change State…</button>
+              <button data-cmd="logTime">Log Time…</button>
+              <button data-cmd="createBranch">Create Branch</button>
+              <button data-cmd="copyLink">Copy Link</button>
+              <button data-cmd="openInBrowser">Open in Browser</button>
+            </div>
+            ${descriptionHtml}
           </div>
-          ${descriptionHtml}
           ${attachments.length ? `<div class="section"><h3>Attachments</h3>${attachHtml}</div>` : ''}
           <div class="section">
             <h3>Activity</h3>
