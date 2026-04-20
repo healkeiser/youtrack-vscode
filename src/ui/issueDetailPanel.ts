@@ -3,13 +3,94 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
-import type { Issue, Comment, Attachment, WorkItem } from '../client/types';
-import { renderField } from './fieldRenderer';
+import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 
 function escapeHtml(s: unknown): string {
   if (s == null) return '';
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+function stateSlug(name: string): string {
+  const s = name.toLowerCase();
+  if (/(done|fixed|closed|resolved|verified|complete)/.test(s)) return 'state-done';
+  if (/(progress|develop|working|wip|active)/.test(s)) return 'state-progress';
+  if (/(review|pending|waiting|qa|test)/.test(s)) return 'state-review';
+  if (/(cancel|reject|won|invalid|duplicate|obsolete)/.test(s)) return 'state-cancelled';
+  if (/(block|hold|paused)/.test(s)) return 'state-blocked';
+  return '';
+}
+
+function prioritySlug(name: string): string {
+  const s = name.toLowerCase().replace(/\s+/g, '-');
+  return `prio-${s}`;
+}
+
+function initials(user: User): string {
+  if (user.fullName) {
+    const parts = user.fullName.split(/\s+/).filter(Boolean).slice(0, 2);
+    const inits = parts.map((p) => p[0]?.toUpperCase()).join('');
+    if (inits) return inits;
+  }
+  return (user.login || '?').slice(0, 2).toUpperCase();
+}
+
+function renderAvatar(user: User | null | undefined): string {
+  if (!user) return `<span class="avatar">?</span>`;
+  if (user.avatarUrl && /^https?:/.test(user.avatarUrl)) {
+    return `<span class="avatar"><img src="${escapeHtml(user.avatarUrl)}" alt=""></span>`;
+  }
+  return `<span class="avatar">${escapeHtml(initials(user))}</span>`;
+}
+
+function renderUserChip(user: User | null | undefined): string {
+  if (!user) return '<span class="value">—</span>';
+  return `<span class="user-chip">${renderAvatar(user)}<span>${escapeHtml(user.fullName || user.login)}</span></span>`;
+}
+
+function formatPeriod(seconds: number): string {
+  const total = Number(seconds) || 0;
+  if (!total) return '—';
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+function valueAsText(v: CustomFieldValue): string {
+  switch (v.kind) {
+    case 'empty':   return '—';
+    case 'enum':    return v.name ?? '—';
+    case 'state':   return v.name ?? '—';
+    case 'user':    return v.fullName ?? v.login ?? '—';
+    case 'string':  return v.text ?? '—';
+    case 'date':    return v.iso ? new Date(v.iso).toLocaleDateString() : '—';
+    case 'period':  return formatPeriod(v.seconds);
+    case 'number':  return String(v.value ?? 0);
+    case 'bool':    return v.value ? 'Yes' : 'No';
+    case 'version': return v.name ?? '—';
+    case 'unknown': return v.raw ?? '—';
+  }
+}
+
+function renderSideField(f: CustomField): string {
+  const v = f.value;
+  const name = escapeHtml(f.name);
+  if (f.name === 'State' && (v.kind === 'state' || v.kind === 'enum')) {
+    const slug = stateSlug(v.name);
+    const letter = v.name[0]?.toUpperCase() ?? '?';
+    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter ${slug}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+  }
+  if (f.name === 'Priority' && (v.kind === 'enum')) {
+    const slug = prioritySlug(v.name);
+    const letter = v.name[0]?.toUpperCase() ?? '?';
+    return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge ${slug}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+  }
+  if (v.kind === 'user') {
+    return `<div class="side-field"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: '' })}</span></div>`;
+  }
+  return `<div class="side-field"><span class="label">${name}</span><span class="value">${escapeHtml(valueAsText(v))}</span></div>`;
 }
 
 export class IssueDetailPanel {
@@ -74,55 +155,93 @@ export class IssueDetailPanel {
   }
 
   private renderHtml(issue: Issue, comments: Comment[], attachments: Attachment[], workItems: WorkItem[]): string {
-    const fields = issue.customFields.map(renderField).join('');
-    const commentHtml = comments.map((c) =>
-      `<div class="comment"><b>${escapeHtml(c.author?.fullName)}</b> — ${new Date(c.created).toLocaleString()}<br>${escapeHtml(c.text)}</div>`
-    ).join('');
+    const sideFields = issue.customFields.map(renderSideField).join('');
+    const projectRow = `<div class="side-field"><span class="label">Project</span><span class="value">${escapeHtml(issue.project.shortName)}</span></div>`;
+    const reporterRow = issue.reporter
+      ? `<div class="side-field"><span class="label">Reporter</span><span class="value">${renderUserChip(issue.reporter)}</span></div>`
+      : '';
+
     const attachHtml = attachments.map((a) =>
-      `<div class="attachment"><a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a> <span>${a.size} B</span></div>`
+      `<div class="attachment"><span>📎</span><a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a><span style="color:var(--vscode-descriptionForeground);font-size:0.85em">${a.size} B</span></div>`
     ).join('');
-    const workHtml = workItems.map((w) => {
-      const h = Math.floor(w.duration / 3600);
-      const m = Math.floor((w.duration % 3600) / 60);
-      const dur = h ? `${h}h ${m}m` : `${m}m`;
-      return `<div class="work-item"><b>${escapeHtml(w.author?.fullName)}</b> — ${new Date(w.date).toLocaleDateString()} — ${dur} — ${escapeHtml(w.type?.name ?? '')}<br>${escapeHtml(w.text)}</div>`;
-    }).join('');
+
+    type Entry = { ts: number; html: string };
+    const entries: Entry[] = [];
+    for (const c of comments) {
+      entries.push({
+        ts: c.created,
+        html: `
+          <div class="activity-entry">
+            <div class="meta">${renderAvatar(c.author)}<b>${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>commented · ${escapeHtml(new Date(c.created).toLocaleString())}</div>
+            <div class="body">${escapeHtml(c.text)}</div>
+          </div>`,
+      });
+    }
+    for (const w of workItems) {
+      const dur = formatPeriod(w.duration);
+      const typeLabel = w.type?.name ? ` · ${escapeHtml(w.type.name)}` : '';
+      entries.push({
+        ts: w.date,
+        html: `
+          <div class="activity-entry work">
+            <div class="meta">${renderAvatar(w.author)}<b>${escapeHtml(w.author?.fullName ?? w.author?.login ?? '')}</b>logged <strong>${dur}</strong>${typeLabel} · ${escapeHtml(new Date(w.date).toLocaleDateString())}</div>
+            ${w.text ? `<div class="body">${escapeHtml(w.text)}</div>` : ''}
+          </div>`,
+      });
+    }
+    entries.sort((a, b) => b.ts - a.ts);
+    const activityHtml = entries.length ? entries.map((e) => e.html).join('') : '<div style="color:var(--vscode-descriptionForeground);font-style:italic;padding:0.5rem 0">No activity yet.</div>';
+
     const typeOpts = this.workTypes.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+
+    const descriptionHtml = issue.description
+      ? `<div class="description">${escapeHtml(issue.description)}</div>`
+      : `<div class="description empty">No description.</div>`;
+
     return `
-      <div class="header">
-        <div class="id">${escapeHtml(issue.idReadable)}</div>
-        <div class="summary">${escapeHtml(issue.summary)}</div>
-      </div>
-      <div class="toolbar">
-        <button class="primary" data-cmd="startWork">Start Work</button>
-        <button data-cmd="assignToMe">Assign to Me</button>
-        <button data-cmd="changeState">Change State…</button>
-        <button data-cmd="logTime">Log Time…</button>
-        <button data-cmd="createBranch">Create Branch</button>
-        <button data-cmd="copyLink">Copy Link</button>
-        <button data-cmd="openInBrowser">Open in Browser</button>
-      </div>
-      <div class="description">${escapeHtml(issue.description)}</div>
-      <div class="section"><h3>Fields</h3>${fields}</div>
-      <div class="section"><h3>Attachments</h3>${attachHtml || '<i>None</i>'}</div>
-      <div class="section">
-        <h3>Time logged</h3>
-        ${workHtml || '<i>None</i>'}
-        <form class="log-time">
-          <label>Duration</label><input name="duration" placeholder="1h30m" required>
-          <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
-          <label>Type</label><select name="type">${typeOpts}</select>
-          <label>Note</label><input name="text">
-          <button type="submit">Log</button>
-        </form>
-      </div>
-      <div class="section">
-        <h3>Comments</h3>
-        ${commentHtml || '<i>None</i>'}
-        <form class="add-comment">
-          <textarea name="text" placeholder="Add a comment..." required></textarea>
-          <button type="submit">Post Comment</button>
-        </form>
+      <div class="layout">
+        <div class="main">
+          <div class="id-row"><span class="id">${escapeHtml(issue.idReadable)}</span><span class="sep">·</span><span>${escapeHtml(issue.project.shortName)}</span></div>
+          <h1 class="summary">${escapeHtml(issue.summary)}</h1>
+          <div class="toolbar">
+            <button class="primary" data-cmd="startWork">▶ Start Work</button>
+            <button data-cmd="assignToMe">Assign to Me</button>
+            <button data-cmd="changeState">Change State…</button>
+            <button data-cmd="logTime">Log Time…</button>
+            <button data-cmd="createBranch">Create Branch</button>
+            <button data-cmd="copyLink">Copy Link</button>
+            <button data-cmd="openInBrowser">Open in Browser</button>
+          </div>
+          ${descriptionHtml}
+          ${attachments.length ? `<div class="section"><h3>Attachments</h3>${attachHtml}</div>` : ''}
+          <div class="section">
+            <h3>Activity</h3>
+            ${activityHtml}
+          </div>
+          <div class="section">
+            <h3>Log time</h3>
+            <form class="log-time">
+              <label>Duration</label><input name="duration" placeholder="1h30m" required>
+              <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
+              <label>Type</label><select name="type">${typeOpts}</select>
+              <label>Note</label><input name="text" placeholder="optional">
+              <button type="submit">Log</button>
+            </form>
+          </div>
+          <div class="section">
+            <h3>Add comment</h3>
+            <form class="add-comment">
+              <textarea name="text" placeholder="Write a comment..." required></textarea>
+              <button type="submit">Post Comment</button>
+            </form>
+          </div>
+        </div>
+        <aside class="side">
+          <h4>Details</h4>
+          ${projectRow}
+          ${reporterRow}
+          ${sideFields}
+        </aside>
       </div>
     `;
   }
