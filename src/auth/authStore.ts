@@ -39,7 +39,7 @@ export class AuthStore {
       const me = await new YouTrackClient(baseUrl, token).getMe();
       await this.context.secrets.store(TOKEN_KEY, token);
       await vscode.workspace.getConfiguration('youtrack').update(
-        'baseUrl', baseUrl, vscode.ConfigurationTarget.Workspace,
+        'baseUrl', baseUrl, vscode.ConfigurationTarget.Global,
       );
       vscode.window.showInformationMessage(`YouTrack: signed in as ${me.fullName}`);
       return { baseUrl, token };
@@ -51,8 +51,14 @@ export class AuthStore {
 
   async signOut(): Promise<void> {
     await this.context.secrets.delete(TOKEN_KEY);
-    await vscode.workspace.getConfiguration('youtrack').update(
-      'baseUrl', undefined, vscode.ConfigurationTarget.Workspace,
-    );
+    const cfg = vscode.workspace.getConfiguration('youtrack');
+    await cfg.update('baseUrl', undefined, vscode.ConfigurationTarget.Global);
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+      try {
+        await cfg.update('baseUrl', undefined, vscode.ConfigurationTarget.Workspace);
+      } catch {
+        // ignore if no workspace write is allowed
+      }
+    }
   }
 }
