@@ -10,6 +10,31 @@ type Node =
 
 const PAGE_SIZE = 50;
 
+interface StateVisuals {
+  icon: string;
+  color?: string;
+}
+
+function issueStateName(issue: Issue): string {
+  const field = issue.customFields.find((f) => f.name === 'State');
+  if (!field) return '';
+  const v = field.value;
+  if (v.kind === 'state' || v.kind === 'enum') return v.name;
+  return '';
+}
+
+function stateVisuals(state: string): StateVisuals {
+  const s = state.toLowerCase();
+  if (!s) return { icon: 'circle-outline' };
+  if (/(done|fixed|closed|resolved|verified|complete)/.test(s)) return { icon: 'pass-filled', color: 'testing.iconPassed' };
+  if (/(progress|develop|working|wip|active)/.test(s)) return { icon: 'sync', color: 'charts.blue' };
+  if (/(review|pending|waiting|qa|test)/.test(s)) return { icon: 'eye', color: 'charts.yellow' };
+  if (/(cancel|reject|won|invalid|duplicate|obsolete)/.test(s)) return { icon: 'circle-slash', color: 'charts.red' };
+  if (/(block|hold|paused)/.test(s)) return { icon: 'debug-pause', color: 'charts.orange' };
+  if (/(submit|open|reopen|new|backlog|todo|to do)/.test(s)) return { icon: 'circle-outline' };
+  return { icon: 'circle-outline' };
+}
+
 export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
   private _emitter = new vscode.EventEmitter<Node | undefined>();
   onDidChangeTreeData = this._emitter.event;
@@ -58,13 +83,17 @@ export class IssueTreeProvider implements vscode.TreeDataProvider<Node> {
       return t;
     }
     if (node.kind === 'issue') {
+      const state = issueStateName(node.issue);
+      const { icon, color } = stateVisuals(state);
       const t = new vscode.TreeItem(
         `${node.issue.idReadable}  ${node.issue.summary}`,
         vscode.TreeItemCollapsibleState.None,
       );
+      t.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
+      t.description = state || undefined;
       t.command = { command: 'youtrack.openIssue', title: 'Open', arguments: [node.issue.idReadable] };
       t.contextValue = 'issue';
-      t.tooltip = node.issue.summary;
+      t.tooltip = state ? `[${state}] ${node.issue.summary}` : node.issue.summary;
       return t;
     }
     const t = new vscode.TreeItem('Load more...', vscode.TreeItemCollapsibleState.None);

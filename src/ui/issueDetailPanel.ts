@@ -36,7 +36,6 @@ export class IssueDetailPanel {
     if (existing) { existing.panel.reveal(); return; }
     const p = new IssueDetailPanel(extensionUri, client, cache, issueId);
     IssueDetailPanel.panels.set(issueId, p);
-    void p.reload();
   }
 
   private shellHtml(): string {
@@ -98,7 +97,10 @@ export class IssueDetailPanel {
   }
 
   private async onMessage(msg: any): Promise<void> {
-    if (msg.type === 'ready') return;
+    if (msg.type === 'ready') {
+      await this.reload();
+      return;
+    }
     if (msg.type === 'logTime') {
       const seconds = parseDuration(msg.duration ?? '');
       if (seconds === null || seconds <= 0) {
