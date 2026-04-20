@@ -15,6 +15,7 @@ import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
 import { openBoard } from './commands/openBoard';
+import { UriHandler } from './ui/uriHandler';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -83,6 +84,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     statusBar,
     vscode.commands.registerCommand('youtrack.statusBarClick', () => statusBar.click()),
+  );
+
+  context.subscriptions.push(
+    vscode.window.registerUriHandler(new UriHandler()),
+    vscode.commands.registerCommand('youtrack.signOut', async () => {
+      await auth.signOut();
+      vscode.window.showInformationMessage('YouTrack: signed out. Reload window to re-authenticate.');
+    }),
   );
 
   context.subscriptions.push({ dispose: () => db.close() });
