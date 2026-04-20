@@ -12,14 +12,16 @@ export class SidebarState {
   tagFilter = new Set<string>();
   groupMode: GroupMode = 'project';
   sortMode: SortMode = 'default';
+  unresolvedOnly = false;
 
   setFilterText(v: string): void { this.filterText = v.trim().toLowerCase(); this._emitter.fire(); }
   setStateFilter(v: string[]): void { this.stateFilter = new Set(v); this._emitter.fire(); }
   setTagFilter(v: string[]): void   { this.tagFilter = new Set(v); this._emitter.fire(); }
   setGroupMode(v: GroupMode): void  { this.groupMode = v; this._emitter.fire(); }
   setSortMode(v: SortMode): void    { this.sortMode = v; this._emitter.fire(); }
+  setUnresolvedOnly(v: boolean): void { this.unresolvedOnly = v; this._emitter.fire(); }
 
   anyFilterActive(): boolean {
-    return !!this.filterText || this.stateFilter.size > 0 || this.tagFilter.size > 0;
+    return !!this.filterText || this.stateFilter.size > 0 || this.tagFilter.size > 0 || this.unresolvedOnly;
   }
 }

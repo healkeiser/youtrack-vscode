@@ -136,6 +136,7 @@ export class MultiQueryTreeProvider implements vscode.TreeDataProvider<Node> {
     }
     if (stateFilter.size > 0 && !stateFilter.has(issueStateName(issue))) return false;
     if (tagFilter.size > 0 && !issue.tags.some((t) => tagFilter.has(t.name))) return false;
+    if (this.state.unresolvedOnly && issue.resolved) return false;
     return true;
   }
 

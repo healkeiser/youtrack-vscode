@@ -76,16 +76,31 @@
         "command": "youtrack.signOut",
         "title": "YouTrack: Sign Out"
       },
-      {
-        "command": "youtrack.filter",
-        "title": "YouTrack: Filter Sidebar...",
-        "icon": "$(filter)"
-      },
-      {
-        "command": "youtrack.clearFilter",
-        "title": "YouTrack: Clear Sidebar Filter",
-        "icon": "$(filter-filled)"
-      },
+      { "command": "youtrack.assignedToMe.filter",           "title": "YouTrack: Filter Assigned-to-me…",        "icon": "$(filter)" },
+      { "command": "youtrack.assignedToMe.clearFilter",      "title": "YouTrack: Clear Assigned-to-me filter",    "icon": "$(filter-filled)" },
+      { "command": "youtrack.assignedToMe.filterByState",    "title": "YouTrack: Assigned-to-me — Filter by State…", "icon": "$(symbol-enum)" },
+      { "command": "youtrack.assignedToMe.clearStateFilter", "title": "YouTrack: Assigned-to-me — Clear state filter", "icon": "$(symbol-enum)" },
+      { "command": "youtrack.assignedToMe.filterByTag",      "title": "YouTrack: Assigned-to-me — Filter by Tag…", "icon": "$(tag)" },
+      { "command": "youtrack.assignedToMe.clearTagFilter",   "title": "YouTrack: Assigned-to-me — Clear tag filter", "icon": "$(tag)" },
+      { "command": "youtrack.assignedToMe.sortBy",           "title": "YouTrack: Assigned-to-me — Sort…",           "icon": "$(sort-precedence)" },
+      { "command": "youtrack.assignedToMe.groupByProject",   "title": "YouTrack: Assigned-to-me — Group by Project","icon": "$(list-tree)" },
+      { "command": "youtrack.assignedToMe.groupFlat",        "title": "YouTrack: Assigned-to-me — Show Flat List",  "icon": "$(list-flat)" },
+      { "command": "youtrack.assignedToMe.refresh",          "title": "YouTrack: Refresh Assigned-to-me",           "icon": "$(refresh)" },
+      { "command": "youtrack.assignedToMe.hideResolved",     "title": "YouTrack: Assigned-to-me — Hide resolved",   "icon": "$(circle-outline)" },
+      { "command": "youtrack.assignedToMe.showAll",          "title": "YouTrack: Assigned-to-me — Show resolved too","icon": "$(pass-filled)" },
+
+      { "command": "youtrack.issues.filter",                 "title": "YouTrack: Filter Issues…",                   "icon": "$(filter)" },
+      { "command": "youtrack.issues.clearFilter",            "title": "YouTrack: Clear Issues filter",              "icon": "$(filter-filled)" },
+      { "command": "youtrack.issues.filterByState",          "title": "YouTrack: Issues — Filter by State…",        "icon": "$(symbol-enum)" },
+      { "command": "youtrack.issues.clearStateFilter",       "title": "YouTrack: Issues — Clear state filter",      "icon": "$(symbol-enum)" },
+      { "command": "youtrack.issues.filterByTag",            "title": "YouTrack: Issues — Filter by Tag…",          "icon": "$(tag)" },
+      { "command": "youtrack.issues.clearTagFilter",         "title": "YouTrack: Issues — Clear tag filter",        "icon": "$(tag)" },
+      { "command": "youtrack.issues.sortBy",                 "title": "YouTrack: Issues — Sort…",                   "icon": "$(sort-precedence)" },
+      { "command": "youtrack.issues.groupByProject",         "title": "YouTrack: Issues — Group by Project",        "icon": "$(list-tree)" },
+      { "command": "youtrack.issues.groupFlat",              "title": "YouTrack: Issues — Show Flat List",          "icon": "$(list-flat)" },
+      { "command": "youtrack.issues.refresh",                "title": "YouTrack: Refresh Issues",                    "icon": "$(refresh)" },
+      { "command": "youtrack.issues.hideResolved",           "title": "YouTrack: Issues — Hide resolved",            "icon": "$(circle-outline)" },
+      { "command": "youtrack.issues.showAll",                "title": "YouTrack: Issues — Show resolved too",        "icon": "$(pass-filled)" },
       {
         "command": "youtrack.copyId",
         "title": "YouTrack: Copy Issue ID"
@@ -103,46 +118,7 @@
         "command": "youtrack.startWork",
         "title": "YouTrack: Start Work on Issue..."
       },
-      {
-        "command": "youtrack.groupByProject",
-        "title": "YouTrack: Group by Project",
-        "icon": "$(list-tree)"
-      },
-      {
-        "command": "youtrack.groupFlat",
-        "title": "YouTrack: Show Flat List",
-        "icon": "$(list-flat)"
-      },
-      {
-        "command": "youtrack.refreshBoards",
-        "title": "YouTrack: Refresh Boards",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "youtrack.filterByState",
-        "title": "YouTrack: Filter by State…",
-        "icon": "$(symbol-enum)"
-      },
-      {
-        "command": "youtrack.clearStateFilter",
-        "title": "YouTrack: Clear State Filter",
-        "icon": "$(symbol-enum)"
-      },
-      {
-        "command": "youtrack.sortBy",
-        "title": "YouTrack: Sort Issues…",
-        "icon": "$(sort-precedence)"
-      },
-      {
-        "command": "youtrack.filterByTag",
-        "title": "YouTrack: Filter by Tag…",
-        "icon": "$(tag)"
-      },
-      {
-        "command": "youtrack.clearTagFilter",
-        "title": "YouTrack: Clear Tag Filter",
-        "icon": "$(tag)"
-      },
+      { "command": "youtrack.refreshBoards", "title": "YouTrack: Refresh Boards", "icon": "$(refresh)" },
       { "command": "youtrack.refreshRecents", "title": "YouTrack: Refresh Recents", "icon": "$(refresh)" },
       { "command": "youtrack.clearRecents", "title": "YouTrack: Clear Recents", "icon": "$(clear-all)" },
       { "command": "youtrack.refreshNotifications", "title": "YouTrack: Refresh Notifications", "icon": "$(refresh)" },
@@ -244,56 +220,31 @@
           "when": "view =~ /^youtrack\\.(assignedToMe|issues|boards)$/",
           "group": "navigation@0"
         },
-        {
-          "command": "youtrack.filter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.filterActive",
-          "group": "navigation@1"
-        },
-        {
-          "command": "youtrack.clearFilter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.filterActive",
-          "group": "navigation@1"
-        },
-        {
-          "command": "youtrack.filterByState",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.stateFilterActive",
-          "group": "navigation@2"
-        },
-        {
-          "command": "youtrack.clearStateFilter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.stateFilterActive",
-          "group": "navigation@2"
-        },
-        {
-          "command": "youtrack.filterByTag",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.tagFilterActive",
-          "group": "navigation@3"
-        },
-        {
-          "command": "youtrack.clearTagFilter",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.tagFilterActive",
-          "group": "navigation@3"
-        },
-        {
-          "command": "youtrack.sortBy",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/",
-          "group": "navigation@4"
-        },
-        {
-          "command": "youtrack.groupFlat",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && youtrack.groupedByProject",
-          "group": "navigation@5"
-        },
-        {
-          "command": "youtrack.groupByProject",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && !youtrack.groupedByProject",
-          "group": "navigation@5"
-        },
-        {
-          "command": "youtrack.refresh",
-          "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/",
-          "group": "navigation@6"
-        },
+        { "command": "youtrack.assignedToMe.filter",            "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.filterActive",      "group": "navigation@1" },
+        { "command": "youtrack.assignedToMe.clearFilter",       "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.filterActive",       "group": "navigation@1" },
+        { "command": "youtrack.assignedToMe.filterByState",     "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.stateFilterActive", "group": "navigation@2" },
+        { "command": "youtrack.assignedToMe.clearStateFilter",  "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.stateFilterActive",  "group": "navigation@2" },
+        { "command": "youtrack.assignedToMe.filterByTag",       "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.tagFilterActive",   "group": "navigation@3" },
+        { "command": "youtrack.assignedToMe.clearTagFilter",    "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.tagFilterActive",    "group": "navigation@3" },
+        { "command": "youtrack.assignedToMe.hideResolved",      "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.unresolvedOnly",    "group": "navigation@0" },
+        { "command": "youtrack.assignedToMe.showAll",           "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.unresolvedOnly",     "group": "navigation@0" },
+        { "command": "youtrack.assignedToMe.sortBy",            "when": "view == youtrack.assignedToMe",                                              "group": "navigation@4" },
+        { "command": "youtrack.assignedToMe.groupFlat",         "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.groupedByProject",    "group": "navigation@5" },
+        { "command": "youtrack.assignedToMe.groupByProject",    "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.groupedByProject",   "group": "navigation@5" },
+        { "command": "youtrack.assignedToMe.refresh",           "when": "view == youtrack.assignedToMe",                                              "group": "navigation@6" },
+
+        { "command": "youtrack.issues.filter",                  "when": "view == youtrack.issues && !youtrack.issues.filterActive",      "group": "navigation@1" },
+        { "command": "youtrack.issues.clearFilter",             "when": "view == youtrack.issues && youtrack.issues.filterActive",       "group": "navigation@1" },
+        { "command": "youtrack.issues.filterByState",           "when": "view == youtrack.issues && !youtrack.issues.stateFilterActive", "group": "navigation@2" },
+        { "command": "youtrack.issues.clearStateFilter",        "when": "view == youtrack.issues && youtrack.issues.stateFilterActive",  "group": "navigation@2" },
+        { "command": "youtrack.issues.filterByTag",             "when": "view == youtrack.issues && !youtrack.issues.tagFilterActive",   "group": "navigation@3" },
+        { "command": "youtrack.issues.clearTagFilter",          "when": "view == youtrack.issues && youtrack.issues.tagFilterActive",    "group": "navigation@3" },
+        { "command": "youtrack.issues.hideResolved",            "when": "view == youtrack.issues && !youtrack.issues.unresolvedOnly",    "group": "navigation@0" },
+        { "command": "youtrack.issues.showAll",                 "when": "view == youtrack.issues && youtrack.issues.unresolvedOnly",     "group": "navigation@0" },
+        { "command": "youtrack.issues.sortBy",                  "when": "view == youtrack.issues",                                        "group": "navigation@4" },
+        { "command": "youtrack.issues.groupFlat",               "when": "view == youtrack.issues && youtrack.issues.groupedByProject",    "group": "navigation@5" },
+        { "command": "youtrack.issues.groupByProject",          "when": "view == youtrack.issues && !youtrack.issues.groupedByProject",   "group": "navigation@5" },
+        { "command": "youtrack.issues.refresh",                 "when": "view == youtrack.issues",                                        "group": "navigation@6" },
         {
           "command": "youtrack.refreshBoards",
           "when": "view == youtrack.boards",

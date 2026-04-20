@@ -83,6 +83,7 @@ export class QueryTreeProvider implements vscode.TreeDataProvider<Node> {
     if (tagFilter.size > 0) {
       if (!issue.tags.some((t) => tagFilter.has(t.name))) return false;
     }
+    if (this.state.unresolvedOnly && issue.resolved) return false;
     return true;
   }
 

@@ -61,6 +61,7 @@ export interface Issue {
   assignee: User | null;
   created: number;
   updated: number;
+  resolved: number | null;
   customFields: CustomField[];
   tags: Tag[];
   links: IssueLink[];

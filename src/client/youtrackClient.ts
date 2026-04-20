@@ -7,7 +7,7 @@ import type {
 
 const ISSUE_FIELDS = [
   'id', 'idReadable', 'summary', 'description',
-  'created', 'updated',
+  'created', 'updated', 'resolved',
   'project(id,shortName)',
   'reporter(id,login,fullName,avatarUrl)',
   'tags(id,name,color(id,background,foreground))',
@@ -118,6 +118,7 @@ function mapIssue(raw: any, baseUrl?: string): Issue {
     assignee: extractAssignee(rawFields, baseUrl),
     created: raw.created,
     updated: raw.updated,
+    resolved: raw.resolved ?? null,
     customFields: rawFields.map((f) => mapCustomField(f, baseUrl)),
     tags: (raw.tags ?? []).map(mapTag),
     links: mapLinks(raw.links ?? []),

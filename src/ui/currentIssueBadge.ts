@@ -56,20 +56,22 @@ export class CurrentIssueBadge implements vscode.Disposable {
     const id = match[1];
     if (id === this.lastId) { this.item.show(); return; }
     this.lastId = id;
-    this.item.text = `$(git-branch) ${id}`;
+    this.item.text = `$(tasklist) ${id}`;
+    this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
+    this.item.color = new vscode.ThemeColor('statusBarItem.prominentForeground');
     this.item.tooltip = new vscode.MarkdownString(`**${id}**  \nLoading summary…`);
     this.item.command = { command: 'youtrack.openIssue', title: 'Open', arguments: [id] };
     this.item.show();
     try {
       const issue = await this.cache.getIssue(id, (x) => this.client.fetchIssue(x));
-      const summary = issue.summary.length > 60 ? issue.summary.slice(0, 60) + '…' : issue.summary;
-      this.item.text = `$(git-branch) ${id}: ${summary}`;
+      // Keep the text short — full title lives in the tooltip.
+      this.item.text = `$(tasklist) ${id}`;
       const md = new vscode.MarkdownString();
       md.appendMarkdown(`**${id}** — ${issue.summary}\n\n`);
       md.appendMarkdown(`Branch: \`${branch}\``);
       this.item.tooltip = md;
     } catch (e) {
-      this.item.text = `$(git-branch) ${id}`;
+      this.item.text = `$(tasklist) ${id}`;
       this.item.tooltip = new vscode.MarkdownString(`**${id}**  \n_could not load summary: ${(e as Error).message}_`);
     }
   }

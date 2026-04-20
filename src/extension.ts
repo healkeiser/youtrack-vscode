@@ -36,7 +36,6 @@ const TOP_SECTIONS: SectionDef[] = [
 ];
 
 const ISSUES_SUBSECTIONS: Array<{ id: string; label: string; source: QuerySource }> = [
-  { id: 'openIssues',    label: 'Open issues',     source: { label: 'Open issues',     directQuery: '#Unresolved' } },
   { id: 'reportedByMe',  label: 'Reported by me',  source: { label: 'Reported by me',  savedQueryName: 'Reported by me',  directQuery: 'reporter: me' } },
   { id: 'commentedByMe', label: 'Commented by me', source: { label: 'Commented by me', savedQueryName: 'Commented by me', directQuery: 'commented by: me' } },
   { id: 'allIssues',     label: 'All issues',      source: { label: 'All issues',      savedQueryName: 'All issues',      directQuery: '' } },
@@ -76,126 +75,39 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     savedQueriesTtlMs: cfg.get<number>('cache.ttl.savedSearches', 300) * 1000,
   });
 
-  const state = new SidebarState();
   const initialGroup: GroupMode = cfg.get<string>('sidebar.groupBy', 'project') === 'none' ? 'none' : 'project';
-  state.groupMode = initialGroup;
-  await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', initialGroup === 'project');
 
-  const providers = new Map<string, QueryTreeProvider>();
-  for (const section of TOP_SECTIONS) {
-    const provider = new QueryTreeProvider(section.viewId, client, cache, state, section.source);
-    providers.set(section.viewId, provider);
-    context.subscriptions.push(vscode.window.registerTreeDataProvider(section.viewId, provider));
-  }
+  // One state per top-level view so filters/sort/group are independent
+  const assignedState = new SidebarState();
+  const issuesState = new SidebarState();
+  assignedState.groupMode = initialGroup;
+  issuesState.groupMode = initialGroup;
+  assignedState.unresolvedOnly = true; // sensible default for "what am I working on?"
 
-  const multi = new MultiQueryTreeProvider('youtrack.issues', client, cache, state, ISSUES_SUBSECTIONS);
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('youtrack.issues', multi),
-    vscode.commands.registerCommand('youtrack.loadMoreInSection', (sectionId: string) => multi.loadMore(sectionId)),
+  const assignedProvider = new QueryTreeProvider(
+    'youtrack.assignedToMe', client, cache, assignedState,
+    TOP_SECTIONS[0].source,
+  );
+  const issuesProvider = new MultiQueryTreeProvider(
+    'youtrack.issues', client, cache, issuesState, ISSUES_SUBSECTIONS,
   );
 
-  const refreshAll = () => { for (const p of providers.values()) p.refresh(); multi.refresh(); };
-  const collectLoadedIssues = () => {
-    const out: import('./client/types').Issue[] = [];
-    for (const p of providers.values()) out.push(...p.getAllLoaded());
-    out.push(...multi.getAllLoaded());
-    return out;
-  };
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('youtrack.assignedToMe', assignedProvider),
+    vscode.window.registerTreeDataProvider('youtrack.issues', issuesProvider),
+    vscode.commands.registerCommand('youtrack.loadMoreInSection', (sectionId: string) => issuesProvider.loadMore(sectionId)),
+    vscode.commands.registerCommand('youtrack.loadMoreInView', async (viewId: string) => {
+      if (viewId === 'youtrack.assignedToMe') await assignedProvider.loadMore();
+    }),
+  );
+
+  await registerScopedCommands(context, 'assignedToMe', assignedState, () => assignedProvider.refresh(), () => assignedProvider.getAllLoaded());
+  await registerScopedCommands(context, 'issues',       issuesState,   () => issuesProvider.refresh(),   () => issuesProvider.getAllLoaded());
+
+  const refreshAll = () => { assignedProvider.refresh(); issuesProvider.refresh(); };
 
   context.subscriptions.push(
     vscode.commands.registerCommand('youtrack.refresh', () => refreshAll()),
-    vscode.commands.registerCommand('youtrack.loadMoreInView', async (viewId: string) => {
-      const p = providers.get(viewId);
-      if (p) await p.loadMore();
-    }),
-    vscode.commands.registerCommand('youtrack.filter', async () => {
-      const text = await vscode.window.showInputBox({
-        prompt: 'Filter issues in sidebar',
-        placeHolder: 'id, summary, assignee, project',
-        value: state.filterText,
-        ignoreFocusOut: true,
-      });
-      if (text === undefined) return;
-      state.setFilterText(text);
-      await vscode.commands.executeCommand('setContext', 'youtrack.filterActive', text.trim().length > 0);
-    }),
-    vscode.commands.registerCommand('youtrack.clearFilter', async () => {
-      state.setFilterText('');
-      await vscode.commands.executeCommand('setContext', 'youtrack.filterActive', false);
-    }),
-    vscode.commands.registerCommand('youtrack.groupByProject', async () => {
-      state.setGroupMode('project');
-      await vscode.workspace.getConfiguration('youtrack').update('sidebar.groupBy', 'project', vscode.ConfigurationTarget.Global);
-      await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', true);
-    }),
-    vscode.commands.registerCommand('youtrack.groupFlat', async () => {
-      state.setGroupMode('none');
-      await vscode.workspace.getConfiguration('youtrack').update('sidebar.groupBy', 'none', vscode.ConfigurationTarget.Global);
-      await vscode.commands.executeCommand('setContext', 'youtrack.groupedByProject', false);
-    }),
-    vscode.commands.registerCommand('youtrack.filterByState', async () => {
-      const loaded = collectLoadedIssues();
-      const states = [...new Set(loaded.map((i) => {
-        const f = i.customFields.find((f) => f.name === 'State');
-        if (!f) return '';
-        if (f.value.kind === 'state' || f.value.kind === 'enum') return f.value.name;
-        return '';
-      }).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-      if (!states.length) {
-        vscode.window.showInformationMessage('YouTrack: expand a section first so the sidebar knows which states exist.');
-        return;
-      }
-      const current = state.stateFilter;
-      const picks = await vscode.window.showQuickPick(
-        states.map((s) => ({ label: s, picked: current.has(s) })),
-        { canPickMany: true, placeHolder: 'Pick states to show (none = show all)', ignoreFocusOut: true },
-      );
-      if (!picks) return;
-      const selected = picks.map((p) => p.label);
-      state.setStateFilter(selected);
-      await vscode.commands.executeCommand('setContext', 'youtrack.stateFilterActive', selected.length > 0);
-    }),
-    vscode.commands.registerCommand('youtrack.clearStateFilter', async () => {
-      state.setStateFilter([]);
-      await vscode.commands.executeCommand('setContext', 'youtrack.stateFilterActive', false);
-    }),
-    vscode.commands.registerCommand('youtrack.filterByTag', async () => {
-      const loaded = collectLoadedIssues();
-      const tags = [...new Set(loaded.flatMap((i) => i.tags.map((t) => t.name)))].sort((a, b) => a.localeCompare(b));
-      if (!tags.length) {
-        vscode.window.showInformationMessage('YouTrack: expand a section first so the sidebar knows which tags exist.');
-        return;
-      }
-      const current = state.tagFilter;
-      const picks = await vscode.window.showQuickPick(
-        tags.map((t) => ({ label: t, picked: current.has(t) })),
-        { canPickMany: true, placeHolder: 'Pick tags to show (none = show all)', ignoreFocusOut: true },
-      );
-      if (!picks) return;
-      const selected = picks.map((p) => p.label);
-      state.setTagFilter(selected);
-      await vscode.commands.executeCommand('setContext', 'youtrack.tagFilterActive', selected.length > 0);
-    }),
-    vscode.commands.registerCommand('youtrack.clearTagFilter', async () => {
-      state.setTagFilter([]);
-      await vscode.commands.executeCommand('setContext', 'youtrack.tagFilterActive', false);
-    }),
-    vscode.commands.registerCommand('youtrack.sortBy', async () => {
-      const labels: Record<SortMode, string> = {
-        default: 'Default (saved search order)',
-        updated: 'Recently updated',
-        created: 'Recently created',
-        id: 'Issue ID',
-      };
-      const current = state.sortMode;
-      const picks = (['default', 'updated', 'created', 'id'] as SortMode[]).map((m) => ({
-        label: labels[m], mode: m, description: m === current ? '(current)' : '',
-      }));
-      const picked = await vscode.window.showQuickPick(picks, { placeHolder: 'Sort issues by…', ignoreFocusOut: true });
-      if (!picked) return;
-      state.setSortMode(picked.mode);
-      await vscode.commands.executeCommand('setContext', 'youtrack.sortNonDefault', picked.mode !== 'default');
-    }),
     vscode.commands.registerCommand('youtrack.openIssue', async (id: string) => {
       IssueDetailPanel.show(context.extensionUri, client, cache, id);
       try {
@@ -329,4 +241,121 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   // subscriptions handle cleanup
+}
+
+async function registerScopedCommands(
+  ctx: vscode.ExtensionContext,
+  scope: 'assignedToMe' | 'issues',
+  state: SidebarState,
+  refresh: () => void,
+  getLoaded: () => import('./client/types').Issue[],
+): Promise<void> {
+  const base = `youtrack.${scope}`;
+  const setCtx = (key: string, v: unknown) => vscode.commands.executeCommand('setContext', key, v);
+
+  // initial context keys
+  await setCtx(`${base}.filterActive`, false);
+  await setCtx(`${base}.stateFilterActive`, false);
+  await setCtx(`${base}.tagFilterActive`, false);
+  await setCtx(`${base}.sortNonDefault`, false);
+  await setCtx(`${base}.groupedByProject`, state.groupMode === 'project');
+  await setCtx(`${base}.unresolvedOnly`, state.unresolvedOnly);
+
+  ctx.subscriptions.push(
+    vscode.commands.registerCommand(`${base}.filter`, async () => {
+      const text = await vscode.window.showInputBox({
+        prompt: `Filter ${scope === 'assignedToMe' ? 'Assigned to me' : 'Issues'}`,
+        placeHolder: 'id, summary, assignee, project',
+        value: state.filterText,
+        ignoreFocusOut: true,
+      });
+      if (text === undefined) return;
+      state.setFilterText(text);
+      await setCtx(`${base}.filterActive`, text.trim().length > 0);
+    }),
+    vscode.commands.registerCommand(`${base}.clearFilter`, async () => {
+      state.setFilterText('');
+      await setCtx(`${base}.filterActive`, false);
+    }),
+    vscode.commands.registerCommand(`${base}.groupByProject`, async () => {
+      state.setGroupMode('project');
+      await setCtx(`${base}.groupedByProject`, true);
+    }),
+    vscode.commands.registerCommand(`${base}.groupFlat`, async () => {
+      state.setGroupMode('none');
+      await setCtx(`${base}.groupedByProject`, false);
+    }),
+    vscode.commands.registerCommand(`${base}.filterByState`, async () => {
+      const loaded = getLoaded();
+      const states = [...new Set(loaded.map((i) => {
+        const f = i.customFields.find((f) => f.name === 'State');
+        if (!f) return '';
+        if (f.value.kind === 'state' || f.value.kind === 'enum') return f.value.name;
+        return '';
+      }).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      if (!states.length) {
+        vscode.window.showInformationMessage('YouTrack: expand a section first so the sidebar knows which states exist.');
+        return;
+      }
+      const current = state.stateFilter;
+      const picks = await vscode.window.showQuickPick(
+        states.map((s) => ({ label: s, picked: current.has(s) })),
+        { canPickMany: true, placeHolder: 'Pick states to show (none = show all)', ignoreFocusOut: true },
+      );
+      if (!picks) return;
+      const selected = picks.map((p) => p.label);
+      state.setStateFilter(selected);
+      await setCtx(`${base}.stateFilterActive`, selected.length > 0);
+    }),
+    vscode.commands.registerCommand(`${base}.clearStateFilter`, async () => {
+      state.setStateFilter([]);
+      await setCtx(`${base}.stateFilterActive`, false);
+    }),
+    vscode.commands.registerCommand(`${base}.filterByTag`, async () => {
+      const loaded = getLoaded();
+      const tags = [...new Set(loaded.flatMap((i) => i.tags.map((t) => t.name)))].sort((a, b) => a.localeCompare(b));
+      if (!tags.length) {
+        vscode.window.showInformationMessage('YouTrack: expand a section first so the sidebar knows which tags exist.');
+        return;
+      }
+      const current = state.tagFilter;
+      const picks = await vscode.window.showQuickPick(
+        tags.map((t) => ({ label: t, picked: current.has(t) })),
+        { canPickMany: true, placeHolder: 'Pick tags to show (none = show all)', ignoreFocusOut: true },
+      );
+      if (!picks) return;
+      const selected = picks.map((p) => p.label);
+      state.setTagFilter(selected);
+      await setCtx(`${base}.tagFilterActive`, selected.length > 0);
+    }),
+    vscode.commands.registerCommand(`${base}.clearTagFilter`, async () => {
+      state.setTagFilter([]);
+      await setCtx(`${base}.tagFilterActive`, false);
+    }),
+    vscode.commands.registerCommand(`${base}.sortBy`, async () => {
+      const labels: Record<SortMode, string> = {
+        default: 'Default (saved search order)',
+        updated: 'Recently updated',
+        created: 'Recently created',
+        id: 'Issue ID',
+      };
+      const current = state.sortMode;
+      const picks = (['default', 'updated', 'created', 'id'] as SortMode[]).map((m) => ({
+        label: labels[m], mode: m, description: m === current ? '(current)' : '',
+      }));
+      const picked = await vscode.window.showQuickPick(picks, { placeHolder: 'Sort issues by…', ignoreFocusOut: true });
+      if (!picked) return;
+      state.setSortMode(picked.mode);
+      await setCtx(`${base}.sortNonDefault`, picked.mode !== 'default');
+    }),
+    vscode.commands.registerCommand(`${base}.refresh`, () => refresh()),
+    vscode.commands.registerCommand(`${base}.hideResolved`, async () => {
+      state.setUnresolvedOnly(true);
+      await setCtx(`${base}.unresolvedOnly`, true);
+    }),
+    vscode.commands.registerCommand(`${base}.showAll`, async () => {
+      state.setUnresolvedOnly(false);
+      await setCtx(`${base}.unresolvedOnly`, false);
+    }),
+  );
 }
