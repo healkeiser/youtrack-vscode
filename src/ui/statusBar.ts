@@ -66,7 +66,7 @@ export class StatusBar implements vscode.Disposable {
     const picked = await vscode.window.showQuickPick(
       [
         ...actions,
-        { label: `$(list-unordered) Your issues (${this.issues.length})`, kind: vscode.QuickPickItemKind.Separator, action: () => {} },
+        { label: `Your issues (${this.issues.length})`, kind: vscode.QuickPickItemKind.Separator, action: () => {} },
         ...issueItems,
       ],
       { placeHolder: 'YouTrack', matchOnDescription: true, ignoreFocusOut: true },
