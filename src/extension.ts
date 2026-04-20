@@ -6,6 +6,7 @@ import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
 import { IssueTreeProvider } from './ui/issueTreeProvider';
 import { IssueDetailPanel } from './ui/issueDetailPanel';
+import { goToIssue } from './commands/goToIssue';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const auth = new AuthStore(context);
@@ -33,6 +34,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.openIssue', (id: string) =>
       IssueDetailPanel.show(context.extensionUri, client, cache, id),
     ),
+    vscode.commands.registerCommand('youtrack.goToIssue', async () => {
+      const id = await goToIssue();
+      if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
+    }),
   );
 
   context.subscriptions.push({ dispose: () => db.close() });

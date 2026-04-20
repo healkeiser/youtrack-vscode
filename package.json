@@ -28,6 +28,10 @@
       {
         "command": "youtrack.loadMore",
         "title": "YouTrack: Load More"
+      },
+      {
+        "command": "youtrack.goToIssue",
+        "title": "YouTrack: Go to Issue..."
       }
     ],
     "configuration": {
