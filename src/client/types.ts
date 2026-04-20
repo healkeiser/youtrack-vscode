@@ -26,7 +26,7 @@ export type CustomFieldType =
 
 export type CustomFieldValue =
   | { kind: 'enum'; id: string; name: string }
-  | { kind: 'user'; login: string; fullName: string }
+  | { kind: 'user'; login: string; fullName: string; avatarUrl: string }
   | { kind: 'state'; id: string; name: string }
   | { kind: 'string'; text: string }
   | { kind: 'date'; iso: string }

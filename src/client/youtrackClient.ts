@@ -27,12 +27,15 @@ function mapUser(u: any, baseUrl?: string): User | null {
   };
 }
 
-function mapCustomFieldValue(raw: any, type: CustomFieldType): CustomFieldValue {
+function mapCustomFieldValue(raw: any, type: CustomFieldType, baseUrl?: string): CustomFieldValue {
   if (raw === null || raw === undefined) return { kind: 'empty' };
   switch (type) {
     case 'enum':    return { kind: 'enum', id: raw.id, name: raw.name };
     case 'state':   return { kind: 'state', id: raw.id, name: raw.name };
-    case 'user':    return { kind: 'user', login: raw.login, fullName: raw.fullName ?? raw.login };
+    case 'user':    {
+      const u = mapUser(raw, baseUrl);
+      return { kind: 'user', login: u?.login ?? raw.login ?? '', fullName: u?.fullName ?? raw.fullName ?? raw.login ?? '', avatarUrl: u?.avatarUrl ?? '' };
+    }
     case 'string':  return { kind: 'string', text: String(raw.text ?? raw) };
     case 'date':    return { kind: 'date', iso: new Date(raw).toISOString() };
     case 'period':  return { kind: 'period', seconds: Number(raw.minutes ?? 0) * 60 };
@@ -58,9 +61,9 @@ function inferType($type: string): CustomFieldType {
   return 'unknown';
 }
 
-function mapCustomField(raw: any): CustomField {
+function mapCustomField(raw: any, baseUrl?: string): CustomField {
   const type = inferType(raw.$type ?? '');
-  return { name: raw.name, type, value: mapCustomFieldValue(raw.value, type) };
+  return { name: raw.name, type, value: mapCustomFieldValue(raw.value, type, baseUrl) };
 }
 
 function extractAssignee(rawCustomFields: any[], baseUrl?: string): User | null {
@@ -93,7 +96,7 @@ function mapIssue(raw: any, baseUrl?: string): Issue {
     assignee: extractAssignee(rawFields, baseUrl),
     created: raw.created,
     updated: raw.updated,
-    customFields: rawFields.map(mapCustomField),
+    customFields: rawFields.map((f) => mapCustomField(f, baseUrl)),
     tags: (raw.tags ?? []).map(mapTag),
   };
 }

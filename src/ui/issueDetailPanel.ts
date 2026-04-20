@@ -120,7 +120,7 @@ function renderSideField(f: CustomField): string {
     return `<div class="side-field"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge ${slug}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
   }
   if (v.kind === 'user') {
-    return `<div class="side-field"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: '' })}</span></div>`;
+    return `<div class="side-field"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
   }
   return `<div class="side-field"><span class="label">${name}</span><span class="value">${escapeHtml(valueAsText(v))}</span></div>`;
 }
