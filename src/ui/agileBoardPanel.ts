@@ -19,6 +19,7 @@ export class AgileBoardPanel {
       'youtrackBoard', 'YouTrack Board', vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media', 'agileBoard')], retainContextWhenHidden: true },
     );
+    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack_outline.svg');
     this.panel.webview.html = this.shellHtml();
     this.panel.onDidDispose(() => { AgileBoardPanel.instance = undefined; });
     this.panel.webview.onDidReceiveMessage((m) => this.onMessage(m));

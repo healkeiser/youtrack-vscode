@@ -56,7 +56,8 @@
       },
       {
         "command": "youtrack.createBranch",
-        "title": "YouTrack: Create Branch from Issue..."
+        "title": "YouTrack: Create Branch from Issue...",
+        "icon": "$(git-branch)"
       },
       {
         "command": "youtrack.openBoard",
@@ -90,7 +91,8 @@
       },
       {
         "command": "youtrack.openInBrowser",
-        "title": "YouTrack: Open in Browser"
+        "title": "YouTrack: Open in Browser",
+        "icon": "$(link-external)"
       },
       {
         "command": "youtrack.startWork",
@@ -193,6 +195,16 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "youtrack.createBranch",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "inline@1"
+        },
+        {
+          "command": "youtrack.openInBrowser",
+          "when": "view == youtrack.issues && viewItem == issue",
+          "group": "inline@2"
+        },
         {
           "command": "youtrack.startWork",
           "when": "view == youtrack.issues && viewItem == issue",

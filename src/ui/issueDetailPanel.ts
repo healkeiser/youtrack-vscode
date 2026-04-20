@@ -27,6 +27,7 @@ export class IssueDetailPanel {
       'youtrackIssue', issueId, vscode.ViewColumn.Active,
       { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media', 'issueDetail')], retainContextWhenHidden: true },
     );
+    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack_outline.svg');
     this.panel.webview.html = this.shellHtml();
     this.panel.onDidDispose(() => IssueDetailPanel.panels.delete(issueId));
     this.panel.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
