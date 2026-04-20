@@ -48,11 +48,13 @@ body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
 /* Letter badge */
 .badge-letter {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%;
+  width: 1.35em; height: 1.35em; border-radius: 50%;
+  line-height: 1;
   font-size: 0.85em; font-weight: 700; color: white;
   background: var(--vscode-descriptionForeground);
   flex-shrink: 0;
   vertical-align: middle;
+  text-align: center;
 }
 .state-dot {
   width: 10px; height: 10px; border-radius: 50%;
