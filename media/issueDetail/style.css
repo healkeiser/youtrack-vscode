@@ -36,17 +36,9 @@
   margin-top: 0.5rem;
   overflow-x: auto;
   scrollbar-width: thin;
+  align-items: center;
 }
-.toolbar button {
-  padding: 0.4rem 0.8rem;
-  border-radius: 3px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.toolbar button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }
-.toolbar button.primary:hover { background: var(--vscode-button-hoverBackground); }
-.toolbar button:not(.primary) { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-color: var(--vscode-button-border, transparent); }
-.toolbar button:not(.primary):hover { background: var(--vscode-button-secondaryHoverBackground); }
+.toolbar .btn { flex-shrink: 0; }
 
 .side { padding: 1rem; position: sticky; top: 1rem; }
 .side-field {
@@ -165,11 +157,6 @@
 .editable-view { cursor: text; }
 .editable-view .summary, .editable-view .description { cursor: text; }
 .edit-actions { display: flex; gap: 0.35rem; }
-.edit-actions button { padding: 0.35rem 0.9rem; border-radius: 3px; border: none; }
-.edit-actions button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-.edit-actions button.primary:hover { background: var(--vscode-button-hoverBackground); }
-.edit-actions button:not(.primary) { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
-.edit-actions button:not(.primary):hover { background: var(--vscode-button-secondaryHoverBackground); }
 
 /* Rendered markdown body */
 .md-body > *:first-child { margin-top: 0; }
@@ -223,16 +210,7 @@ form.log-time label { color: var(--vscode-descriptionForeground); }
 form.log-time input[name="duration"] { max-width: 180px; }
 form.log-time input[name="date"]     { max-width: 200px; }
 form.log-time select                  { max-width: 260px; }
-form.log-time button {
-  grid-column: 2;
-  justify-self: start;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  padding: 0.45rem 1.2rem;
-  border: none;
-  border-radius: 3px;
-  margin-top: 0.3rem;
-}
+form.log-time button[type="submit"] { grid-column: 2; justify-self: start; margin-top: 0.3rem; }
 
 /* Comment form — fills section */
 form.add-comment { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -247,15 +225,7 @@ form.add-comment textarea {
   border-top-right-radius: 0;
   border-top: none;
 }
-form.add-comment button[type="submit"] {
-  align-self: flex-start;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  padding: 0.45rem 1.2rem;
-  border: none;
-  border-radius: 3px;
-  margin-top: 0.3rem;
-}
+form.add-comment button[type="submit"] { align-self: flex-start; margin-top: 0.3rem; }
 
 .md-tabs {
   display: flex;
@@ -312,21 +282,8 @@ form.add-comment button[type="submit"] {
 .comment-toolbar button:hover { background: var(--vscode-toolbar-hoverBackground, var(--vscode-editorWidget-background)); }
 .comment-toolbar .sep { width: 1px; background: var(--vscode-panel-border); margin: 0.15rem 0.3rem; }
 
-/* Inline collapsible trigger (shared by Add comment and Add spent time) */
-.inline-toggle {
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  border: 1px solid var(--vscode-button-border, transparent);
-  padding: 0.4rem 0.9rem;
-  cursor: pointer;
-  font-size: 0.95em;
-  text-align: left;
-  margin-top: 0.75rem;
-  border-radius: 3px;
-}
-.inline-toggle:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-}
+/* Inline collapsible trigger layout — visual style comes from .btn */
+.inline-toggle { margin-top: 0.75rem; text-align: left; }
 .collapsed { display: none !important; }
 
 /* Clickable side-panel pills */
@@ -334,11 +291,4 @@ form.add-comment button[type="submit"] {
 .editable-pill:hover { background: var(--vscode-list-hoverBackground); }
 .editable-pill + .editable-pill { border-top: 1px solid var(--vscode-panel-border); }
 
-/* Icon-only toolbar buttons */
-.toolbar .icon-btn {
-  padding: 0.3rem 0.55rem;
-  font-size: 1.05em;
-  min-width: 2em;
-  text-align: center;
-}
 .toolbar-gap { flex: 1; }

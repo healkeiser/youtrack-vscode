@@ -119,28 +119,50 @@ body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
   margin: 0.15em 0.2em 0.15em 0;
 }
 
-/* Inputs & buttons */
+/* Inputs & buttons — single baseline so everything inherits the body font
+   and behaves identically across panels. */
 input, select, textarea, button {
   background: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   border: 1px solid var(--vscode-input-border);
   padding: 0.4rem 0.55rem;
   border-radius: 3px;
-  font-size: inherit;
+  font-size: 1em;
   font-family: inherit;
   line-height: 1.4;
 }
-button { cursor: pointer; border: 1px solid transparent; }
+button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
 
-.btn-primary {
+/* Button component — use these classes on any <button> that's a real
+   action control so it picks up the shared sizing, typography, and
+   theme colors. .btn is the secondary style; add .primary for the
+   accented variant; add .icon for compact icon-only buttons. */
+.btn {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, transparent);
+  padding: 0.4rem 0.9rem;
+  border-radius: 3px;
+  font-size: 1em;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.btn:hover { background: var(--vscode-button-secondaryHoverBackground); }
+.btn.primary {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border-color: transparent;
 }
-.btn-primary:hover { background: var(--vscode-button-hoverBackground); }
-.btn-secondary {
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  border-color: var(--vscode-button-border, transparent);
+.btn.primary:hover { background: var(--vscode-button-hoverBackground); }
+.btn.icon {
+  padding: 0.35rem 0.6rem;
+  min-width: 2em;
+  text-align: center;
 }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Back-compat aliases */
+.btn-primary   { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }
+.btn-primary:hover   { background: var(--vscode-button-hoverBackground); }
+.btn-secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-color: var(--vscode-button-border, transparent); }
 .btn-secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }

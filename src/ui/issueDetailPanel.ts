@@ -257,8 +257,8 @@ export class IssueDetailPanel {
               <textarea name="text" required>${escapeHtml(c.text)}</textarea>
               <div class="md-preview md-body" hidden></div>
               <div class="edit-actions">
-                <button type="submit" class="primary">Save</button>
-                <button type="button" data-comment-edit-cancel>Cancel</button>
+                <button type="submit" class="btn primary">Save</button>
+                <button type="button" class="btn" data-comment-edit-cancel>Cancel</button>
               </div>
             </form>` : '';
       const editBtn = isMine ? `<button type="button" class="comment-edit-btn" data-edit-comment="${escapeHtml(c.id)}" title="Edit">✎</button>` : '';
@@ -306,17 +306,17 @@ export class IssueDetailPanel {
               <form class="editable-edit summary-edit" data-edit-form="summary" hidden>
                 <input type="text" name="text" value="${escapeHtml(issue.summary)}" required>
                 <div class="edit-actions">
-                  <button type="submit" class="primary">Save</button>
-                  <button type="button" data-edit-cancel="summary">Cancel</button>
+                  <button type="submit" class="btn primary">Save</button>
+                  <button type="button" class="btn" data-edit-cancel="summary">Cancel</button>
                 </div>
               </form>
             </div>
             <div class="toolbar">
-              <button class="primary" data-cmd="startWork" title="Transition state and create a branch">▶ Start Work</button>
-              <button data-cmd="createBranch" title="Create git branch from issue">Branch</button>
+              <button class="btn primary" data-cmd="startWork" title="Transition state and create a branch">▶ Start Work</button>
+              <button class="btn" data-cmd="createBranch" title="Create git branch from issue">Branch</button>
               <span class="toolbar-gap"></span>
-              <button class="icon-btn" data-cmd="copyLink" title="Copy issue link">⧉</button>
-              <button class="icon-btn" data-cmd="openInBrowser" title="Open in browser">↗</button>
+              <button class="btn icon" data-cmd="copyLink" title="Copy issue link">⧉</button>
+              <button class="btn icon" data-cmd="openInBrowser" title="Open in browser">↗</button>
             </div>
             <div class="editable" data-field="description">
               <div class="editable-view">
@@ -328,8 +328,8 @@ export class IssueDetailPanel {
                 <textarea name="text" placeholder="Markdown supported">${escapeHtml(issue.description)}</textarea>
                 <div class="md-preview md-body" hidden></div>
                 <div class="edit-actions">
-                  <button type="submit" class="primary">Save</button>
-                  <button type="button" data-edit-cancel="description">Cancel</button>
+                  <button type="submit" class="btn primary">Save</button>
+                  <button type="button" class="btn" data-edit-cancel="description">Cancel</button>
                 </div>
               </form>
             </div>
@@ -338,23 +338,23 @@ export class IssueDetailPanel {
           <div class="section">
             <h3>Activity</h3>
             ${activityHtml}
-            <button type="button" class="inline-toggle" data-inline-toggle="comment">+ Add a comment</button>
+            <button type="button" class="btn inline-toggle" data-inline-toggle="comment">+ Add a comment</button>
             <form class="add-comment md-form collapsed" data-collapsible="comment">
               ${formattingToolbarHtml()}
               <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
               <div class="md-preview md-body" hidden></div>
-              <button type="submit">Post Comment</button>
+              <button type="submit" class="btn primary">Post Comment</button>
             </form>
           </div>
           <div class="section">
             <h3>Log time</h3>
-            <button type="button" class="inline-toggle" data-inline-toggle="logtime">+ Add spent time</button>
+            <button type="button" class="btn inline-toggle" data-inline-toggle="logtime">+ Add spent time</button>
             <form class="log-time collapsed" data-collapsible="logtime">
               <label>Duration</label><input name="duration" placeholder="1h30m" required>
               <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
               <label>Type</label><select name="type">${typeOpts}</select>
               <label>Note</label><input name="text" placeholder="optional">
-              <button type="submit">Log</button>
+              <button type="submit" class="btn primary">Log</button>
             </form>
           </div>
         </div>
