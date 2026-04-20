@@ -138,6 +138,17 @@
   padding: 0.6rem;
   resize: vertical;
 }
+/* When a toolbar precedes the textarea, merge them visually */
+.editable-edit .comment-toolbar + textarea {
+  margin-top: 0;
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.editable-edit .comment-toolbar { margin-bottom: 0; }
+/* Double-click-to-edit hint: subtle tilt of the cursor on view */
+.editable-view { cursor: text; }
+.editable-view .summary, .editable-view .description { cursor: text; }
 .edit-actions { display: flex; gap: 0.35rem; }
 .edit-actions button { padding: 0.35rem 0.9rem; border-radius: 3px; border: none; }
 .edit-actions button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }

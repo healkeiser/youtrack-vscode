@@ -94,6 +94,25 @@ function valueAsText(v: CustomFieldValue): string {
   }
 }
 
+function formattingToolbarHtml(): string {
+  return `
+    <div class="comment-toolbar">
+      <button type="button" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+      <button type="button" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+      <button type="button" data-md="strike" title="Strikethrough"><s>S</s></button>
+      <button type="button" data-md="code" title="Inline code (Ctrl+E)">&lt;/&gt;</button>
+      <button type="button" data-md="codeblock" title="Code block">{ }</button>
+      <button type="button" data-md="link" title="Link (Ctrl+K)">🔗</button>
+      <span class="sep"></span>
+      <button type="button" data-md="ul" title="Bulleted list">•</button>
+      <button type="button" data-md="ol" title="Numbered list">1.</button>
+      <button type="button" data-md="quote" title="Quote">&gt;</button>
+      <span class="sep"></span>
+      <button type="button" data-md="mention" title="Mention user">@</button>
+    </div>
+  `;
+}
+
 function renderTag(tag: Tag): string {
   const bg = tag.color?.background || '';
   const fg = tag.color?.foreground || '';
@@ -274,6 +293,7 @@ export class IssueDetailPanel {
                 <button class="edit-btn edit-btn-floating" data-edit="description" title="Edit description">✎</button>
               </div>
               <form class="editable-edit description-edit" data-edit-form="description" hidden>
+                ${formattingToolbarHtml()}
                 <textarea name="text" placeholder="Markdown supported">${escapeHtml(issue.description)}</textarea>
                 <div class="edit-actions">
                   <button type="submit" class="primary">Save</button>
@@ -301,20 +321,7 @@ export class IssueDetailPanel {
           <div class="section">
             <h3>Add comment</h3>
             <form class="add-comment">
-              <div class="comment-toolbar">
-                <button type="button" data-md="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
-                <button type="button" data-md="italic" title="Italic (Ctrl+I)"><em>I</em></button>
-                <button type="button" data-md="strike" title="Strikethrough"><s>S</s></button>
-                <button type="button" data-md="code" title="Inline code (Ctrl+E)">&lt;/&gt;</button>
-                <button type="button" data-md="codeblock" title="Code block">{ }</button>
-                <button type="button" data-md="link" title="Link (Ctrl+K)">🔗</button>
-                <span class="sep"></span>
-                <button type="button" data-md="ul" title="Bulleted list">•</button>
-                <button type="button" data-md="ol" title="Numbered list">1.</button>
-                <button type="button" data-md="quote" title="Quote">&gt;</button>
-                <span class="sep"></span>
-                <button type="button" data-md="mention" title="Mention user">@</button>
-              </div>
+              ${formattingToolbarHtml()}
               <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
               <button type="submit">Post Comment</button>
             </form>

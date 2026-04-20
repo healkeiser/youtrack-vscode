@@ -1,4 +1,5 @@
 const vscode = acquireVsCodeApi();
+let pendingMentionTarget = null;
 
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
@@ -6,18 +7,16 @@ window.addEventListener('message', (evt) => {
     document.getElementById('root').innerHTML = msg.html;
     wireForms();
     wireToolbar();
-    wireCommentToolbar();
+    wireCommentToolbars();
     wireLogTimeToggle();
     wireEditables();
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
-    insertAtCursor(getCommentTextarea(), '@' + msg.login + ' ');
+    const target = pendingMentionTarget ?? document.querySelector('form.add-comment textarea');
+    insertAtCursor(target, '@' + msg.login + ' ');
+    pendingMentionTarget = null;
   }
 });
-
-function getCommentTextarea() {
-  return document.querySelector('form.add-comment textarea');
-}
 
 function insertAtCursor(el, text) {
   if (!el) return;
@@ -98,38 +97,45 @@ function wireToolbar() {
   });
 }
 
-function wireCommentToolbar() {
-  const bar = document.querySelector('.comment-toolbar');
-  if (!bar) return;
-  const ta = getCommentTextarea();
-  bar.querySelectorAll('button[data-md]').forEach((b) => {
-    b.addEventListener('click', (e) => {
-      e.preventDefault();
-      const kind = b.dataset.md;
-      switch (kind) {
-        case 'bold':    wrapSelection(ta, '**', '**'); break;
-        case 'italic':  wrapSelection(ta, '*', '*'); break;
-        case 'strike':  wrapSelection(ta, '~~', '~~'); break;
-        case 'code':    wrapSelection(ta, '`', '`'); break;
-        case 'codeblock': wrapSelection(ta, '\n```\n', '\n```\n'); break;
-        case 'link':    wrapSelection(ta, '[', '](https://)'); break;
-        case 'quote':   prefixLines(ta, '> '); break;
-        case 'ul':      prefixLines(ta, '- '); break;
-        case 'ol':      prefixLines(ta, (_l, i) => `${i + 1}. `); break;
-        case 'mention': vscode.postMessage({ type: 'pickMention' }); break;
-      }
-    });
-  });
-
-  if (ta) {
-    ta.addEventListener('keydown', (e) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      if (e.key === 'b') { e.preventDefault(); wrapSelection(ta, '**', '**'); }
-      else if (e.key === 'i') { e.preventDefault(); wrapSelection(ta, '*', '*'); }
-      else if (e.key === 'k') { e.preventDefault(); wrapSelection(ta, '[', '](https://)'); }
-      else if (e.key === 'e') { e.preventDefault(); wrapSelection(ta, '`', '`'); }
-    });
+function applyMd(kind, ta) {
+  switch (kind) {
+    case 'bold':    wrapSelection(ta, '**', '**'); break;
+    case 'italic':  wrapSelection(ta, '*', '*'); break;
+    case 'strike':  wrapSelection(ta, '~~', '~~'); break;
+    case 'code':    wrapSelection(ta, '`', '`'); break;
+    case 'codeblock': wrapSelection(ta, '\n```\n', '\n```\n'); break;
+    case 'link':    wrapSelection(ta, '[', '](https://)'); break;
+    case 'quote':   prefixLines(ta, '> '); break;
+    case 'ul':      prefixLines(ta, '- '); break;
+    case 'ol':      prefixLines(ta, (_l, i) => `${i + 1}. `); break;
+    case 'mention':
+      pendingMentionTarget = ta;
+      vscode.postMessage({ type: 'pickMention' });
+      break;
   }
+}
+
+function wireCommentToolbars() {
+  document.querySelectorAll('.comment-toolbar').forEach((bar) => {
+    const form = bar.closest('form');
+    const ta = form?.querySelector('textarea');
+    bar.querySelectorAll('button[data-md]').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        applyMd(b.dataset.md, ta);
+      });
+    });
+
+    if (ta) {
+      ta.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.key === 'b') { e.preventDefault(); applyMd('bold', ta); }
+        else if (e.key === 'i') { e.preventDefault(); applyMd('italic', ta); }
+        else if (e.key === 'k') { e.preventDefault(); applyMd('link', ta); }
+        else if (e.key === 'e') { e.preventDefault(); applyMd('code', ta); }
+      });
+    }
+  });
 }
 
 function wireEditables() {
@@ -141,22 +147,37 @@ function wireEditables() {
     const cancel = form?.querySelector('[data-edit-cancel]');
     const editBtn = view?.querySelector('[data-edit]');
 
-    editBtn?.addEventListener('click', () => {
+    const enterEdit = () => {
       view.hidden = true;
       form.hidden = false;
       input?.focus();
-    });
-    cancel?.addEventListener('click', () => {
+      if (input && 'setSelectionRange' in input) {
+        const len = input.value.length;
+        input.setSelectionRange(len, len);
+      }
+    };
+    const leaveEdit = () => {
       form.hidden = true;
       view.hidden = false;
+    };
+
+    editBtn?.addEventListener('click', enterEdit);
+    cancel?.addEventListener('click', leaveEdit);
+
+    view?.addEventListener('dblclick', (e) => {
+      // ignore double-clicks on the edit button itself, on links, and on input controls
+      const target = e.target;
+      if (target.closest('a, button, input, select, textarea')) return;
+      enterEdit();
     });
+
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
       const value = input?.value ?? '';
       vscode.postMessage({ type: 'updateField', field, value });
     });
     input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { form.hidden = true; view.hidden = false; }
+      if (e.key === 'Escape') { leaveEdit(); }
       else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { form.requestSubmit(); }
     });
   });
