@@ -92,6 +92,16 @@ function renderUserChip(user: User | null | undefined): string {
   return `<span class="user-chip">${renderAvatar(user)}<span>${escapeHtml(user.fullName || user.login)}</span></span>`;
 }
 
+function formatBytes(bytes: number): string {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
 function formatPeriod(seconds: number): string {
   const total = Number(seconds) || 0;
   if (!total) return '—';
@@ -309,9 +319,21 @@ export class IssueDetailPanel {
         }).join('')
       : '';
 
-    const attachHtml = attachments.map((a) =>
-      `<div class="attachment"><span>📎</span><a href="${escapeHtml(a.url)}">${escapeHtml(a.name)}</a><span style="color:var(--vscode-descriptionForeground);font-size:0.85em">${a.size} B</span></div>`
-    ).join('');
+    const attachHtml = attachments.map((a) => {
+      const isImage = (a.mimeType ?? '').toLowerCase().startsWith('image/')
+        || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
+      const size = formatBytes(a.size);
+      if (isImage) {
+        return `<a class="attachment-tile image" href="${escapeHtml(a.url)}" title="${escapeHtml(a.name)} — ${size}">
+            <img src="${escapeHtml(a.url)}" alt="${escapeHtml(a.name)}">
+            <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
+          </a>`;
+      }
+      return `<a class="attachment-tile file" href="${escapeHtml(a.url)}" title="${escapeHtml(a.name)} — ${size}">
+          <i class="codicon codicon-file"></i>
+          <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
+        </a>`;
+    }).join('');
 
     type Entry = { ts: number; html: string };
     const entries: Entry[] = [];
@@ -402,7 +424,16 @@ export class IssueDetailPanel {
               </form>
             </div>
           </div>
-          ${attachments.length ? `<div class="section"><h3>Attachments</h3>${attachHtml}</div>` : ''}
+          <div class="section">
+            <div class="section-head">
+              <h3>Attachments</h3>
+              <button type="button" class="btn" data-attach-pick><i class="codicon codicon-cloud-upload"></i> Attach</button>
+            </div>
+            ${attachments.length
+              ? `<div class="attachment-grid">${attachHtml}</div>`
+              : `<div class="attachment-empty">No attachments yet. Click <b>Attach</b> or drop files anywhere on this panel.</div>`}
+            <input type="file" data-attach-input multiple hidden>
+          </div>
           <div class="section">
             <h3>Activity</h3>
             ${activityHtml}

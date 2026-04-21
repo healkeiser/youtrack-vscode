@@ -71,8 +71,59 @@
 .activity-entry.work .body strong { color: var(--vscode-foreground); }
 .no-activity { color: var(--vscode-descriptionForeground); font-style: italic; }
 
-.attachment { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; }
-.attachment a { color: var(--vscode-textLink-foreground); }
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem;
+}
+.section-head h3 { margin: 0; }
+
+.attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.attachment-tile {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  transition: border-color 0.1s;
+}
+.attachment-tile:hover { border-color: var(--vscode-focusBorder); }
+.attachment-tile.image img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+  background: var(--vscode-editor-background);
+}
+.attachment-tile.file {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+}
+.attachment-tile.file .codicon { font-size: 1.4em; color: var(--vscode-descriptionForeground); flex: 0 0 auto; }
+.attachment-tile .attachment-meta {
+  display: flex; flex-direction: column;
+  padding: 0.35rem 0.5rem;
+  min-width: 0;
+  font-size: 0.85em;
+}
+.attachment-tile.file .attachment-meta { padding: 0; }
+.attachment-tile .name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.attachment-tile .size { color: var(--vscode-descriptionForeground); font-size: 0.9em; }
+.attachment-empty {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
 
 .mention {
   color: var(--vscode-textLink-foreground);

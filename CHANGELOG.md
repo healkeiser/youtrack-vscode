@@ -3,6 +3,11 @@
 All notable changes to this extension are documented here.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] — 2026-04-21
+
+### Added
+- **Attachment thumbnails & picker:** image attachments render as thumbnail tiles (click to open full size), non-images as file cards with codicon + name + size. A new **Attach** button in the Attachments section opens a native file picker (multi-select); drag-and-drop onto the panel still works, now hinted by an empty-state message.
+
 ## [0.3.5] — 2026-04-21
 
 ### Added
@@ -63,6 +68,7 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Branch-from-issue flow with a configurable `youtrack.branch.template` (`{id}`, `{summary}`, `{type}`, `{state}`, `{assignee}`, `{project}`, `{field:<Name>}` placeholders).
 - Security hardening: strict CSP with per-load nonces on every webview, `sanitize-html` on all rendered markdown.
 
+[0.4.0]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.4.0
 [0.3.5]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.3.5
 [0.3.4]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.3.4
 [0.3.3]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.3.3

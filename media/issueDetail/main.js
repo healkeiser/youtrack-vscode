@@ -17,6 +17,7 @@ window.addEventListener('message', (evt) => {
     wireLinkChips();
     wireDraftPersistence();
     wireMentionAutocomplete();
+    wireAttachPicker();
   }
   if (msg.type === 'userRoster' && Array.isArray(msg.users)) {
     mentionRoster.clear();
@@ -245,6 +246,26 @@ function wireLogTimeToggle() {
         firstField?.focus();
       }
     });
+  });
+}
+
+function wireAttachPicker() {
+  const btn = document.querySelector('[data-attach-pick]');
+  const input = document.querySelector('[data-attach-input]');
+  if (!btn || !input) return;
+  btn.addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const files = input.files ? Array.from(input.files) : [];
+    for (const file of files) {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      vscode.postMessage({
+        type: 'uploadAttachment',
+        name: file.name,
+        mime: file.type || 'application/octet-stream',
+        dataBase64: toBase64(buf),
+      });
+    }
+    input.value = '';
   });
 }
 
