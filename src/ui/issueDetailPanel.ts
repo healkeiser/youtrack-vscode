@@ -1,13 +1,11 @@
 import * as vscode from 'vscode';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
 import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag, IssueLink } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
-import { getNonce } from './webviewSecurity';
+import { renderPanelHtml } from './webviewSecurity';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -213,17 +211,7 @@ export class IssueDetailPanel {
   }
 
   private shellHtml(): string {
-    const mediaRoot = vscode.Uri.joinPath(this.extensionUri, 'media');
-    const panelUri = vscode.Uri.joinPath(mediaRoot, 'issueDetail');
-    const tpl = fs.readFileSync(path.join(panelUri.fsPath, 'index.html'), 'utf-8');
-    const nonce = getNonce();
-    return tpl
-      .replace('{{CSP_SOURCE}}', this.panel.webview.cspSource)
-      .replace(/\{\{NONCE\}\}/g, nonce)
-      .replace('{{CODICONS}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')).toString())
-      .replace('{{SHARED}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'shared.css')).toString())
-      .replace('{{STYLE}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'style.css')).toString())
-      .replace('{{MAIN}}', this.panel.webview.asWebviewUri(vscode.Uri.joinPath(panelUri, 'main.js')).toString());
+    return renderPanelHtml(this.panel.webview, this.extensionUri, 'issueDetail');
   }
 
   private async reload(): Promise<void> {

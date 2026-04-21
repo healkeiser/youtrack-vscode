@@ -37,35 +37,10 @@ function insertAtCursor(el, text) {
   el.setSelectionRange(caret, caret);
 }
 
-function wrapSelection(el, before, after) {
-  if (!el) return;
-  el.focus();
-  const start = el.selectionStart ?? 0;
-  const end = el.selectionEnd ?? 0;
-  const selected = el.value.slice(start, end);
-  const replacement = before + selected + after;
-  el.value = el.value.slice(0, start) + replacement + el.value.slice(end);
-  const caretStart = start + before.length;
-  const caretEnd = caretStart + selected.length;
-  el.setSelectionRange(caretStart, caretEnd);
-}
-
-function prefixLines(el, prefix) {
-  if (!el) return;
-  el.focus();
-  const start = el.selectionStart ?? 0;
-  const end = el.selectionEnd ?? 0;
-  const text = el.value;
-  const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-  const lineEnd = text.indexOf('\n', end);
-  const effectiveEnd = lineEnd === -1 ? text.length : lineEnd;
-  const block = text.slice(lineStart, effectiveEnd);
-  const prefixed = block.split('\n').map((line, idx) => (
-    typeof prefix === 'function' ? prefix(line, idx) : prefix + line
-  )).join('\n');
-  el.value = text.slice(0, lineStart) + prefixed + text.slice(effectiveEnd);
-  el.setSelectionRange(lineStart, lineStart + prefixed.length);
-}
+const onMention = (ta) => {
+  pendingMentionTarget = ta;
+  vscode.postMessage({ type: 'pickMention' });
+};
 
 function wireForms() {
   const logForm = document.querySelector('form.log-time');
@@ -106,78 +81,17 @@ function wireToolbar() {
   });
 }
 
-function applyMd(kind, ta) {
-  switch (kind) {
-    case 'bold':    wrapSelection(ta, '**', '**'); break;
-    case 'italic':  wrapSelection(ta, '*', '*'); break;
-    case 'strike':  wrapSelection(ta, '~~', '~~'); break;
-    case 'code':    wrapSelection(ta, '`', '`'); break;
-    case 'codeblock': wrapSelection(ta, '\n```\n', '\n```\n'); break;
-    case 'link':    wrapSelection(ta, '[', '](https://)'); break;
-    case 'quote':   prefixLines(ta, '> '); break;
-    case 'ul':      prefixLines(ta, '- '); break;
-    case 'ol':      prefixLines(ta, (_l, i) => `${i + 1}. `); break;
-    case 'mention':
-      pendingMentionTarget = ta;
-      vscode.postMessage({ type: 'pickMention' });
-      break;
-  }
-}
-
 function wireCommentToolbars() {
   document.querySelectorAll('.comment-toolbar').forEach((bar) => {
-    const form = bar.closest('form');
-    const ta = form?.querySelector('textarea');
-    bar.querySelectorAll('button[data-md]').forEach((b) => {
-      b.addEventListener('click', (e) => {
-        e.preventDefault();
-        applyMd(b.dataset.md, ta);
-      });
-    });
-
-    if (ta) {
-      ta.addEventListener('keydown', (e) => {
-        if (!(e.ctrlKey || e.metaKey)) return;
-        if (e.key === 'b') { e.preventDefault(); applyMd('bold', ta); }
-        else if (e.key === 'i') { e.preventDefault(); applyMd('italic', ta); }
-        else if (e.key === 'k') { e.preventDefault(); applyMd('link', ta); }
-        else if (e.key === 'e') { e.preventDefault(); applyMd('code', ta); }
-      });
-    }
+    const ta = bar.closest('form')?.querySelector('textarea');
+    YT.mdEditor.wireToolbar(bar, ta, { onMention });
   });
 }
 
-let mdFormCounter = 0;
 function wireMdTabs() {
   document.querySelectorAll('.md-form').forEach((form) => {
-    if (!form.id) form.id = `md-form-${++mdFormCounter}`;
-    const tabs = form.querySelectorAll('.md-tab');
-    const toolbar = form.querySelector('.comment-toolbar');
-    const textarea = form.querySelector('textarea');
-    const preview = form.querySelector('.md-preview');
-    if (!tabs.length || !textarea || !preview) return;
-
-    const showWrite = () => {
-      tabs.forEach((t) => t.classList.toggle('active', t.dataset.mdTab === 'write'));
-      if (toolbar) toolbar.hidden = false;
-      textarea.hidden = false;
-      preview.hidden = true;
-    };
-    const showPreview = () => {
-      tabs.forEach((t) => t.classList.toggle('active', t.dataset.mdTab === 'preview'));
-      if (toolbar) toolbar.hidden = true;
-      textarea.hidden = true;
-      preview.hidden = false;
-      preview.innerHTML = '<p style="color:var(--vscode-descriptionForeground);font-style:italic">Rendering…</p>';
-      vscode.postMessage({ type: 'renderPreview', formId: form.id, text: textarea.value });
-    };
-
-    tabs.forEach((t) => {
-      t.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (t.dataset.mdTab === 'preview') showPreview();
-        else showWrite();
-      });
+    YT.mdEditor.wireMdTabs(form, (f, text) => {
+      vscode.postMessage({ type: 'renderPreview', formId: f.id, text });
     });
   });
 }

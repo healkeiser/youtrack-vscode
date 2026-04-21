@@ -1,27 +1,8 @@
-.layout {
-  max-width: 1600px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 1rem;
-  padding: 1rem;
-  align-items: start;
-}
-@media (max-width: 820px) {
-  .layout { grid-template-columns: 1fr; }
-  .side { order: -1; }
-}
+/* issueDetail — panel-specific rules only. Layout, .id-row, .side /
+   .side-field, .section, .md-tabs, .comment-toolbar, .md-preview and
+   .md-body live in shared.css. */
 
 .header { padding: 1rem; }
-.id-row {
-  display: flex; align-items: center; gap: 0.4rem;
-  color: var(--vscode-descriptionForeground);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
-}
-.id-row .id { font-weight: 600; }
-.id-row .sep { opacity: 0.5; }
 .summary {
   font-size: 1.3em;
   font-weight: 600;
@@ -40,22 +21,9 @@
 }
 .toolbar .btn { flex-shrink: 0; }
 
-.side { padding: 1rem; position: sticky; top: 1rem; }
-.side-field {
-  display: grid;
-  grid-template-columns: 90px 1fr;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  align-items: center;
-  min-height: 2rem;
-}
-.side-field + .side-field { border-top: 1px solid var(--vscode-panel-border); }
-.side-field .label { color: var(--vscode-descriptionForeground); }
-.side-field .value { overflow: hidden; text-overflow: ellipsis; word-break: break-word; line-height: 1.4; }
 .side-field .badge-letter { margin-right: 0.45rem; }
 
-.section { padding: 1rem; margin-top: 0.85rem; }
-.section h3 { padding-bottom: 0.5rem; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 0.85rem; }
+.section { margin-top: 0.85rem; }
 
 .description {
   line-height: 1.55;
@@ -189,47 +157,6 @@ body.drop-active::after {
 .editable-view .summary, .editable-view .description { cursor: text; }
 .edit-actions { display: flex; gap: 0.35rem; }
 
-/* Rendered markdown body */
-.md-body > *:first-child { margin-top: 0; }
-.md-body > *:last-child { margin-bottom: 0; }
-.md-body p { margin: 0.5em 0; }
-.md-body h1, .md-body h2, .md-body h3, .md-body h4 { margin: 0.9em 0 0.35em 0; line-height: 1.3; }
-.md-body h1 { font-size: 1.3em; }
-.md-body h2 { font-size: 1.15em; }
-.md-body h3 { font-size: 1.05em; }
-.md-body ul, .md-body ol { margin: 0.5em 0; padding-left: 1.5rem; }
-.md-body li { margin: 0.15em 0; }
-.md-body li > p { margin: 0; }
-.md-body li > p + p { margin-top: 0.35em; }
-.md-body code {
-  font-family: var(--vscode-editor-font-family);
-  background: var(--vscode-textBlockQuote-background, var(--vscode-editor-inactiveSelectionBackground));
-  padding: 0.1em 0.35em;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-.md-body pre {
-  background: var(--vscode-textBlockQuote-background, var(--vscode-editor-inactiveSelectionBackground));
-  padding: 0.7rem;
-  border-radius: 4px;
-  overflow-x: auto;
-  font-family: var(--vscode-editor-font-family);
-  font-size: 0.9em;
-}
-.md-body pre code { background: transparent; padding: 0; }
-.md-body blockquote {
-  border-left: 3px solid var(--vscode-panel-border);
-  margin: 0.5rem 0;
-  padding-left: 0.8rem;
-  color: var(--vscode-descriptionForeground);
-}
-.md-body a { color: var(--vscode-textLink-foreground); }
-.md-body img { max-width: 100%; }
-.md-body table { border-collapse: collapse; margin: 0.5rem 0; }
-.md-body th, .md-body td { border: 1px solid var(--vscode-panel-border); padding: 0.3rem 0.6rem; }
-.md-body th { background: var(--vscode-editor-inactiveSelectionBackground); }
-.md-body hr { border: none; border-top: 1px solid var(--vscode-panel-border); margin: 1rem 0; }
-
 /* Log time form — fills section */
 form.log-time {
   display: grid;
@@ -257,61 +184,6 @@ form.add-comment textarea {
   border-top: none;
 }
 form.add-comment button[type="submit"] { align-self: flex-start; margin-top: 0.3rem; }
-
-.md-tabs {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0 0.1rem;
-  border-bottom: 1px solid var(--vscode-panel-border);
-  margin-bottom: 0;
-}
-.md-tab {
-  background: transparent;
-  color: var(--vscode-descriptionForeground);
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  padding: 0.4rem 0.5rem;
-  margin-bottom: -1px;
-  cursor: pointer;
-  font-size: 0.95em;
-}
-.md-tab.active {
-  color: var(--vscode-foreground);
-  border-bottom-color: var(--vscode-focusBorder);
-  font-weight: 500;
-  background: transparent;
-}
-.md-tab:not(.active):hover { color: var(--vscode-foreground); }
-
-.md-preview {
-  min-height: 5rem;
-  padding: 0.7rem 0.2rem;
-  background: transparent;
-}
-
-.comment-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.15rem;
-  padding: 0.35rem 0.4rem;
-  background: var(--vscode-editor-inactiveSelectionBackground);
-  border: 1px solid var(--vscode-input-border);
-  border-bottom: none;
-  border-top-left-radius: 3px;
-  border-top-right-radius: 3px;
-}
-.comment-toolbar button {
-  background: transparent;
-  color: var(--vscode-foreground);
-  border: 1px solid transparent;
-  padding: 0.25rem 0.5rem;
-  border-radius: 2px;
-  min-width: 1.8em;
-  line-height: 1;
-}
-.comment-toolbar button:hover { background: var(--vscode-toolbar-hoverBackground, var(--vscode-editorWidget-background)); }
-.comment-toolbar .sep { width: 1px; background: var(--vscode-panel-border); margin: 0.15rem 0.3rem; }
 
 /* Inline collapsible trigger layout — visual style comes from .btn */
 .inline-toggle { margin-top: 0.75rem; text-align: left; }
