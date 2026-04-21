@@ -43,7 +43,7 @@ Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with
 ### Editor-surface affordances
 - **Hover** any `ABC-123`-shaped token in any file → summary, state, assignee, quick-open link.
 - **CodeLens** above any `TODO` / `FIXME` / `XXX` / `HACK` / `NOTE` comment referencing an issue key → `ABC-123 · In Progress · <summary>`; click opens the panel.
-- **URI handler**: `vscode://valentin-beaumont.youtrack-vscode/ABC-123` opens the issue.
+- **URI handler**: `vscode://valentinbeaumont.youtrack-vscode/ABC-123` opens the issue.
 
 ### Notifications
 - Unread notifications render with a `bell-dot` icon; inline `✓` to mark one read or a "Mark All as Read" action in the view toolbar.

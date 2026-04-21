@@ -2,8 +2,8 @@
   "name": "youtrack-vscode",
   "displayName": "YouTrack",
   "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
-  "version": "0.3.8",
-  "publisher": "valentin-beaumont",
+  "version": "0.3.9",
+  "publisher": "valentinbeaumont",
   "author": {
     "name": "Valentin Beaumont",
     "email": "valentin.onze@gmail.com"
