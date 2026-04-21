@@ -50,16 +50,20 @@ function mapCustomFieldValue(raw: any, type: CustomFieldType, baseUrl?: string):
 }
 
 function inferType($type: string): CustomFieldType {
+  // Order matters: DateTime must be checked before Date (the latter is
+  // a substring of the former), and Integer/Float/Boolean before Simple
+  // (YouTrack wraps numeric and bool fields as SimpleIssueCustomField).
   if ($type.includes('EnumIssueCustomField')) return 'enum';
   if ($type.includes('StateIssueCustomField')) return 'state';
   if ($type.includes('SingleUserIssueCustomField')) return 'user';
-  if ($type.includes('SimpleIssueCustomField')) return 'string';
+  if ($type.includes('DateTimeIssueCustomField')) return 'date';
   if ($type.includes('DateIssueCustomField')) return 'date';
   if ($type.includes('PeriodIssueCustomField')) return 'period';
   if ($type.includes('IntegerIssueCustomField')) return 'int';
   if ($type.includes('FloatIssueCustomField')) return 'float';
   if ($type.includes('BooleanIssueCustomField')) return 'bool';
   if ($type.includes('VersionIssueCustomField')) return 'version';
+  if ($type.includes('SimpleIssueCustomField')) return 'string';
   return 'unknown';
 }
 

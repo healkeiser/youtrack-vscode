@@ -101,6 +101,17 @@ function formatPeriod(seconds: number): string {
   return `${m}m`;
 }
 
+// DateIssueCustomField and DateTimeIssueCustomField collapse into the
+// same `date` kind — show the time component only when it carries info
+// (i.e. the value isn't midnight local-time), otherwise render a bare
+// date. Avoids noisy "12:00:00 AM" tails on pure-date fields.
+function formatDateOrDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const isMidnight = d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
+  return isMidnight ? d.toLocaleDateString() : d.toLocaleString();
+}
+
 function valueAsText(v: CustomFieldValue): string {
   switch (v.kind) {
     case 'empty':   return '—';
@@ -108,7 +119,7 @@ function valueAsText(v: CustomFieldValue): string {
     case 'state':   return v.name ?? '—';
     case 'user':    return v.fullName ?? v.login ?? '—';
     case 'string':  return v.text ?? '—';
-    case 'date':    return v.iso ? new Date(v.iso).toLocaleDateString() : '—';
+    case 'date':    return v.iso ? formatDateOrDateTime(v.iso) : '—';
     case 'period':  return formatPeriod(v.seconds);
     case 'number':  return String(v.value ?? 0);
     case 'bool':    return v.value ? 'Yes' : 'No';
