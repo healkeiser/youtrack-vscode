@@ -382,6 +382,7 @@ export class IssueDetailPanel {
               <button class="btn" data-cmd="startTimer" title="Start a timer on this issue"><i class="codicon codicon-clock"></i>Timer</button>
               <button class="btn" data-cmd="createBranch" title="Create git branch from issue"><i class="codicon codicon-git-branch"></i>Branch</button>
               <span class="toolbar-gap"></span>
+              <button class="btn icon" data-cmd="refresh" title="Refresh this issue"><i class="codicon codicon-refresh"></i></button>
               <button class="btn icon" data-cmd="copyLink" title="Copy issue link"><i class="codicon codicon-link"></i></button>
               <button class="btn icon" data-cmd="openInBrowser" title="Open in browser"><i class="codicon codicon-link-external"></i></button>
             </div>
@@ -528,6 +529,11 @@ export class IssueDetailPanel {
       return;
     }
     if (msg.type === 'cmd') {
+      if (msg.id === 'refresh') {
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+        return;
+      }
       if (msg.id === 'editField' && typeof msg.fieldName === 'string') {
         await vscode.commands.executeCommand('youtrack.editField', { id: this.issueId, field: msg.fieldName });
         await this.reload();
