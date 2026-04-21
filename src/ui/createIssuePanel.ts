@@ -3,16 +3,24 @@ import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
 import { renderPanelHtml } from './webviewSecurity';
 
+export interface CreateIssueInitial {
+  summary?: string;
+  description?: string;
+}
+
 export class CreateIssuePanel {
   private static current: CreateIssuePanel | undefined;
   private panel: vscode.WebviewPanel;
   private projectsPromise: Promise<Array<{ id: string; shortName: string; name: string }>> | null = null;
+  private initial: CreateIssueInitial;
 
   private constructor(
     private extensionUri: vscode.Uri,
     private client: YouTrackClient,
     private onCreated?: (idReadable: string) => void,
+    initial?: CreateIssueInitial,
   ) {
+    this.initial = initial ?? {};
     this.panel = vscode.window.createWebviewPanel(
       'youtrackCreate',
       'Create Issue',
@@ -29,12 +37,21 @@ export class CreateIssuePanel {
     extensionUri: vscode.Uri,
     client: YouTrackClient,
     onCreated?: (id: string) => void,
+    initial?: CreateIssueInitial,
   ): void {
     if (CreateIssuePanel.current) {
       CreateIssuePanel.current.panel.reveal();
+      if (initial) CreateIssuePanel.current.applyInitial(initial);
       return;
     }
-    CreateIssuePanel.current = new CreateIssuePanel(extensionUri, client, onCreated);
+    CreateIssuePanel.current = new CreateIssuePanel(extensionUri, client, onCreated, initial);
+  }
+
+  private applyInitial(initial: CreateIssueInitial): void {
+    // Called when show() is invoked again while the panel is already up —
+    // merge + resend so the webview can overwrite its fields.
+    this.initial = { ...this.initial, ...initial };
+    this.panel.webview.postMessage({ type: 'prefill', initial: this.initial });
   }
 
   private shellHtml(): string {
@@ -58,7 +75,7 @@ export class CreateIssuePanel {
           this.client.listUsers('', 200).catch(() => []),
         ]);
         const defaultShortName = vscode.workspace.getConfiguration('youtrack').get<string>('defaultProject', '');
-        this.panel.webview.postMessage({ type: 'init', projects, defaultShortName, users });
+        this.panel.webview.postMessage({ type: 'init', projects, defaultShortName, users, initial: this.initial });
       } catch (e) {
         this.panel.webview.postMessage({ type: 'error', message: `Failed to load projects: ${(e as Error).message}` });
       }

@@ -2,7 +2,7 @@
   "name": "youtrack-vscode",
   "displayName": "YouTrack for VS Code",
   "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "publisher": "valentinbeaumont",
   "author": {
     "name": "Valentin Beaumont",
@@ -48,6 +48,11 @@
         "icon": "$(add)"
       },
       {
+        "command": "youtrack.createIssueFromSelection",
+        "title": "YouTrack: Create Issue from Selection",
+        "icon": "$(add)"
+      },
+      {
         "command": "youtrack.assignToMe",
         "title": "YouTrack: Assign to Me"
       },
@@ -63,6 +68,11 @@
         "command": "youtrack.postBranchActivity",
         "title": "YouTrack: Post Branch Activity to Issue",
         "icon": "$(git-commit)"
+      },
+      {
+        "command": "youtrack.insertIssueKeyInCommitMessage",
+        "title": "YouTrack: Insert Issue Key in Commit Message",
+        "icon": "$(key)"
       },
       {
         "command": "youtrack.logTime",
@@ -323,6 +333,22 @@
           "default": false,
           "description": "Copy to clipboard instead of creating the branch."
         },
+        "youtrack.commit.template": {
+          "type": "string",
+          "default": "{id}: ",
+          "markdownDescription": "Commit-message prefix applied when the current branch contains an issue key. `{id}` is replaced with the issue id. Examples:\n\n- `\"{id}: \"` → `PIPE-619: fix login bug`\n- `\"[{id}] \"` → `[PIPE-619] fix login bug`\n- `\"feat({id}): \"` → `feat(PIPE-619): fix login bug`\n- `\"\\n\\nRefs: {id}\"` as a trailing footer\n\nSee `#youtrack.commit.autoFill#` for when this template is applied automatically."
+        },
+        "youtrack.commit.autoFill": {
+          "type": "string",
+          "enum": ["off", "empty-only", "always"],
+          "enumDescriptions": [
+            "Never auto-fill. Use the 'Insert Issue Key in Commit Message' command manually.",
+            "Auto-fill once when the SCM commit box is empty on branch change or panel open.",
+            "Re-fill the SCM commit box whenever it becomes empty (e.g. after each commit)."
+          ],
+          "default": "empty-only",
+          "markdownDescription": "When to auto-apply `#youtrack.commit.template#` to the Source Control commit box."
+        },
         "youtrack.sidebar.groupBy": {
           "type": "string",
           "enum": [
@@ -368,6 +394,13 @@
       ]
     },
     "menus": {
+      "editor/context": [
+        {
+          "command": "youtrack.createIssueFromSelection",
+          "when": "editorHasSelection && youtrack.signedIn",
+          "group": "youtrack@1"
+        }
+      ],
       "view/title": [
         {
           "command": "youtrack.createIssue",

@@ -16,6 +16,7 @@ import { changeState } from './commands/changeState';
 import { changePriority } from './commands/changePriority';
 import { editFieldByName } from './commands/editCustomField';
 import { postBranchActivity } from './commands/postBranchActivity';
+import { createIssueFromSelection } from './commands/createIssueFromSelection';
 import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
@@ -27,6 +28,7 @@ import { RecentsTreeProvider } from './ui/recentsTreeProvider';
 import { NotificationsTreeProvider } from './ui/notificationsTreeProvider';
 import { TimerService } from './ui/timer';
 import { CurrentIssueBadge } from './ui/currentIssueBadge';
+import { CommitTemplateService } from './ui/commitTemplate';
 import { resolveIssueId } from './commands/resolveIssueId';
 
 interface SectionDef {
@@ -125,6 +127,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.search', async () => {
       const id = await search(client);
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
+    }),
+    vscode.commands.registerCommand('youtrack.createIssueFromSelection', () => {
+      createIssueFromSelection(context.extensionUri, client);
     }),
     vscode.commands.registerCommand('youtrack.createIssue', () => {
       CreateIssuePanel.show(context.extensionUri, client);
@@ -231,9 +236,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const timer = new TimerService(context, client);
   const currentIssue = new CurrentIssueBadge(client, cache);
+  const commitTemplate = new CommitTemplateService();
   context.subscriptions.push(
     timer,
     currentIssue,
+    commitTemplate,
+    vscode.commands.registerCommand('youtrack.insertIssueKeyInCommitMessage', () => commitTemplate.insertNow()),
     vscode.commands.registerCommand('youtrack.startTimer', async (arg?: unknown) => {
       const id = await resolveIssueId(arg);
       if (id) await timer.start(id);

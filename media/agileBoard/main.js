@@ -1,7 +1,13 @@
 const vscode = acquireVsCodeApi();
 let state = { columns: [], issuesByColumn: {} };
 let meta = { boardTitle: '', boardId: '', sprintId: '', sprints: [] };
-let sortMode = (vscode.getState()?.sortMode) ?? 'default';
+const persisted = vscode.getState() ?? {};
+let sortMode = persisted.sortMode ?? 'default';
+let filters = persisted.filters ?? { text: '', assignee: '', priority: '', tag: '' };
+
+function persist() {
+  vscode.setState({ ...(vscode.getState() ?? {}), sortMode, filters });
+}
 
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
@@ -9,6 +15,7 @@ window.addEventListener('message', (evt) => {
     state = msg.state;
     if (msg.meta) meta = msg.meta;
     renderHeader();
+    renderFilters();
     render();
   }
   if (msg.type === 'rollback') {
@@ -190,6 +197,201 @@ function renderHeader() {
     };
   }
 }
+
+// ---------- filters ----------
+function issueMatchesFilters(issue) {
+  if (filters.assignee) {
+    const u = issueAssignee(issue);
+    const login = u?.login || '';
+    if (filters.assignee === '__unassigned__') {
+      if (u) return false;
+    } else if (login !== filters.assignee) {
+      return false;
+    }
+  }
+  if (filters.priority) {
+    if ((issuePriority(issue) || '').toLowerCase() !== filters.priority.toLowerCase()) return false;
+  }
+  if (filters.tag) {
+    const tags = (issue.tags || []).map((t) => t.name);
+    if (!tags.includes(filters.tag)) return false;
+  }
+  if (filters.text) {
+    const needle = filters.text.toLowerCase();
+    const haystack = [
+      issue.idReadable,
+      issue.summary,
+      ...(issue.tags || []).map((t) => t.name),
+    ].join(' ').toLowerCase();
+    if (!haystack.includes(needle)) return false;
+  }
+  return true;
+}
+
+function filtersActive() {
+  return !!(filters.text || filters.assignee || filters.priority || filters.tag);
+}
+
+function gatherFilterOptions() {
+  const assignees = new Map(); // login → fullName
+  const priorities = new Set();
+  const tags = new Set();
+  let hasUnassigned = false;
+  for (const col of state.columns) {
+    for (const issue of state.issuesByColumn[col.id] ?? []) {
+      const u = issueAssignee(issue);
+      if (u) assignees.set(u.login, u.fullName || u.login);
+      else hasUnassigned = true;
+      const p = issuePriority(issue);
+      if (p) priorities.add(p);
+      for (const t of issue.tags || []) tags.add(t.name);
+    }
+  }
+  return {
+    assignees: [...assignees.entries()].sort((a, b) => a[1].localeCompare(b[1])),
+    hasUnassigned,
+    priorities: [...priorities].sort((a, b) => priorityRank(a) - priorityRank(b)),
+    tags: [...tags].sort(),
+  };
+}
+
+function renderFilters() {
+  const opts = gatherFilterOptions();
+
+  const textEl = document.getElementById('filterText');
+  const assigneeEl = document.getElementById('filterAssignee');
+  const priorityEl = document.getElementById('filterPriority');
+  const tagEl = document.getElementById('filterTag');
+  const clearEl = document.getElementById('filterClear');
+
+  if (textEl && textEl.value !== filters.text) textEl.value = filters.text;
+
+  if (assigneeEl) {
+    const unassigned = opts.hasUnassigned
+      ? '<option value="__unassigned__">— Unassigned —</option>'
+      : '';
+    assigneeEl.innerHTML =
+      `<option value="">Assignee: Any</option>`
+      + unassigned
+      + opts.assignees.map(([login, name]) =>
+          `<option value="${escape(login)}"${login === filters.assignee ? ' selected' : ''}>${escape(name)}</option>`
+        ).join('');
+    if (filters.assignee && ![...assigneeEl.options].some((o) => o.value === filters.assignee)) {
+      filters.assignee = '';
+    }
+    assigneeEl.value = filters.assignee || '';
+  }
+
+  if (priorityEl) {
+    priorityEl.innerHTML =
+      `<option value="">Priority: Any</option>`
+      + opts.priorities.map((p) =>
+          `<option value="${escape(p)}"${p === filters.priority ? ' selected' : ''}>${escape(p)}</option>`
+        ).join('');
+    if (filters.priority && ![...priorityEl.options].some((o) => o.value === filters.priority)) {
+      filters.priority = '';
+    }
+    priorityEl.value = filters.priority || '';
+  }
+
+  if (tagEl) {
+    tagEl.innerHTML =
+      `<option value="">Tag: Any</option>`
+      + opts.tags.map((t) =>
+          `<option value="${escape(t)}"${t === filters.tag ? ' selected' : ''}>${escape(t)}</option>`
+        ).join('');
+    if (filters.tag && ![...tagEl.options].some((o) => o.value === filters.tag)) {
+      filters.tag = '';
+    }
+    tagEl.value = filters.tag || '';
+  }
+
+  if (clearEl) clearEl.hidden = !filtersActive();
+
+  // Wire once; `renderFilters` is called on every render but listeners
+  // only attach if not yet bound (guarded by a dataset flag).
+  if (textEl && !textEl.dataset.wired) {
+    textEl.dataset.wired = '1';
+    textEl.addEventListener('input', () => {
+      filters.text = textEl.value;
+      persist();
+      applyFilters();
+    });
+  }
+  for (const [el, key] of [[assigneeEl, 'assignee'], [priorityEl, 'priority'], [tagEl, 'tag']]) {
+    if (el && !el.dataset.wired) {
+      el.dataset.wired = '1';
+      el.addEventListener('change', () => {
+        filters[key] = el.value;
+        persist();
+        applyFilters();
+      });
+    }
+  }
+  if (clearEl && !clearEl.dataset.wired) {
+    clearEl.dataset.wired = '1';
+    clearEl.addEventListener('click', () => {
+      filters = { text: '', assignee: '', priority: '', tag: '' };
+      persist();
+      renderFilters();
+      render();
+    });
+  }
+
+  updateFilterCount();
+}
+
+// Hide/show already-rendered cards without re-rendering the whole board
+// — keeps scroll position and drag state intact. Column counts and
+// swimlane counts still reflect the unfiltered totals by design.
+function applyFilters() {
+  const board = document.getElementById('board');
+  if (!board) return;
+  let visible = 0;
+  let total = 0;
+  board.querySelectorAll('.card[data-issue-id]').forEach((card) => {
+    total++;
+    const id = card.dataset.issueId;
+    const issue = findIssueById(id);
+    const keep = !issue || issueMatchesFilters(issue);
+    card.classList.toggle('filter-hidden', !keep);
+    if (keep) visible++;
+  });
+  updateFilterCount(visible, total);
+  const clearEl = document.getElementById('filterClear');
+  if (clearEl) clearEl.hidden = !filtersActive();
+}
+
+function updateFilterCount(visible, total) {
+  const el = document.getElementById('filterCount');
+  if (!el) return;
+  if (visible == null || total == null) {
+    total = 0;
+    visible = 0;
+    for (const col of state.columns) {
+      for (const i of state.issuesByColumn[col.id] ?? []) {
+        total++;
+        if (issueMatchesFilters(i)) visible++;
+      }
+    }
+  }
+  if (!filtersActive()) {
+    el.textContent = `${total} card${total === 1 ? '' : 's'}`;
+    el.classList.remove('dimmed');
+  } else {
+    el.textContent = `${visible} / ${total} shown`;
+    el.classList.toggle('dimmed', visible < total);
+  }
+}
+
+function findIssueById(id) {
+  for (const col of state.columns) {
+    const hit = (state.issuesByColumn[col.id] ?? []).find((i) => i.idReadable === id);
+    if (hit) return hit;
+  }
+  return null;
+}
+// ---------- /filters ----------
 
 function renderCard(issue, colId) {
   const stateName = issueStateName(issue);
@@ -401,6 +603,8 @@ function render() {
   board.innerHTML = '';
   if (isSwimlaneMode()) renderSwimlaneBoard(board);
   else renderFlatBoard(board);
+  if (filtersActive()) applyFilters();
+  else updateFilterCount();
 }
 
 vscode.postMessage({ type: 'ready' });

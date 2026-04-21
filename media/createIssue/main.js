@@ -7,8 +7,14 @@ window.addEventListener('message', (evt) => {
     populateUsers(msg.users || []);
     // Fetch type/priority for the initially selected project
     maybeFetchProjectFields();
-    document.getElementById('summaryIn').focus();
+    applyPrefill(msg.initial);
+    // Focus summary if empty, otherwise the description for edit flow.
+    const summaryEl = document.getElementById('summaryIn');
+    const descEl = document.getElementById('descIn');
+    if (summaryEl && !summaryEl.value) summaryEl.focus();
+    else if (descEl) descEl.focus();
   }
+  if (msg.type === 'prefill') applyPrefill(msg.initial);
   if (msg.type === 'projectFields') {
     populateField('typeSel', msg.typeValues || []);
     populateField('prioritySel', msg.priorityValues || []);
@@ -26,6 +32,20 @@ window.addEventListener('message', (evt) => {
     if (preview) preview.innerHTML = msg.html;
   }
 });
+
+function applyPrefill(initial) {
+  if (!initial) return;
+  const summaryEl = document.getElementById('summaryIn');
+  const descEl = document.getElementById('descIn');
+  if (summaryEl && typeof initial.summary === 'string' && !summaryEl.value) {
+    summaryEl.value = initial.summary;
+  }
+  if (descEl && typeof initial.description === 'string') {
+    // Merge: if the textarea already has text, prepend the prefill
+    // so the user's in-flight content isn't lost.
+    descEl.value = initial.description + (descEl.value ? '\n\n' + descEl.value : '');
+  }
+}
 
 function setStatus(text, isError) {
   const s = document.getElementById('status');

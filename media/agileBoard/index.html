@@ -35,6 +35,14 @@
       <button type="button" id="createBtn" class="refresh-btn" title="Create new issue"><i class="codicon codicon-add"></i> New</button>
       <button type="button" id="refreshBtn" class="refresh-btn" title="Refresh board"><i class="codicon codicon-refresh"></i></button>
     </div>
+    <div class="board-filters" id="boardFilters">
+      <input type="search" id="filterText" class="filter-input" placeholder="Filter (id / summary / tag)" aria-label="Text filter">
+      <select id="filterAssignee" class="filter-pick" aria-label="Filter by assignee"><option value="">Assignee: Any</option></select>
+      <select id="filterPriority" class="filter-pick" aria-label="Filter by priority"><option value="">Priority: Any</option></select>
+      <select id="filterTag" class="filter-pick" aria-label="Filter by tag"><option value="">Tag: Any</option></select>
+      <button type="button" id="filterClear" class="refresh-btn" title="Clear filters" hidden><i class="codicon codicon-close"></i></button>
+      <span class="filter-count" id="filterCount"></span>
+    </div>
   </header>
   <div id="board" class="board">
     <div class="board-loading">
