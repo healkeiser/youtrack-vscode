@@ -15,6 +15,7 @@ import { changeAssignee } from './commands/changeAssignee';
 import { changeState } from './commands/changeState';
 import { changePriority } from './commands/changePriority';
 import { editFieldByName } from './commands/editCustomField';
+import { postBranchActivity } from './commands/postBranchActivity';
 import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
@@ -148,6 +149,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!issueId) return;
       await changePriority(client, cache, issueId);
     }),
+    vscode.commands.registerCommand('youtrack.postBranchActivity', () => postBranchActivity(client, cache)),
     vscode.commands.registerCommand('youtrack.editField', async (arg: { id?: string; field?: string } | unknown) => {
       const obj = (arg && typeof arg === 'object') ? arg as any : {};
       const issueId = await resolveIssueId(obj.id ?? arg);
