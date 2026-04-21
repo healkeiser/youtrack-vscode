@@ -47,9 +47,13 @@ body { padding: 0; }
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  /* Cancel the board-header's horizontal padding so the border-top
+     runs edge-to-edge; restore the visual inset via our own padding. */
+  margin: 0 -1rem;
   padding: 0.35rem 1rem 0.55rem;
   flex-wrap: wrap;
-  width: 100%;
+  width: calc(100% + 2rem);
+  box-sizing: border-box;
   border-top: 1px solid var(--vscode-panel-border);
 }
 .filter-input {
@@ -82,7 +86,11 @@ body { padding: 0; }
   top: 0;
   background: var(--vscode-editor-background);
   z-index: 2;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  /* No border-bottom: the horizontal line broke the vertical column
+     separators where header and body meet. The separator between the
+     header row and the card row now comes from each header-col's own
+     border-bottom, which stops at each vertical divider position so
+     the verticals appear continuous all the way down. */
 }
 .swim-header-col {
   display: flex;
@@ -94,6 +102,10 @@ body { padding: 0; }
   letter-spacing: 0.04em;
   color: var(--vscode-descriptionForeground);
   font-weight: 600;
+  /* Per-cell bottom border so vertical column dividers pass through
+     the header/body transition without being cut by a single long
+     horizontal line. */
+  border-bottom: 1px solid var(--vscode-panel-border);
 }
 .swim-header-col:not(:last-child) { border-right: 1px solid var(--vscode-panel-border); }
 
