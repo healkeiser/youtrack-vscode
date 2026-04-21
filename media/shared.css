@@ -300,6 +300,17 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
   outline: none;
 }
 
+.editable-pill {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.1s ease;
+  margin: 0 -0.35rem;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+.editable-pill:hover { background: var(--vscode-list-hoverBackground); }
+.editable-pill + .editable-pill { border-top: 1px solid var(--vscode-panel-border); }
+
 /* =================================================================
    Markdown editor — Write/Preview tabs + toolbar + preview body.
    Shared by the comment form, the inline description/summary

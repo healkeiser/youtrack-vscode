@@ -7,6 +7,7 @@ import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFie
 import { parseDuration } from '../domain/timeTracker';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError } from '../client/errors';
+import { primeUserAvatars, userAvatarUri } from './userAvatar';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -309,8 +310,8 @@ export class IssueDetailPanel {
     const reporterRow = issue.reporter
       ? `<div class="side-field"><span class="label">Reporter</span><span class="value">${renderUserChip(issue.reporter)}</span></div>`
       : '';
-    const tagsRow = `<div class="side-field"><span class="label">Tags</span><span class="value tags-value">${
-      issue.tags.length ? issue.tags.map(renderTag).join('') : '—'
+    const tagsRow = `<div class="side-field editable-pill" data-pill="editTags" title="Click to edit tags"><span class="label">Tags</span><span class="value tags-value">${
+      issue.tags.length ? issue.tags.map(renderTag).join('') : '<span class="muted">Click to add…</span>'
     }</span></div>`;
     const linksRows = issue.links.length
       ? issue.links.map((link: IssueLink) => {
@@ -549,11 +550,17 @@ export class IssueDetailPanel {
     if (msg.type === 'pickMention') {
       try {
         const users = await this.client.listUsers('', 50);
+        await primeUserAvatars(users.map((u) => u.avatarUrl));
         const picked = await vscode.window.showQuickPick(
-          users.map((u) => ({ label: u.login, description: u.fullName })),
+          users.map((u) => ({
+            label: u.fullName || u.login,
+            description: u.login,
+            login: u.login,
+            iconPath: userAvatarUri(u.avatarUrl) ?? new vscode.ThemeIcon('person'),
+          })),
           { placeHolder: 'Mention a user', matchOnDescription: true, ignoreFocusOut: true },
         );
-        if (picked) this.panel.webview.postMessage({ type: 'insertMention', login: picked.label });
+        if (picked) this.panel.webview.postMessage({ type: 'insertMention', login: picked.login });
       } catch (e) {
         showYouTrackError(e, `couldn't load users`);
       }
@@ -576,6 +583,7 @@ export class IssueDetailPanel {
         changeAssignee: 'youtrack.changeAssignee',
         changeState: 'youtrack.changeState',
         changePriority: 'youtrack.changePriority',
+        editTags: 'youtrack.editTags',
         logTime: 'youtrack.logTime',
         startTimer: 'youtrack.startTimer',
         createBranch: 'youtrack.createBranch',

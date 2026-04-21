@@ -233,6 +233,14 @@ export class YouTrackClient {
     await Promise.all(ids.map((id) => this.markNotificationRead(id).catch(() => undefined)));
   }
 
+  async downloadBytes(url: string): Promise<Uint8Array> {
+    const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
   async listUsers(query = '', top = 30): Promise<User[]> {
     const raw = await this.call<any[]>('/api/users', {
       query: { query, $top: top, fields: 'id,login,fullName,avatarUrl' },
@@ -415,6 +423,20 @@ export class YouTrackClient {
     return field?.bundle?.values?.map((v: any) => v.name) ?? [];
   }
 
+  async fetchProjectFieldValuesDetailed(
+    projectId: string,
+    fieldName: string,
+  ): Promise<Array<{ name: string; color?: { background?: string; foreground?: string } }>> {
+    const raw = await this.call<any>(`/api/admin/projects/${projectId}/customFields`, {
+      query: { fields: 'field(name),bundle(values(name,color(background,foreground)))' },
+    });
+    const field = (raw as any[]).find((f) => f.field?.name === fieldName);
+    return (field?.bundle?.values ?? []).map((v: any) => ({
+      name: v.name,
+      color: v.color ? { background: v.color.background, foreground: v.color.foreground } : undefined,
+    }));
+  }
+
   async setPriority(issueId: string, priorityName: string): Promise<void> {
     return this.setEnumField(issueId, 'Priority', priorityName);
   }
@@ -494,6 +516,34 @@ export class YouTrackClient {
       method: 'POST',
       body: { customFields: [cf] },
     });
+  }
+
+  async listTags(top = 200): Promise<Tag[]> {
+    const raw = await this.call<any[]>('/api/tags', {
+      query: { fields: 'id,name,color(id,background,foreground)', $top: String(top) },
+    });
+    return raw.map((r) => mapTag(r));
+  }
+
+  async createTag(name: string): Promise<Tag> {
+    const raw = await this.call<any>('/api/tags', {
+      method: 'POST',
+      query: { fields: 'id,name,color(id,background,foreground)' },
+      body: { name },
+    });
+    return mapTag(raw);
+  }
+
+  async addTagToIssue(issueId: string, tagId: string): Promise<void> {
+    await this.call(`/api/issues/${issueId}/tags`, {
+      method: 'POST',
+      query: { fields: 'id' },
+      body: { id: tagId },
+    });
+  }
+
+  async removeTagFromIssue(issueId: string, tagId: string): Promise<void> {
+    await this.call(`/api/issues/${issueId}/tags/${tagId}`, { method: 'DELETE' });
   }
 
   async fetchAgileBoards(): Promise<AgileBoard[]> {

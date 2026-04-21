@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
+import type { Tag } from '../client/types';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError, formatYouTrackError } from '../client/errors';
 
@@ -104,6 +105,43 @@ export class CreateIssuePanel {
       this.panel.dispose();
       return;
     }
+    if (msg.type === 'pickTags') {
+      const selectedIds = new Set<string>(Array.isArray(msg.selectedIds) ? msg.selectedIds.map(String) : []);
+      try {
+        const all = await this.client.listTags();
+        type Item = vscode.QuickPickItem & { tag?: Tag; create?: true };
+        const items: Item[] = [
+          { label: '$(add) Create new tag…', create: true },
+          { label: '', kind: vscode.QuickPickItemKind.Separator } as any,
+          ...all
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map<Item>((t) => ({ label: t.name, picked: selectedIds.has(t.id), tag: t })),
+        ];
+        const picked = await vscode.window.showQuickPick<Item>(items, {
+          title: 'Tags',
+          placeHolder: 'Pick tags to attach on create',
+          canPickMany: true,
+        });
+        if (!picked) return;
+        const keep = picked.filter((p) => p.tag).map((p) => p.tag!);
+        if (picked.some((p) => p.create)) {
+          const name = await vscode.window.showInputBox({
+            title: 'Create new tag',
+            prompt: 'Tag name',
+            validateInput: (v) => (v.trim() ? undefined : 'Name required'),
+          });
+          if (name && name.trim()) {
+            const tag = await this.client.createTag(name.trim());
+            keep.push(tag);
+          }
+        }
+        this.panel.webview.postMessage({ type: 'tagsPicked', tags: keep });
+      } catch (e) {
+        showYouTrackError(e, 'load tags');
+      }
+      return;
+    }
     if (msg.type === 'submit') {
       const projectId = String(msg.projectId || '');
       const summary = String(msg.summary || '').trim();
@@ -123,6 +161,10 @@ export class CreateIssuePanel {
         if (type)     followUps.push(this.client.setEnumField(idReadable, 'Type', type).catch((e) => showYouTrackError(e, 'set Type', 'warning')));
         if (priority) followUps.push(this.client.setEnumField(idReadable, 'Priority', priority).catch((e) => showYouTrackError(e, 'set Priority', 'warning')));
         if (assignee) followUps.push(this.client.assignIssue(idReadable, assignee).catch((e) => showYouTrackError(e, 'assign', 'warning')));
+        const tagIds: string[] = Array.isArray(msg.tagIds) ? msg.tagIds.map(String) : [];
+        for (const tid of tagIds) {
+          followUps.push(this.client.addTagToIssue(idReadable, tid).catch((e) => showYouTrackError(e, 'attach tag', 'warning')));
+        }
         await Promise.all(followUps);
 
         this.panel.dispose();

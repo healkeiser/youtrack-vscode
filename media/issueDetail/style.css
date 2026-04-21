@@ -243,9 +243,4 @@ form.add-comment button[type="submit"] { align-self: flex-start; margin-top: 0.5
 .inline-toggle { margin-top: 0.75rem; text-align: left; }
 .collapsed { display: none !important; }
 
-/* Clickable side-panel pills */
-.editable-pill { cursor: pointer; border-radius: 3px; transition: background 0.1s ease; margin: 0 -0.35rem; padding-left: 0.35rem; padding-right: 0.35rem; }
-.editable-pill:hover { background: var(--vscode-list-hoverBackground); }
-.editable-pill + .editable-pill { border-top: 1px solid var(--vscode-panel-border); }
-
 .toolbar-gap { flex: 1; }

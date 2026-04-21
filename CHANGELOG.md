@@ -3,6 +3,18 @@
 All notable changes to this extension are documented here.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] — 2026-04-21
+
+### Added
+- **Tag editing** on both existing and new issues. Click the **Tags** row on the Issue Detail panel to open a multi-select picker of all visible tags (currently-attached ones are pre-checked); confirm to apply the add/remove diff in one shot. Same picker on the Create Issue panel attaches selected tags immediately after the issue is created. A top **Create new tag…** entry lets you mint a new tag without leaving the flow. New command: `YouTrack: Edit Tags...`.
+- **Colored dots in State / Priority / enum-field pickers** — the actual hex YouTrack has configured for each value is rendered as a 16×16 SVG dot, cached per-hex under the extension's global storage. Works identically across light and dark themes.
+- **Avatars in user pickers** — Change Assignee, user-field edit, and @mention pickers now show each user's YouTrack profile picture. Avatars are downloaded on first use and cached to disk; users without an avatar fall back to a generic person icon.
+- Separator + icon on action items across pickers (Unassign, Clear assignee, Create new tag) so they're visually distinct from the data rows.
+
+### Changed
+- User pickers (Change Assignee, @mention) now show full name as the prominent label with login as the dim description, matching the user-field edit picker.
+- `.editable-pill` hover styling moved to shared CSS so the Create Issue panel's Tags row gets the same subtle hover highlight as the Issue Detail panel.
+
 ## [0.4.0] — 2026-04-21
 
 ### Added
@@ -68,6 +80,7 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Branch-from-issue flow with a configurable `youtrack.branch.template` (`{id}`, `{summary}`, `{type}`, `{state}`, `{assignee}`, `{project}`, `{field:<Name>}` placeholders).
 - Security hardening: strict CSP with per-load nonces on every webview, `sanitize-html` on all rendered markdown.
 
+[0.4.1]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.4.1
 [0.4.0]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.4.0
 [0.3.5]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.3.5
 [0.3.4]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.3.4

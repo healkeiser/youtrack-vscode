@@ -15,6 +15,7 @@ import { changeAssignee } from './commands/changeAssignee';
 import { changeState } from './commands/changeState';
 import { changePriority } from './commands/changePriority';
 import { editFieldByName } from './commands/editCustomField';
+import { editTags } from './commands/editTags';
 import { postBranchActivity } from './commands/postBranchActivity';
 import { createIssueFromSelection } from './commands/createIssueFromSelection';
 import { showYouTrackError } from './client/errors';
@@ -31,6 +32,8 @@ import { TimerService } from './ui/timer';
 import { CurrentIssueBadge } from './ui/currentIssueBadge';
 import { CommitTemplateService } from './ui/commitTemplate';
 import { resolveIssueId } from './commands/resolveIssueId';
+import { initColorDots } from './ui/colorDot';
+import { initUserAvatars } from './ui/userAvatar';
 
 interface SectionDef {
   viewId: string;
@@ -49,6 +52,7 @@ const ISSUES_SUBSECTIONS: Array<{ id: string; label: string; source: QuerySource
 ];
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  initColorDots(context);
   const auth = new AuthStore(context);
 
   await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', false);
@@ -72,6 +76,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (!creds) return;
 
   const client = new YouTrackClient(creds.baseUrl, creds.token);
+  initUserAvatars(context, client);
   const cfg = vscode.workspace.getConfiguration('youtrack');
 
   const cache = new Cache({
@@ -156,6 +161,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await changePriority(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.postBranchActivity', () => postBranchActivity(client, cache)),
+    vscode.commands.registerCommand('youtrack.editTags', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await editTags(client, cache, issueId);
+    }),
     vscode.commands.registerCommand('youtrack.editField', async (arg: { id?: string; field?: string } | unknown) => {
       const obj = (arg && typeof arg === 'object') ? arg as any : {};
       const issueId = await resolveIssueId(obj.id ?? arg);

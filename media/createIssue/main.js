@@ -1,4 +1,5 @@
 const vscode = acquireVsCodeApi();
+let selectedTags = []; // Array<{id, name, color?}>
 
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
@@ -15,6 +16,10 @@ window.addEventListener('message', (evt) => {
     else if (descEl) descEl.focus();
   }
   if (msg.type === 'prefill') applyPrefill(msg.initial);
+  if (msg.type === 'tagsPicked' && Array.isArray(msg.tags)) {
+    selectedTags = msg.tags;
+    renderTagsPill();
+  }
   if (msg.type === 'projectFields') {
     populateField('typeSel', msg.typeValues || []);
     populateField('prioritySel', msg.priorityValues || []);
@@ -129,12 +134,32 @@ function setupForm() {
       issueType: (fd.get('type') || '').toString(),
       priority: (fd.get('priority') || '').toString(),
       assignee: (fd.get('assignee') || '').toString(),
+      tagIds: selectedTags.map((t) => t.id),
     });
   });
 
   document.getElementById('cancelBtn').addEventListener('click', () => {
     vscode.postMessage({ type: 'cancel' });
   });
+
+  const tagsRow = document.getElementById('tagsRow');
+  tagsRow?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'pickTags', selectedIds: selectedTags.map((t) => t.id) });
+  });
+}
+
+function renderTagsPill() {
+  const value = document.getElementById('tagsValue');
+  if (!value) return;
+  if (!selectedTags.length) {
+    value.innerHTML = '<span class="muted">Click to add…</span>';
+    return;
+  }
+  value.innerHTML = selectedTags.map((t) => {
+    const bg = t.color?.background || 'var(--vscode-editor-inactiveSelectionBackground)';
+    const fg = t.color?.foreground || 'var(--vscode-foreground)';
+    return `<span class="tag-pill" style="background:${escape(bg)};color:${escape(fg)}">${escape(t.name)}</span>`;
+  }).join('');
 }
 
 setupForm();

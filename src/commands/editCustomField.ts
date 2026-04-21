@@ -4,6 +4,8 @@ import type { Cache } from '../cache/cache';
 import type { CustomField, CustomFieldType, Issue } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 import { showYouTrackError } from '../client/errors';
+import { colorDotUri } from '../ui/colorDot';
+import { primeUserAvatars, userAvatarUri } from '../ui/userAvatar';
 
 // Interactive editor for any custom field on an issue. Dispatches on the
 // field's type to the most appropriate VS Code input (QuickPick for
@@ -29,34 +31,44 @@ export async function editCustomField(
           vscode.window.showWarningMessage(`YouTrack: can't edit ${field.name} without project context.`);
           return false;
         }
-        const values = await client.fetchProjectFieldValues(projectId, field.name);
+        const values = await client.fetchProjectFieldValuesDetailed(projectId, field.name);
         if (!values.length) {
           vscode.window.showWarningMessage(`YouTrack: no values configured for ${field.name} in this project.`);
           return false;
         }
-        const picked = await vscode.window.showQuickPick(values, {
+        type Item = vscode.QuickPickItem & { name: string };
+        const items: Item[] = values.map((v) => ({
+          label: v.name,
+          name: v.name,
+          iconPath: colorDotUri(v.color?.background),
+        }));
+        const picked = await vscode.window.showQuickPick<Item>(items, {
           title: `Change ${field.name}`,
           placeHolder: currentText(field),
         });
         if (!picked) return false;
-        newValue = picked;
+        newValue = picked.name;
         break;
       }
       case 'user': {
         const users = await client.listUsers('', 200).catch(() => []);
-        const items: (vscode.QuickPickItem & { login: string | null })[] = [
+        await primeUserAvatars(users.map((u) => u.avatarUrl));
+        type Item = vscode.QuickPickItem & { login?: string | null };
+        const items: Item[] = [
           { label: '$(circle-slash) Clear assignee', login: null },
-          ...users.map((u) => ({
-            label: `$(person) ${u.fullName || u.login}`,
+          { label: '', kind: vscode.QuickPickItemKind.Separator },
+          ...users.map<Item>((u) => ({
+            label: u.fullName || u.login,
             description: u.login,
             login: u.login,
+            iconPath: userAvatarUri(u.avatarUrl) ?? new vscode.ThemeIcon('person'),
           })),
         ];
-        const picked = await vscode.window.showQuickPick(items, {
+        const picked = await vscode.window.showQuickPick<Item>(items, {
           title: `Change ${field.name}`,
           matchOnDescription: true,
         });
-        if (!picked) return false;
+        if (!picked || picked.login === undefined) return false;
         newValue = picked.login;
         break;
       }
