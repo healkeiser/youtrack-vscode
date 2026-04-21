@@ -392,6 +392,70 @@ export class YouTrackClient {
     });
   }
 
+  // Generic customField writer keyed off the schema $type discriminator.
+  // `valueLiteral` uses the shape the caller's already normalized:
+  //   - enum/state/version: the *name* (string)
+  //   - user: the *login* (string), or null to clear
+  //   - date: epoch ms (number), or null to clear
+  //   - period: seconds (number)
+  //   - string: the text
+  //   - int/float: the number
+  //   - bool: the boolean
+  async setCustomField(
+    issueId: string,
+    fieldName: string,
+    fieldType: 'enum' | 'state' | 'user' | 'string' | 'date' | 'period' | 'int' | 'float' | 'bool' | 'version',
+    valueLiteral: string | number | boolean | null,
+  ): Promise<void> {
+    const cf: any = { name: fieldName };
+    switch (fieldType) {
+      case 'enum':
+        cf.$type = 'SingleEnumIssueCustomField';
+        cf.value = valueLiteral == null ? null : { $type: 'EnumBundleElement', name: String(valueLiteral) };
+        break;
+      case 'state':
+        cf.$type = 'StateIssueCustomField';
+        cf.value = valueLiteral == null ? null : { $type: 'StateBundleElement', name: String(valueLiteral) };
+        break;
+      case 'user':
+        cf.$type = 'SingleUserIssueCustomField';
+        cf.value = valueLiteral == null ? null : { $type: 'User', login: String(valueLiteral) };
+        break;
+      case 'version':
+        cf.$type = 'SingleVersionIssueCustomField';
+        cf.value = valueLiteral == null ? null : { $type: 'VersionBundleElement', name: String(valueLiteral) };
+        break;
+      case 'string':
+        cf.$type = 'SimpleIssueCustomField';
+        cf.value = valueLiteral == null ? null : String(valueLiteral);
+        break;
+      case 'date':
+        cf.$type = 'DateIssueCustomField';
+        cf.value = valueLiteral == null ? null : Number(valueLiteral);
+        break;
+      case 'period':
+        cf.$type = 'PeriodIssueCustomField';
+        cf.value = valueLiteral == null ? null : { $type: 'PeriodValue', minutes: Math.round(Number(valueLiteral) / 60) };
+        break;
+      case 'int':
+        cf.$type = 'SimpleIssueCustomField';
+        cf.value = valueLiteral == null ? null : Math.trunc(Number(valueLiteral));
+        break;
+      case 'float':
+        cf.$type = 'SimpleIssueCustomField';
+        cf.value = valueLiteral == null ? null : Number(valueLiteral);
+        break;
+      case 'bool':
+        cf.$type = 'SimpleIssueCustomField';
+        cf.value = !!valueLiteral;
+        break;
+    }
+    await this.call(`/api/issues/${issueId}`, {
+      method: 'POST',
+      body: { customFields: [cf] },
+    });
+  }
+
   async fetchAgileBoards(): Promise<AgileBoard[]> {
     const raw = await this.call<any[]>('/api/agiles', {
       query: { fields: 'id,name,projects(shortName)' },

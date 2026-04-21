@@ -106,7 +106,11 @@ function wireMdTabs() {
 function wirePills() {
   document.querySelectorAll('.editable-pill[data-pill]').forEach((el) => {
     el.addEventListener('click', () => {
-      vscode.postMessage({ type: 'cmd', id: el.dataset.pill });
+      vscode.postMessage({
+        type: 'cmd',
+        id: el.dataset.pill,
+        fieldName: el.dataset.fieldName,
+      });
     });
   });
 }

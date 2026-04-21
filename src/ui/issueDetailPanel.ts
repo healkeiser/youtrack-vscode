@@ -171,11 +171,21 @@ function renderSideField(f: CustomField): string {
   }
   if (v.kind === 'user') {
     const isAssignee = f.name === 'Assignee';
-    const extra = isAssignee ? ' editable-pill" data-pill="changeAssignee" title="Click to change assignee' : '';
-    return `<div class="side-field${extra}"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
+    if (isAssignee) {
+      return `<div class="side-field editable-pill" data-pill="changeAssignee" title="Click to change assignee"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
+    }
+    return `<div class="side-field editable-pill" data-pill="editField" data-field-name="${escapeHtml(f.name)}" title="Click to edit"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
   }
   if (f.name === 'Assignee' && v.kind === 'empty') {
     return `<div class="side-field editable-pill" data-pill="changeAssignee" title="Click to assign"><span class="label">${name}</span><span class="value"><em>Unassigned</em></span></div>`;
+  }
+  // Generic editable: any remaining field becomes a pill that opens the
+  // editCustomField dispatcher keyed off the field type.
+  if (f.type !== 'unknown') {
+    const valueHtml = v.kind === 'empty'
+      ? `<em>—</em>`
+      : escapeHtml(valueAsText(v));
+    return `<div class="side-field editable-pill" data-pill="editField" data-field-name="${escapeHtml(f.name)}" title="Click to edit ${name}"><span class="label">${name}</span><span class="value">${valueHtml}</span></div>`;
   }
   return `<div class="side-field"><span class="label">${name}</span><span class="value">${escapeHtml(valueAsText(v))}</span></div>`;
 }
@@ -506,6 +516,11 @@ export class IssueDetailPanel {
       return;
     }
     if (msg.type === 'cmd') {
+      if (msg.id === 'editField' && typeof msg.fieldName === 'string') {
+        await vscode.commands.executeCommand('youtrack.editField', { id: this.issueId, field: msg.fieldName });
+        await this.reload();
+        return;
+      }
       const map: Record<string, string> = {
         startWork: 'youtrack.startWork',
         assignToMe: 'youtrack.assignToMe',
