@@ -20,6 +20,7 @@ import { StatusBar } from './ui/statusBar';
 import { openBoard } from './commands/openBoard';
 import { UriHandler } from './ui/uriHandler';
 import { IssueHoverProvider } from './ui/hoverProvider';
+import { IssueCodeLensProvider } from './ui/codeLensProvider';
 import { RecentsTreeProvider } from './ui/recentsTreeProvider';
 import { NotificationsTreeProvider } from './ui/notificationsTreeProvider';
 import { TimerService } from './ui/timer';
@@ -109,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand('youtrack.refresh', () => refreshAll()),
     vscode.commands.registerCommand('youtrack.openIssue', async (id: string) => {
-      IssueDetailPanel.show(context.extensionUri, client, cache, id);
+      IssueDetailPanel.show(context.extensionUri, client, cache, id, context);
       try {
         const issue = await cache.getIssue(id, (x) => client.fetchIssue(x));
         await recents.touch(issue.idReadable, issue.summary);
@@ -197,6 +198,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.refreshRecents', () => recents['_emitter'].fire(undefined)),
     vscode.commands.registerCommand('youtrack.clearRecents', () => recents.clear()),
     vscode.commands.registerCommand('youtrack.refreshNotifications', () => notifs.refresh()),
+    vscode.commands.registerCommand('youtrack.markNotificationRead', async (n: any) => {
+      const id = n?.id ?? (typeof n === 'string' ? n : undefined);
+      if (!id) return;
+      try {
+        await client.markNotificationRead(id, true);
+        notifs.refresh();
+      } catch (e) {
+        vscode.window.showWarningMessage(`YouTrack: mark-read failed: ${(e as Error).message}`);
+      }
+    }),
+    vscode.commands.registerCommand('youtrack.markAllNotificationsRead', async () => {
+      const ids = notifs.unreadIds();
+      if (!ids.length) {
+        vscode.window.showInformationMessage('YouTrack: no unread notifications.');
+        return;
+      }
+      await client.markAllNotificationsRead(ids);
+      notifs.refresh();
+    }),
   );
 
   const timer = new TimerService(context, client);
@@ -218,6 +238,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.languages.registerHoverProvider(
       { scheme: 'file' },
       new IssueHoverProvider(client, cache, creds.baseUrl),
+    ),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: 'file' },
+      new IssueCodeLensProvider(client, cache),
     ),
   );
 

@@ -196,6 +196,38 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn .codicon { font-size: 1em; line-height: 1; }
 
+/* @mention autocomplete popup — anchored under the textarea. */
+.mention-popup {
+  position: fixed;
+  z-index: 9999;
+  background: var(--vscode-editorSuggestWidget-background, var(--vscode-editorWidget-background));
+  color: var(--vscode-editorSuggestWidget-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-editorSuggestWidget-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  max-height: 12rem;
+  overflow-y: auto;
+  min-width: 220px;
+}
+.mention-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.mention-row.active,
+.mention-row:hover {
+  background: var(--vscode-editorSuggestWidget-selectedBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-editorSuggestWidget-selectedForeground, var(--vscode-foreground));
+}
+.mention-row .mention-name { font-weight: 500; }
+.mention-row .mention-login {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
 /* Back-compat aliases */
 .btn-primary   { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }
 .btn-primary:hover   { background: var(--vscode-button-hoverBackground); }

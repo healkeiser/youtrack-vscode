@@ -234,6 +234,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "youtrack.markNotificationRead",
+        "title": "Mark as read",
+        "icon": "$(check)"
+      },
+      {
+        "command": "youtrack.markAllNotificationsRead",
+        "title": "YouTrack: Mark All Notifications as Read",
+        "icon": "$(check-all)"
+      },
+      {
         "command": "youtrack.startTimer",
         "title": "YouTrack: Start Timer on Issue…"
       },
@@ -493,7 +503,12 @@
         {
           "command": "youtrack.refreshNotifications",
           "when": "view == youtrack.notifications",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "youtrack.markAllNotificationsRead",
+          "when": "view == youtrack.notifications",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -546,6 +561,16 @@
           "command": "youtrack.openInBrowser",
           "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "3_copy@3"
+        },
+        {
+          "command": "youtrack.markNotificationRead",
+          "when": "view == youtrack.notifications && viewItem =~ /notif\\.unread/",
+          "group": "inline@1"
+        },
+        {
+          "command": "youtrack.markNotificationRead",
+          "when": "view == youtrack.notifications && viewItem =~ /notif\\.unread/",
+          "group": "1_notif@1"
         }
       ]
     },

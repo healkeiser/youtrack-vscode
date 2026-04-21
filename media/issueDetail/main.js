@@ -1,5 +1,6 @@
 const vscode = acquireVsCodeApi();
 let pendingMentionTarget = null;
+const mentionRoster = new Map(); // login -> {login, fullName, avatarUrl}
 
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
@@ -14,6 +15,12 @@ window.addEventListener('message', (evt) => {
     wireCommentEdits();
     wirePills();
     wireLinkChips();
+    wireDraftPersistence();
+    wireMentionAutocomplete();
+  }
+  if (msg.type === 'userRoster' && Array.isArray(msg.users)) {
+    mentionRoster.clear();
+    for (const u of msg.users) mentionRoster.set(u.login, u);
   }
   if (msg.type === 'insertMention' && typeof msg.login === 'string') {
     const target = pendingMentionTarget ?? document.querySelector('form.add-comment textarea');
@@ -141,6 +148,29 @@ function wireCommentEdits() {
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { form.hidden = true; view.hidden = false; }
       else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { form.requestSubmit(); }
+    });
+  });
+}
+
+function wireMentionAutocomplete() {
+  document.querySelectorAll('form.add-comment textarea, form.comment-edit textarea, .editable-edit textarea').forEach((ta) => {
+    YT.mdEditor.attachMentionAutocomplete(ta, () => mentionRoster);
+  });
+}
+
+// Persist textareas tagged with `data-draft-scope` so a closed panel,
+// reload, or accidental Ctrl+W doesn't lose in-flight text. Debounced
+// so we don't flood globalState writes.
+function wireDraftPersistence() {
+  document.querySelectorAll('textarea[data-draft-scope]').forEach((ta) => {
+    const scope = ta.dataset.draftScope;
+    if (!scope) return;
+    let timer = null;
+    ta.addEventListener('input', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        vscode.postMessage({ type: 'saveDraft', scope, text: ta.value });
+      }, 400);
     });
   });
 }

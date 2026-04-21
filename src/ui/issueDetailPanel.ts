@@ -192,6 +192,7 @@ export class IssueDetailPanel {
     private client: YouTrackClient,
     private cache: Cache,
     private issueId: string,
+    private context: vscode.ExtensionContext,
   ) {
     this.panel = vscode.window.createWebviewPanel(
       'youtrackIssue', issueId, vscode.ViewColumn.Active,
@@ -203,11 +204,25 @@ export class IssueDetailPanel {
     this.panel.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
   }
 
-  static show(extensionUri: vscode.Uri, client: YouTrackClient, cache: Cache, issueId: string): void {
+  static show(extensionUri: vscode.Uri, client: YouTrackClient, cache: Cache, issueId: string, context: vscode.ExtensionContext): void {
     const existing = IssueDetailPanel.panels.get(issueId);
     if (existing) { existing.panel.reveal(); return; }
-    const p = new IssueDetailPanel(extensionUri, client, cache, issueId);
+    const p = new IssueDetailPanel(extensionUri, client, cache, issueId, context);
     IssueDetailPanel.panels.set(issueId, p);
+  }
+
+  private draftKey(scope: string): string {
+    return `youtrack.draft.${this.issueId}.${scope}`;
+  }
+
+  private getDraft(scope: string): string {
+    return this.context.globalState.get<string>(this.draftKey(scope), '');
+  }
+
+  private async setDraft(scope: string, text: string): Promise<void> {
+    const key = this.draftKey(scope);
+    if (text) await this.context.globalState.update(key, text);
+    else await this.context.globalState.update(key, undefined);
   }
 
   private shellHtml(): string {
@@ -248,6 +263,12 @@ export class IssueDetailPanel {
     if (me && me.login) this.currentUserLogin = me.login;
 
     this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems) });
+    // Ship the user directory to the webview so inline @-autocomplete
+    // can run against it without round-tripping to the extension.
+    const userRoster = [...this.userLookup.values()].map((u) => ({
+      login: u.login, fullName: u.fullName || u.login, avatarUrl: u.avatarUrl || '',
+    }));
+    this.panel.webview.postMessage({ type: 'userRoster', users: userRoster });
   }
 
   private renderHtml(issue: Issue, comments: Comment[], attachments: Attachment[], workItems: WorkItem[]): string {
@@ -363,9 +384,9 @@ export class IssueDetailPanel {
             <h3>Activity</h3>
             ${activityHtml}
             <button type="button" class="btn inline-toggle" data-inline-toggle="comment"><i class="codicon codicon-add"></i><span class="toggle-label">Add a comment</span></button>
-            <form class="add-comment md-form collapsed" data-collapsible="comment">
+            <form class="add-comment md-form${this.getDraft('addComment') ? '' : ' collapsed'}" data-collapsible="comment">
               ${formattingToolbarHtml()}
-              <textarea name="text" placeholder="Write a comment... (markdown supported)" required></textarea>
+              <textarea name="text" data-draft-scope="addComment" placeholder="Write a comment... (markdown supported)" required>${escapeHtml(this.getDraft('addComment'))}</textarea>
               <div class="md-preview md-body" hidden></div>
               <button type="submit" class="btn primary">Post Comment</button>
             </form>
@@ -423,10 +444,17 @@ export class IssueDetailPanel {
       if (!text) return;
       try {
         await this.client.addComment(this.issueId, text);
+        await this.setDraft('addComment', '');
         await this.reload();
       } catch (e) {
         vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
       }
+      return;
+    }
+    if (msg.type === 'saveDraft') {
+      const scope = String(msg.scope ?? '').replace(/[^A-Za-z0-9_\-:]/g, '_');
+      if (!scope) return;
+      await this.setDraft(scope, String(msg.text ?? ''));
       return;
     }
     if (msg.type === 'updateComment') {

@@ -166,9 +166,9 @@ export class YouTrackClient {
     return raw.map((r) => ({ id: r.id, name: r.name, query: r.query ?? '' }));
   }
 
-  async fetchNotifications(top = 50): Promise<Array<{ id: string; content: string; issue: { idReadable: string; summary: string } | null; sender: User | null; created: number; recipient: User | null }>> {
+  async fetchNotifications(top = 50): Promise<Array<{ id: string; content: string; issue: { idReadable: string; summary: string } | null; sender: User | null; created: number; recipient: User | null; read: boolean }>> {
     const raw = await this.call<any[]>('/api/users/notifications', {
-      query: { fields: 'id,content,sender(id,login,fullName,avatarUrl),issue(idReadable,summary),created,recipient(id,login,fullName,avatarUrl)', $top: top },
+      query: { fields: 'id,content,read,sender(id,login,fullName,avatarUrl),issue(idReadable,summary),created,recipient(id,login,fullName,avatarUrl)', $top: top },
     }).catch(() => []);
     return raw.map((r) => ({
       id: r.id,
@@ -177,7 +177,20 @@ export class YouTrackClient {
       sender: mapUser(r.sender, this.baseUrl),
       recipient: mapUser(r.recipient, this.baseUrl),
       created: r.created ?? 0,
+      read: !!r.read,
     }));
+  }
+
+  async markNotificationRead(id: string, read = true): Promise<void> {
+    await this.call<any>(`/api/users/notifications/${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: { read },
+      query: { fields: 'id,read' },
+    });
+  }
+
+  async markAllNotificationsRead(ids: string[]): Promise<void> {
+    await Promise.all(ids.map((id) => this.markNotificationRead(id).catch(() => undefined)));
   }
 
   async listUsers(query = '', top = 30): Promise<User[]> {

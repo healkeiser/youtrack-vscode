@@ -24,7 +24,7 @@ export class NotificationsTreeProvider implements vscode.TreeDataProvider<Notif>
   getTreeItem(n: Notif): vscode.TreeItem {
     const label = n.issue ? `${n.issue.idReadable}  ${n.issue.summary}` : 'YouTrack notification';
     const t = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
-    t.iconPath = new vscode.ThemeIcon('bell');
+    t.iconPath = new vscode.ThemeIcon(n.read ? 'bell' : 'bell-dot');
     t.description = new Date(n.created).toLocaleString();
     const body = (n.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     const tooltip = new vscode.MarkdownString();
@@ -33,8 +33,22 @@ export class NotificationsTreeProvider implements vscode.TreeDataProvider<Notif>
     t.tooltip = tooltip;
     if (n.issue) {
       t.command = { command: 'youtrack.openIssue', title: 'Open', arguments: [n.issue.idReadable] };
-      t.contextValue = 'issue';
     }
+    // contextValue drives view/item/context menus; keep 'issue' when we
+    // have a linked issue so the existing open-in-browser menu still
+    // works, plus append '.notif' so the mark-read entry also matches.
+    t.contextValue = n.issue
+      ? (n.read ? 'issue notif.read' : 'issue notif.unread')
+      : (n.read ? 'notif.read' : 'notif.unread');
+    t.id = `notif:${n.id}`;
     return t;
+  }
+
+  unreadIds(): string[] {
+    return (this.cache ?? []).filter((n) => !n.read).map((n) => n.id);
+  }
+
+  hasUnread(): boolean {
+    return (this.cache ?? []).some((n) => !n.read);
   }
 }
