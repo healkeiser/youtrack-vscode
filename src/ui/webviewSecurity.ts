@@ -24,7 +24,7 @@ export function renderPanelHtml(
   const nonce = getNonce();
   const asWebview = (uri: vscode.Uri) => webview.asWebviewUri(uri).toString();
   return tpl
-    .replace('{{CSP_SOURCE}}', webview.cspSource)
+    .replace(/\{\{CSP_SOURCE\}\}/g, webview.cspSource)
     .replace(/\{\{NONCE\}\}/g, nonce)
     .replace('{{CODICONS}}', asWebview(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')))
     .replace('{{SHARED}}', asWebview(vscode.Uri.joinPath(mediaRoot, 'shared.css')))
