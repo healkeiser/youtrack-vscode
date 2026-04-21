@@ -43,7 +43,19 @@ function populateProjects(projects, defaultShortName) {
   sel.innerHTML = projects.map((p) =>
     `<option value="${escape(p.id)}" data-short="${escape(p.shortName)}"${p.shortName === defaultShortName ? ' selected' : ''}>${escape(p.shortName)} — ${escape(p.name)}</option>`
   ).join('');
-  sel.addEventListener('change', maybeFetchProjectFields);
+  sel.addEventListener('change', () => {
+    updateProjectHint();
+    maybeFetchProjectFields();
+  });
+  updateProjectHint();
+}
+
+function updateProjectHint() {
+  const sel = document.getElementById('projectSel');
+  const hint = document.getElementById('projectHint');
+  if (!sel || !hint) return;
+  const opt = sel.options[sel.selectedIndex];
+  hint.textContent = opt?.dataset?.short || '';
 }
 
 function maybeFetchProjectFields() {

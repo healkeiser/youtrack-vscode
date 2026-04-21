@@ -8,37 +8,19 @@
   <link rel="stylesheet" href="{{STYLE}}">
 </head>
 <body>
-  <div class="wrapper">
-    <h2>Create issue</h2>
-    <form id="createForm">
-      <div class="row">
-        <label for="projectSel">Project</label>
-        <select id="projectSel" name="project" required></select>
-      </div>
-      <div class="row">
-        <label for="summaryIn">Summary</label>
-        <input id="summaryIn" name="summary" type="text" placeholder="Short description of the issue" required maxlength="250">
-      </div>
-
-      <div class="row row-compact">
-        <div class="row-sub">
-          <label for="typeSel">Type</label>
-          <select id="typeSel" name="type"><option value="">(default)</option></select>
+  <form id="createForm" class="layout">
+    <div class="main">
+      <div class="header card-surface">
+        <div class="id-row">
+          <span class="id">New issue</span>
+          <span class="sep">·</span>
+          <span id="projectHint" class="project-hint"></span>
         </div>
-        <div class="row-sub">
-          <label for="prioritySel">Priority</label>
-          <select id="prioritySel" name="priority"><option value="">(default)</option></select>
-        </div>
-        <div class="row-sub">
-          <label for="assigneeSel">Assignee</label>
-          <select id="assigneeSel" name="assignee">
-            <option value="">(unassigned)</option>
-          </select>
-        </div>
+        <input id="summaryIn" name="summary" class="summary-input" type="text" placeholder="Enter a summary" required maxlength="250" autocomplete="off">
       </div>
 
-      <div class="row">
-        <label>Description</label>
+      <div class="section card-surface">
+        <h3>Description</h3>
         <div class="desc-zone md-form" id="descForm">
           <div class="md-tabs">
             <button type="button" class="md-tab active" data-md-tab="write">Write</button>
@@ -56,17 +38,47 @@
             <button type="button" data-md="ol" title="Numbered list"><i class="codicon codicon-list-ordered"></i></button>
             <button type="button" data-md="quote" title="Quote"><i class="codicon codicon-quote"></i></button>
           </div>
-          <textarea id="descIn" name="description" placeholder="Add more context (markdown supported)" rows="10"></textarea>
+          <textarea id="descIn" name="description" placeholder="Type or paste a description of the issue here (Markdown supported)" rows="12"></textarea>
           <div class="md-preview md-body" hidden></div>
         </div>
       </div>
+
       <div class="actions">
-        <button type="submit" id="submitBtn" class="btn primary">Create</button>
+        <button type="submit" id="submitBtn" class="btn primary"><i class="codicon codicon-add"></i> Create</button>
         <button type="button" id="cancelBtn" class="btn">Cancel</button>
         <div class="status" id="status"></div>
       </div>
-    </form>
-  </div>
+    </div>
+
+    <aside class="side card-surface">
+      <div class="side-field">
+        <label class="label" for="projectSel">Project</label>
+        <select id="projectSel" name="project" required></select>
+      </div>
+      <div class="side-field">
+        <label class="label" for="typeSel">Type</label>
+        <select id="typeSel" name="type"><option value="">(default)</option></select>
+      </div>
+      <div class="side-field">
+        <label class="label" for="prioritySel">Priority</label>
+        <select id="prioritySel" name="priority"><option value="">(default)</option></select>
+      </div>
+      <div class="side-field">
+        <label class="label" for="assigneeSel">Assignee</label>
+        <select id="assigneeSel" name="assignee">
+          <option value="">(unassigned)</option>
+        </select>
+      </div>
+      <div class="side-field side-field-static">
+        <span class="label">State</span>
+        <span class="value muted">Set by workflow</span>
+      </div>
+      <div class="side-field side-field-static">
+        <span class="label">Tags</span>
+        <span class="value muted">Add after create</span>
+      </div>
+    </aside>
+  </form>
   <script nonce="{{NONCE}}" src="{{MAIN}}"></script>
 </body>
 </html>
