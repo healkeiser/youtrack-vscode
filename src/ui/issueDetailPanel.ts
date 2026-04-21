@@ -336,7 +336,7 @@ export class IssueDetailPanel {
             </div>
             <div class="toolbar">
               <button class="btn primary" data-cmd="startWork" title="Transition state and create a branch"><i class="codicon codicon-play"></i>Start Work</button>
-              <button class="btn" data-cmd="startTimer" title="Start a timer on this issue"><i class="codicon codicon-watch"></i>Timer</button>
+              <button class="btn" data-cmd="startTimer" title="Start a timer on this issue"><i class="codicon codicon-clock"></i>Timer</button>
               <button class="btn" data-cmd="createBranch" title="Create git branch from issue"><i class="codicon codicon-git-branch"></i>Branch</button>
               <span class="toolbar-gap"></span>
               <button class="btn icon" data-cmd="copyLink" title="Copy issue link"><i class="codicon codicon-link"></i></button>
