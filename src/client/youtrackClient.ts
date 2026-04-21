@@ -67,9 +67,38 @@ function inferType($type: string): CustomFieldType {
   return 'unknown';
 }
 
+// Heuristic: YouTrack allows configuring a plain integer custom field to
+// store timestamps (epoch ms). Those come back as IntegerIssueCustomField
+// with a raw number — indistinguishable from a real numeric field by type
+// alone. If the name *looks* like a date/time field AND the value is in
+// the plausible epoch-ms range (roughly 2001-09-09 → 5138-11-16), render
+// as a date. Kept intentionally narrow to avoid misclassifying real
+// large-number integer fields.
+const DATEY_NAME_RE = /(^|\s)(date|time|deadline|due|started?|ended?|finished?|completed?|created|updated|scheduled)(\s|$)/i;
+
+function looksLikeEpochMs(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n) && n >= 1_000_000_000_000 && n < 1e14;
+}
+
 function mapCustomField(raw: any, baseUrl?: string): CustomField {
-  const type = inferType(raw.$type ?? '');
-  return { name: raw.name, type, value: mapCustomFieldValue(raw.value, type, baseUrl) };
+  let type = inferType(raw.$type ?? '');
+  let value = mapCustomFieldValue(raw.value, type, baseUrl);
+
+  // Promote timestamp-shaped integers whose field name suggests a date
+  // so they render via the normal date path. We keep `type` as 'unknown'
+  // to disable the generic field editor: these fields are almost always
+  // automation-populated on the YouTrack side, and trying to POST an
+  // ISO/epoch through the generic date writer would fail because the
+  // underlying custom field is really an Integer.
+  if ((type === 'int' || type === 'float')
+      && typeof raw.name === 'string'
+      && DATEY_NAME_RE.test(raw.name)
+      && looksLikeEpochMs(raw.value)) {
+    type = 'unknown';
+    value = { kind: 'date', iso: new Date(raw.value).toISOString() };
+  }
+
+  return { name: raw.name, type, value };
 }
 
 function extractAssignee(rawCustomFields: any[], baseUrl?: string): User | null {
