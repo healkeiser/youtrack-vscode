@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
+import { showYouTrackError } from '../client/errors';
 
 const STATE_KEY = 'youtrack.activeTimer';
 
@@ -69,7 +70,7 @@ export class TimerService implements vscode.Disposable {
       });
       vscode.window.showInformationMessage(`YouTrack: logged ${formatDuration(elapsedSec)} on ${targetId}`);
     } catch (e) {
-      vscode.window.showErrorMessage(`YouTrack: log time failed: ${(e as Error).message}`);
+      showYouTrackError(e, 'log time');
     }
   }
 

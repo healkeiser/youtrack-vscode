@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { YouTrackClient } from '../client/youtrackClient';
+import { showYouTrackError } from '../client/errors';
 
 const TOKEN_KEY = 'youtrack.token';
 
@@ -44,7 +45,7 @@ export class AuthStore {
       vscode.window.showInformationMessage(`YouTrack: signed in as ${me.fullName}`);
       return { baseUrl, token };
     } catch (e) {
-      vscode.window.showErrorMessage(`YouTrack: sign-in failed: ${(e as Error).message}`);
+      showYouTrackError(e, 'sign-in');
       return null;
     }
   }

@@ -17,6 +17,7 @@ import { changePriority } from './commands/changePriority';
 import { editFieldByName } from './commands/editCustomField';
 import { postBranchActivity } from './commands/postBranchActivity';
 import { createIssueFromSelection } from './commands/createIssueFromSelection';
+import { showYouTrackError } from './client/errors';
 import { logTime } from './commands/logTime';
 import { createBranch } from './commands/createBranch';
 import { StatusBar } from './ui/statusBar';
@@ -220,7 +221,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await client.markNotificationRead(id, true);
         notifs.refresh();
       } catch (e) {
-        vscode.window.showWarningMessage(`YouTrack: mark-read failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'mark notification read', 'warning');
       }
     }),
     vscode.commands.registerCommand('youtrack.markAllNotificationsRead', async () => {

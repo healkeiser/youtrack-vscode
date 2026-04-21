@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
+import { showYouTrackError } from '../client/errors';
 
 const ISSUE_PATTERN = /\b([A-Z][A-Z0-9_]+-\d+)\b/;
 
@@ -88,7 +89,7 @@ export async function postBranchActivity(
     cache.invalidateIssue(issueId);
     vscode.window.showInformationMessage(`YouTrack: posted to ${issueId}.`);
   } catch (e) {
-    vscode.window.showErrorMessage(`YouTrack: comment failed: ${(e as Error).message}`);
+    showYouTrackError(e, 'post comment');
   }
 }
 

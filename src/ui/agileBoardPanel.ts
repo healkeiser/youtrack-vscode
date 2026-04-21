@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { BoardView } from '../client/types';
 import { renderPanelHtml } from './webviewSecurity';
+import { showYouTrackError } from '../client/errors';
 
 export class AgileBoardPanel {
   private static panels = new Map<string, AgileBoardPanel>();
@@ -94,7 +95,7 @@ export class AgileBoardPanel {
       try {
         await this.client.transitionState(msg.issueId, state);
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: move failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'move card');
         this.panel.webview.postMessage({ type: 'rollback', issueId: msg.issueId, fromColumnId: msg.fromColumnId });
       }
     }

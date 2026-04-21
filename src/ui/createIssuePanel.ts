@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
 import { renderPanelHtml } from './webviewSecurity';
+import { showYouTrackError, formatYouTrackError } from '../client/errors';
 
 export interface CreateIssueInitial {
   summary?: string;
@@ -77,7 +78,7 @@ export class CreateIssuePanel {
         const defaultShortName = vscode.workspace.getConfiguration('youtrack').get<string>('defaultProject', '');
         this.panel.webview.postMessage({ type: 'init', projects, defaultShortName, users, initial: this.initial });
       } catch (e) {
-        this.panel.webview.postMessage({ type: 'error', message: `Failed to load projects: ${(e as Error).message}` });
+        this.panel.webview.postMessage({ type: 'error', message: formatYouTrackError(e, 'load projects') });
       }
       return;
     }
@@ -119,9 +120,9 @@ export class CreateIssuePanel {
         const assignee = String(msg.assignee ?? '').trim();
 
         const followUps: Array<Promise<unknown>> = [];
-        if (type)     followUps.push(this.client.setEnumField(idReadable, 'Type', type).catch((e) => vscode.window.showWarningMessage(`YouTrack: set Type failed: ${(e as Error).message}`)));
-        if (priority) followUps.push(this.client.setEnumField(idReadable, 'Priority', priority).catch((e) => vscode.window.showWarningMessage(`YouTrack: set Priority failed: ${(e as Error).message}`)));
-        if (assignee) followUps.push(this.client.assignIssue(idReadable, assignee).catch((e) => vscode.window.showWarningMessage(`YouTrack: assign failed: ${(e as Error).message}`)));
+        if (type)     followUps.push(this.client.setEnumField(idReadable, 'Type', type).catch((e) => showYouTrackError(e, 'set Type', 'warning')));
+        if (priority) followUps.push(this.client.setEnumField(idReadable, 'Priority', priority).catch((e) => showYouTrackError(e, 'set Priority', 'warning')));
+        if (assignee) followUps.push(this.client.assignIssue(idReadable, assignee).catch((e) => showYouTrackError(e, 'assign', 'warning')));
         await Promise.all(followUps);
 
         this.panel.dispose();
@@ -129,7 +130,7 @@ export class CreateIssuePanel {
         if (this.onCreated) this.onCreated(idReadable);
         vscode.commands.executeCommand('youtrack.openIssue', idReadable);
       } catch (e) {
-        this.panel.webview.postMessage({ type: 'error', message: `Create failed: ${(e as Error).message}` });
+        this.panel.webview.postMessage({ type: 'error', message: formatYouTrackError(e, 'create issue') });
       }
     }
   }

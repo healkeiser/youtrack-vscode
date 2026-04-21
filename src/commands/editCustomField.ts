@@ -3,6 +3,7 @@ import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
 import type { CustomField, CustomFieldType, Issue } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
+import { showYouTrackError } from '../client/errors';
 
 // Interactive editor for any custom field on an issue. Dispatches on the
 // field's type to the most appropriate VS Code input (QuickPick for
@@ -138,7 +139,7 @@ export async function editCustomField(
     cache.invalidateIssue(issueId);
     return true;
   } catch (e) {
-    vscode.window.showErrorMessage(`YouTrack: update ${field.name} failed: ${(e as Error).message}`);
+    showYouTrackError(e, `update ${field.name}`);
     return false;
   }
 }

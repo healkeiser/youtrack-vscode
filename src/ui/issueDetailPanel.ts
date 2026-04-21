@@ -6,6 +6,7 @@ import type { Cache } from '../cache/cache';
 import type { Issue, Comment, Attachment, WorkItem, User, CustomField, CustomFieldValue, Tag, IssueLink } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 import { renderPanelHtml } from './webviewSecurity';
+import { showYouTrackError } from '../client/errors';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -456,7 +457,7 @@ export class IssueDetailPanel {
         });
         await this.reload();
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: log time failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'log time');
       }
       return;
     }
@@ -468,7 +469,7 @@ export class IssueDetailPanel {
         await this.setDraft('addComment', '');
         await this.reload();
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: add comment failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'add comment');
       }
       return;
     }
@@ -486,7 +487,7 @@ export class IssueDetailPanel {
         await this.client.updateComment(this.issueId, commentId, text);
         await this.reload();
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: update comment failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'update comment');
       }
       return;
     }
@@ -509,7 +510,7 @@ export class IssueDetailPanel {
         this.cache.invalidateIssue(this.issueId);
         await this.reload();
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: update failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'update issue');
       }
       return;
     }
@@ -522,7 +523,7 @@ export class IssueDetailPanel {
         );
         if (picked) this.panel.webview.postMessage({ type: 'insertMention', login: picked.label });
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: couldn't load users: ${(e as Error).message}`);
+        showYouTrackError(e, `couldn't load users`);
       }
       return;
     }
@@ -559,7 +560,7 @@ export class IssueDetailPanel {
         vscode.window.showInformationMessage(`YouTrack: uploaded ${filename}`);
         await this.reload();
       } catch (e) {
-        vscode.window.showErrorMessage(`YouTrack: upload failed: ${(e as Error).message}`);
+        showYouTrackError(e, 'attachment upload');
       }
       return;
     }
