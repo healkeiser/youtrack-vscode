@@ -84,18 +84,25 @@ function mapCustomField(raw: any, baseUrl?: string): CustomField {
   let type = inferType(raw.$type ?? '');
   let value = mapCustomFieldValue(raw.value, type, baseUrl);
 
-  // Promote timestamp-shaped integers whose field name suggests a date
-  // so they render via the normal date path. We keep `type` as 'unknown'
-  // to disable the generic field editor: these fields are almost always
-  // automation-populated on the YouTrack side, and trying to POST an
-  // ISO/epoch through the generic date writer would fail because the
-  // underlying custom field is really an Integer.
-  if ((type === 'int' || type === 'float')
+  // Promote timestamp-shaped values whose field name suggests a date
+  // into the `date` kind regardless of the classified type. YouTrack
+  // reports these as IntegerIssueCustomField, SimpleIssueCustomField,
+  // or (depending on how they were configured) the generic parent —
+  // we can't rely on $type alone. What we can rely on: raw.value is a
+  // plain number in epoch-ms range and the field name looks date-ish.
+  // Keep `type` as 'unknown' to disable the generic field editor,
+  // since the underlying schema is Integer and our date writer would
+  // POST the wrong $type.
+  const rawVal = raw.value;
+  const candidate = typeof rawVal === 'number'
+    ? rawVal
+    : (typeof rawVal === 'string' && /^\d{12,14}$/.test(rawVal) ? Number(rawVal) : null);
+  if (candidate != null
       && typeof raw.name === 'string'
       && DATEY_NAME_RE.test(raw.name)
-      && looksLikeEpochMs(raw.value)) {
+      && looksLikeEpochMs(candidate)) {
     type = 'unknown';
-    value = { kind: 'date', iso: new Date(raw.value).toISOString() };
+    value = { kind: 'date', iso: new Date(candidate).toISOString() };
   }
 
   return { name: raw.name, type, value };
