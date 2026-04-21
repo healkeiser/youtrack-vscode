@@ -72,7 +72,10 @@ body { padding: 0; }
 
 .board {
   overflow-x: auto;
-  padding: 0.75rem;
+  /* Intentionally no padding: the board should sit flush against the
+     filter row above and the viewport edges. Card-level breathing room
+     is already provided by .swim-cell { padding: 0.6rem 0.55rem }. */
+  padding: 0;
 }
 
 /* Swimlane view */
