@@ -2,7 +2,7 @@
   "name": "youtrack-vscode",
   "displayName": "YouTrack Integration",
   "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
-  "version": "0.4.1",
+  "version": "0.7.0",
   "publisher": "valentinbeaumont",
   "author": {
     "name": "Valentin Beaumont",
@@ -50,6 +50,10 @@
         "title": "YouTrack: Open Issue"
       },
       {
+        "command": "youtrack.peekIssue",
+        "title": "YouTrack: Peek Issue Under Cursor"
+      },
+      {
         "command": "youtrack.loadMore",
         "title": "YouTrack: Load More"
       },
@@ -86,6 +90,14 @@
       {
         "command": "youtrack.editTags",
         "title": "YouTrack: Edit Tags..."
+      },
+      {
+        "command": "youtrack.manageLinks",
+        "title": "YouTrack: Manage Issue Links..."
+      },
+      {
+        "command": "youtrack.weeklyWorklog",
+        "title": "YouTrack: My Weekly Worklog"
       },
       {
         "command": "youtrack.postBranchActivity",
@@ -252,6 +264,11 @@
         "icon": "$(link-external)"
       },
       {
+        "command": "youtrack.openBoardInBrowser",
+        "title": "YouTrack: Open Board in Browser",
+        "icon": "$(link-external)"
+      },
+      {
         "command": "youtrack.startWork",
         "title": "YouTrack: Start Work on Issue..."
       },
@@ -383,6 +400,42 @@
         }
       }
     },
+    "walkthroughs": [
+      {
+        "id": "youtrack.getStarted",
+        "title": "Get Started with YouTrack",
+        "description": "Sign in, open your first issue, branch from it, and tweak the extension to fit your workflow.",
+        "steps": [
+          {
+            "id": "youtrack.signIn",
+            "title": "Sign in to YouTrack",
+            "description": "Provide your YouTrack Cloud URL and a permanent token.\n[Sign In](command:youtrack.signIn)",
+            "media": { "markdown": "media/walkthrough/signin.md" },
+            "completionEvents": ["onCommand:youtrack.signIn"]
+          },
+          {
+            "id": "youtrack.openIssue",
+            "title": "Open your first issue",
+            "description": "Open an issue from the sidebar or jump to one by ID.\n[Go to Issue](command:youtrack.goToIssue)",
+            "media": { "markdown": "media/walkthrough/open.md" },
+            "completionEvents": ["onCommand:youtrack.goToIssue", "onCommand:youtrack.openIssue"]
+          },
+          {
+            "id": "youtrack.createBranch",
+            "title": "Branch from an issue",
+            "description": "Right-click an issue → Create Branch. Commit messages then auto-prefix with the issue key.",
+            "media": { "markdown": "media/walkthrough/branch.md" },
+            "completionEvents": ["onCommand:youtrack.createBranch"]
+          },
+          {
+            "id": "youtrack.customize",
+            "title": "Customize",
+            "description": "Review the settings and keybindings that make this extension your own.\n[Open Settings](command:workbench.action.openSettings?%22youtrack%22)",
+            "media": { "markdown": "media/walkthrough/customize.md" }
+          }
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -628,6 +681,16 @@
           "group": "3_copy@3"
         },
         {
+          "command": "youtrack.openBoardInBrowser",
+          "when": "view == youtrack.boards && viewItem == board",
+          "group": "inline@1"
+        },
+        {
+          "command": "youtrack.openBoardInBrowser",
+          "when": "view == youtrack.boards && viewItem == board",
+          "group": "1_open@1"
+        },
+        {
           "command": "youtrack.markNotificationRead",
           "when": "view == youtrack.notifications && viewItem =~ /notif\\.unread/",
           "group": "inline@1"
@@ -663,6 +726,12 @@
         "key": "ctrl+alt+b",
         "mac": "cmd+alt+b",
         "when": "!terminalFocus && !editorTextFocus"
+      },
+      {
+        "command": "youtrack.peekIssue",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorTextFocus"
       }
     ],
     "viewsWelcome": [

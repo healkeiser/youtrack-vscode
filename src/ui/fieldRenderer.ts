@@ -1,23 +1,5 @@
 import type { CustomField, CustomFieldValue } from '../client/types';
-
-function escapeHtml(s: unknown): string {
-  if (s == null) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function formatPeriod(seconds: number): string {
-  const total = Number(seconds) || 0;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
+import { escapeHtml, formatPeriod } from '../util/format';
 
 function valueToString(v: CustomFieldValue): string {
   switch (v.kind) {

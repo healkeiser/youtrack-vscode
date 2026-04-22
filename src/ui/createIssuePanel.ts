@@ -1,13 +1,75 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { marked } from 'marked';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Tag } from '../client/types';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError, formatYouTrackError } from '../client/errors';
+import { pickProject, pickFieldValue, pickUser } from './pickers';
+import { buildPickerItems } from './inlinePickerBroker';
 
 export interface CreateIssueInitial {
   summary?: string;
   description?: string;
+}
+
+interface CreateIssueDraft {
+  projectId?: string;
+  summary?: string;
+  description?: string;
+  issueType?: string;
+  priority?: string;
+  assignee?: string;
+  selectedTags?: Array<{ id: string; name: string; color?: { background?: string; foreground?: string } }>;
+}
+
+interface IssueTemplate {
+  name: string;
+  summary: string;
+  description: string;
+}
+
+const DRAFT_KEY = 'youtrack.createIssueDraft';
+
+async function loadIssueTemplates(): Promise<IssueTemplate[]> {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders?.length) return [];
+  const out: IssueTemplate[] = [];
+  for (const folder of folders) {
+    const dir = vscode.Uri.joinPath(folder.uri, '.youtrack', 'templates');
+    let entries: [string, vscode.FileType][] = [];
+    try { entries = await vscode.workspace.fs.readDirectory(dir); }
+    catch { continue; }
+    for (const [name, type] of entries) {
+      if (!(type & vscode.FileType.File)) continue;
+      if (!/\.md$/i.test(name)) continue;
+      try {
+        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(dir, name));
+        const raw = new TextDecoder('utf-8').decode(bytes);
+        out.push(parseTemplate(name, raw));
+      } catch { /* skip unreadable */ }
+    }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function parseTemplate(filename: string, raw: string): IssueTemplate {
+  // If the first non-blank line is a markdown H1, treat it as the summary;
+  // the rest (with the H1 stripped) becomes the description. Otherwise the
+  // whole body goes into the description with no default summary.
+  const lines = raw.replace(/^﻿/, '').split(/\r?\n/);
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+  const displayName = path.basename(filename, path.extname(filename));
+  const h1 = lines[i]?.match(/^#\s+(.+?)\s*$/);
+  if (h1) {
+    return {
+      name: displayName,
+      summary: h1[1].trim(),
+      description: lines.slice(i + 1).join('\n').replace(/^\s+/, ''),
+    };
+  }
+  return { name: displayName, summary: '', description: raw };
 }
 
 export class CreateIssuePanel {
@@ -19,6 +81,7 @@ export class CreateIssuePanel {
   private constructor(
     private extensionUri: vscode.Uri,
     private client: YouTrackClient,
+    private context: vscode.ExtensionContext,
     private onCreated?: (idReadable: string) => void,
     initial?: CreateIssueInitial,
   ) {
@@ -27,7 +90,7 @@ export class CreateIssuePanel {
       'youtrackCreate',
       'Create Issue',
       vscode.ViewColumn.Active,
-      { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')], retainContextWhenHidden: false },
+      { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media'), context.globalStorageUri], retainContextWhenHidden: false },
     );
     this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack.png');
     this.panel.webview.html = this.shellHtml();
@@ -38,6 +101,7 @@ export class CreateIssuePanel {
   static show(
     extensionUri: vscode.Uri,
     client: YouTrackClient,
+    context: vscode.ExtensionContext,
     onCreated?: (id: string) => void,
     initial?: CreateIssueInitial,
   ): void {
@@ -46,7 +110,7 @@ export class CreateIssuePanel {
       if (initial) CreateIssuePanel.current.applyInitial(initial);
       return;
     }
-    CreateIssuePanel.current = new CreateIssuePanel(extensionUri, client, onCreated, initial);
+    CreateIssuePanel.current = new CreateIssuePanel(extensionUri, client, context, onCreated, initial);
   }
 
   private applyInitial(initial: CreateIssueInitial): void {
@@ -72,25 +136,103 @@ export class CreateIssuePanel {
   private async onMessage(msg: any): Promise<void> {
     if (msg.type === 'ready') {
       try {
-        const [projects, users] = await Promise.all([
+        const [projects, users, templates] = await Promise.all([
           this.getProjects(),
           this.client.listUsers('', 200).catch(() => []),
+          loadIssueTemplates().catch(() => [] as IssueTemplate[]),
         ]);
         const defaultShortName = vscode.workspace.getConfiguration('youtrack').get<string>('defaultProject', '');
-        this.panel.webview.postMessage({ type: 'init', projects, defaultShortName, users, initial: this.initial });
+        const draft = this.context.globalState.get<CreateIssueDraft>(DRAFT_KEY);
+        this.panel.webview.postMessage({
+          type: 'init',
+          projects,
+          defaultShortName,
+          users,
+          initial: this.initial,
+          templates,
+          draft,
+        });
       } catch (e) {
         this.panel.webview.postMessage({ type: 'error', message: formatYouTrackError(e, 'load projects') });
       }
       return;
     }
-    if (msg.type === 'fetchProjectFields') {
-      const projectId = String(msg.projectId || '');
-      if (!projectId) return;
-      const [typeValues, priorityValues] = await Promise.all([
-        this.client.fetchProjectFieldValues(projectId, 'Type').catch(() => []),
-        this.client.fetchProjectFieldValues(projectId, 'Priority').catch(() => []),
-      ]);
-      this.panel.webview.postMessage({ type: 'projectFields', typeValues, priorityValues });
+    if (msg.type === 'saveDraft') {
+      const draft: CreateIssueDraft = {
+        projectId: String(msg.projectId ?? ''),
+        summary: String(msg.summary ?? ''),
+        description: String(msg.description ?? ''),
+        issueType: String(msg.issueType ?? ''),
+        priority: String(msg.priority ?? ''),
+        assignee: String(msg.assignee ?? ''),
+        selectedTags: Array.isArray(msg.selectedTags) ? msg.selectedTags : [],
+      };
+      const empty = !draft.summary && !draft.description && !draft.selectedTags?.length;
+      await this.context.globalState.update(DRAFT_KEY, empty ? undefined : draft);
+      return;
+    }
+    if (msg.type === 'discardDraft') {
+      await this.context.globalState.update(DRAFT_KEY, undefined);
+      return;
+    }
+    if (msg.type === 'createTagPromptForDraft') {
+      const name = await vscode.window.showInputBox({
+        title: 'Create new tag',
+        prompt: 'Tag name',
+        validateInput: (v) => (v.trim() ? undefined : 'Name required'),
+      });
+      if (!name || !name.trim()) return;
+      try {
+        const tag = await this.client.createTag(name.trim());
+        this.panel.webview.postMessage({ type: 'newTagCreated', tag });
+      } catch (e) {
+        showYouTrackError(e, 'create tag');
+      }
+      return;
+    }
+    if (msg.type === 'openInlinePicker') {
+      try {
+        const req = {
+          requestId: String(msg.requestId),
+          kind: msg.kind,
+          fieldName: msg.fieldName,
+          projectId: msg.projectId,
+          allowClear: !!msg.allowClear,
+          clearLabel: msg.clearLabel,
+        };
+        const payload = await buildPickerItems(this.client, this.panel.webview, req);
+        this.panel.webview.postMessage({ type: 'inlinePickerItems', requestId: req.requestId, ...payload });
+      } catch (e) {
+        showYouTrackError(e, 'load options');
+      }
+      return;
+    }
+    if (msg.type === 'pickProject') {
+      try {
+        const p = await pickProject(this.client);
+        if (p) this.panel.webview.postMessage({ type: 'projectPicked', project: p });
+      } catch (e) { showYouTrackError(e, 'load projects'); }
+      return;
+    }
+    if (msg.type === 'pickType') {
+      try {
+        const picked = await pickFieldValue(this.client, String(msg.projectId || ''), 'Type', { allowClear: true, clearLabel: 'Use project default' });
+        if (picked) this.panel.webview.postMessage({ type: 'typePicked', name: picked.name ?? '' });
+      } catch (e) { showYouTrackError(e, 'load types'); }
+      return;
+    }
+    if (msg.type === 'pickPriority') {
+      try {
+        const picked = await pickFieldValue(this.client, String(msg.projectId || ''), 'Priority', { allowClear: true, clearLabel: 'Use project default' });
+        if (picked) this.panel.webview.postMessage({ type: 'priorityPicked', name: picked.name ?? '' });
+      } catch (e) { showYouTrackError(e, 'load priorities'); }
+      return;
+    }
+    if (msg.type === 'pickAssignee') {
+      try {
+        const picked = await pickUser(this.client, 'Assignee', { allowClear: true, clearLabel: 'Unassigned' });
+        if (picked) this.panel.webview.postMessage({ type: 'assigneePicked', login: picked.login, fullName: picked.fullName });
+      } catch (e) { showYouTrackError(e, 'load users'); }
       return;
     }
     if (msg.type === 'renderPreview') {
@@ -167,6 +309,7 @@ export class CreateIssuePanel {
         }
         await Promise.all(followUps);
 
+        await this.context.globalState.update(DRAFT_KEY, undefined);
         this.panel.dispose();
         vscode.window.showInformationMessage(`YouTrack: created ${idReadable}`);
         if (this.onCreated) this.onCreated(idReadable);

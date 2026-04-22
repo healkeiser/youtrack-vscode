@@ -4,6 +4,16 @@ import type { BoardView } from '../client/types';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError } from '../client/errors';
 
+interface BoardPrefs {
+  sortMode?: string;
+  colorBy?: string;
+  filters?: { text?: string; assignee?: string; priority?: string; tag?: string };
+}
+
+function prefsKey(boardId: string): string {
+  return `youtrack.boardPrefs.${boardId}`;
+}
+
 export class AgileBoardPanel {
   private static panels = new Map<string, AgileBoardPanel>();
   private panel: vscode.WebviewPanel;
@@ -16,6 +26,7 @@ export class AgileBoardPanel {
     private boardId: string,
     private sprintId: string,
     private boardTitle: string,
+    private context: vscode.ExtensionContext,
   ) {
     this.key = `${boardId}:${sprintId}`;
     this.panel = vscode.window.createWebviewPanel(
@@ -28,11 +39,18 @@ export class AgileBoardPanel {
     this.panel.webview.onDidReceiveMessage((m) => this.onMessage(m));
   }
 
-  static show(extensionUri: vscode.Uri, client: YouTrackClient, boardId: string, sprintId: string, boardTitle = 'YouTrack Board'): void {
+  static show(
+    extensionUri: vscode.Uri,
+    client: YouTrackClient,
+    boardId: string,
+    sprintId: string,
+    boardTitle: string,
+    context: vscode.ExtensionContext,
+  ): void {
     const key = `${boardId}:${sprintId}`;
     const existing = AgileBoardPanel.panels.get(key);
     if (existing) { existing.panel.reveal(); return; }
-    const p = new AgileBoardPanel(extensionUri, client, boardId, sprintId, boardTitle);
+    const p = new AgileBoardPanel(extensionUri, client, boardId, sprintId, boardTitle, context);
     AgileBoardPanel.panels.set(key, p);
   }
 
@@ -41,11 +59,15 @@ export class AgileBoardPanel {
   }
 
   private async reload(): Promise<void> {
-    const [state, sprints] = await Promise.all([
+    const [state, sprints, boards] = await Promise.all([
       this.client.fetchBoardView(this.boardId, this.sprintId),
       this.client.fetchSprints(this.boardId).catch(() => []),
+      this.client.fetchAgileBoards().catch(() => []),
     ]);
     this.state = state;
+    const board = boards.find((b) => b.id === this.boardId);
+    const sprintsEnabled = board ? board.sprintsEnabled : true;
+    const prefs = this.context.globalState.get<BoardPrefs>(prefsKey(this.boardId)) ?? {};
     this.panel.webview.postMessage({
       type: 'render',
       state,
@@ -54,7 +76,9 @@ export class AgileBoardPanel {
         boardId: this.boardId,
         sprintId: this.sprintId,
         sprints,
+        sprintsEnabled,
       },
+      prefs,
     });
   }
 
@@ -72,6 +96,18 @@ export class AgileBoardPanel {
       void this.reload();
       return;
     }
+    if (msg.type === 'openInBrowser') {
+      // If the board has sprints disabled, open the root board URL
+      // without a sprint segment — YouTrack resolves it to its own
+      // no-sprint board view.
+      const boards = await this.client.fetchAgileBoards().catch(() => []);
+      const board = boards.find((b) => b.id === this.boardId);
+      await vscode.commands.executeCommand('youtrack.openBoardInBrowser', {
+        boardId: this.boardId,
+        sprintId: board?.sprintsEnabled === false ? undefined : this.sprintId,
+      });
+      return;
+    }
     if (msg.type === 'switchSprint' && typeof msg.sprintId === 'string') {
       this.sprintId = msg.sprintId;
       const newKey = `${this.boardId}:${this.sprintId}`;
@@ -83,6 +119,15 @@ export class AgileBoardPanel {
     }
     if (msg.type === 'openIssue') {
       vscode.commands.executeCommand('youtrack.openIssue', msg.issueId);
+      return;
+    }
+    if (msg.type === 'saveBoardPrefs') {
+      const prefs: BoardPrefs = {
+        sortMode: typeof msg.sortMode === 'string' ? msg.sortMode : undefined,
+        colorBy: typeof msg.colorBy === 'string' ? msg.colorBy : undefined,
+        filters: msg.filters && typeof msg.filters === 'object' ? msg.filters : undefined,
+      };
+      await this.context.globalState.update(prefsKey(this.boardId), prefs);
       return;
     }
     if (msg.type === 'moveCard') {

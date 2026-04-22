@@ -44,6 +44,9 @@
       case 'mention':
         if (opts && typeof opts.onMention === 'function') opts.onMention(ta);
         break;
+      case 'attach':
+        if (opts && typeof opts.onAttach === 'function') opts.onAttach(ta);
+        break;
     }
   }
 
@@ -213,6 +216,50 @@
     });
   }
 
+  // Paste-as-attachment: when an image is in the clipboard, upload it
+  // instead of pasting the binary/base64 blob into the textarea. Handler
+  // receives { name, mime, dataBase64 } and is expected to post the upload
+  // message to the host. The caller also supplies an insert callback that
+  // writes the markdown link at the cursor once upload succeeds.
+  function toBase64(bytes) {
+    let bin = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  function attachPasteUpload(ta, onPasteImage) {
+    if (!ta || typeof onPasteImage !== 'function') return;
+    ta.addEventListener('paste', async (e) => {
+      const items = e.clipboardData?.items ? Array.from(e.clipboardData.items) : [];
+      const imageItems = items.filter((it) => it.kind === 'file' && /^image\//i.test(it.type));
+      if (!imageItems.length) return;
+      e.preventDefault();
+      for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        const buf = new Uint8Array(await file.arrayBuffer());
+        const ext = (file.type.split('/')[1] || 'png').replace('+xml', '');
+        const name = file.name && file.name !== 'image.png' ? file.name : `pasted-${Date.now()}.${ext}`;
+        onPasteImage({ name, mime: file.type || 'image/png', dataBase64: toBase64(buf), textarea: ta });
+      }
+    });
+  }
+
+  function insertAtCursor(el, text) {
+    if (!el) return;
+    el.focus();
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    const caret = start + text.length;
+    el.setSelectionRange(caret, caret);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   global.YT = global.YT || {};
-  global.YT.mdEditor = { wrapSelection, prefixLines, applyMd, wireToolbar, wireMdTabs, attachMentionAutocomplete };
+  global.YT.mdEditor = {
+    wrapSelection, prefixLines, applyMd, wireToolbar, wireMdTabs,
+    attachMentionAutocomplete, attachPasteUpload, insertAtCursor, toBase64,
+  };
 })(window);

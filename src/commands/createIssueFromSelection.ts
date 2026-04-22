@@ -12,6 +12,7 @@ import { CreateIssuePanel } from '../ui/createIssuePanel';
 export function createIssueFromSelection(
   extensionUri: vscode.Uri,
   client: YouTrackClient,
+  context: vscode.ExtensionContext,
   onCreated?: (id: string) => void,
 ): void {
   const editor = vscode.window.activeTextEditor;
@@ -49,5 +50,5 @@ export function createIssueFromSelection(
     '```',
   ].join('\n');
 
-  CreateIssuePanel.show(extensionUri, client, onCreated, { summary, description });
+  CreateIssuePanel.show(extensionUri, client, context, onCreated, { summary, description });
 }

@@ -17,6 +17,7 @@ export type CustomFieldType =
   | 'state'
   | 'string'
   | 'date'
+  | 'datetime'
   | 'period'
   | 'int'
   | 'float'
@@ -72,6 +73,7 @@ export interface Comment {
   text: string;
   author: User;
   created: number;
+  attachments: Attachment[];
 }
 
 export interface Attachment {
@@ -101,6 +103,8 @@ export interface AgileBoard {
   id: string;
   name: string;
   projects: { shortName: string }[];
+  /** False for boards with the "Disable sprints" admin option on. */
+  sprintsEnabled: boolean;
 }
 
 export interface Sprint {

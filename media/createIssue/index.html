@@ -20,7 +20,7 @@
       </div>
 
       <div class="section card-surface">
-        <h3>Description</h3>
+        <h3><i class="codicon codicon-note"></i>Description</h3>
         <div class="desc-zone md-form" id="descForm">
           <div class="md-tabs">
             <button type="button" class="md-tab active" data-md-tab="write">Write</button>
@@ -51,23 +51,26 @@
     </div>
 
     <aside class="side card-surface">
-      <div class="side-field">
-        <label class="label" for="projectSel">Project</label>
-        <select id="projectSel" name="project" required></select>
+      <h4><i class="codicon codicon-info"></i>Details</h4>
+      <div class="side-field" id="templateRow" hidden>
+        <label class="label" for="templateSel">Template</label>
+        <select id="templateSel" name="template"><option value="">(none)</option></select>
       </div>
-      <div class="side-field">
-        <label class="label" for="typeSel">Type</label>
-        <select id="typeSel" name="type"><option value="">(default)</option></select>
+      <div class="side-field editable-pill" id="projectRow" title="Click to change project">
+        <span class="label">Project</span>
+        <span class="value" id="projectValue"><span class="muted">Click to pick…</span></span>
       </div>
-      <div class="side-field">
-        <label class="label" for="prioritySel">Priority</label>
-        <select id="prioritySel" name="priority"><option value="">(default)</option></select>
+      <div class="side-field editable-pill" id="typeRow" title="Click to change type">
+        <span class="label">Type</span>
+        <span class="value" id="typeValue"><span class="muted">(default)</span></span>
       </div>
-      <div class="side-field">
-        <label class="label" for="assigneeSel">Assignee</label>
-        <select id="assigneeSel" name="assignee">
-          <option value="">(unassigned)</option>
-        </select>
+      <div class="side-field editable-pill" id="priorityRow" title="Click to change priority">
+        <span class="label">Priority</span>
+        <span class="value" id="priorityValue"><span class="muted">(default)</span></span>
+      </div>
+      <div class="side-field editable-pill" id="assigneeRow" title="Click to assign">
+        <span class="label">Assignee</span>
+        <span class="value" id="assigneeValue"><span class="muted">(unassigned)</span></span>
       </div>
       <div class="side-field side-field-static">
         <span class="label">State</span>
@@ -77,9 +80,14 @@
         <span class="label">Tags</span>
         <span class="value tags-value" id="tagsValue"><span class="muted">Click to add…</span></span>
       </div>
+      <input type="hidden" name="projectId" id="projectIdIn">
+      <input type="hidden" name="typeName" id="typeNameIn">
+      <input type="hidden" name="priorityName" id="priorityNameIn">
+      <input type="hidden" name="assigneeLogin" id="assigneeLoginIn">
     </aside>
   </form>
   <script nonce="{{NONCE}}" src="{{MD_EDITOR}}"></script>
+  <script nonce="{{NONCE}}" src="{{INLINE_PICKER}}"></script>
   <script nonce="{{NONCE}}" src="{{MAIN}}"></script>
 </body>
 </html>

@@ -1,26 +1,17 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
-import { colorDotUri } from '../ui/colorDot';
+import { pickFieldValue } from '../ui/pickers';
 
 export async function changeState(client: YouTrackClient, cache: Cache, issueId: string): Promise<void> {
   const issue = await client.fetchIssue(issueId);
-  const states = await client.fetchProjectFieldValuesDetailed(issue.project.id, 'State');
-  if (!states.length) {
-    vscode.window.showErrorMessage('YouTrack: no states configured for this project');
-    return;
-  }
-  type Item = vscode.QuickPickItem & { name: string };
-  const items: Item[] = states.map((s) => ({
-    label: s.name,
-    name: s.name,
-    iconPath: colorDotUri(s.color?.background),
-  }));
-  const picked = await vscode.window.showQuickPick<Item>(items, {
-    placeHolder: 'New state',
-    ignoreFocusOut: true,
+  const current = issue.customFields.find((f) => f.name === 'State');
+  const currentName = current?.value.kind === 'state' || current?.value.kind === 'enum' ? current.value.name : undefined;
+  const picked = await pickFieldValue(client, issue.project.id, 'State', {
+    title: `Change state of ${issueId}`,
+    currentValue: currentName,
   });
-  if (!picked) return;
+  if (!picked?.name) return;
   await client.transitionState(issueId, picked.name);
   cache.invalidateIssue(issueId);
   vscode.window.showInformationMessage(`YouTrack: ${issueId} -> ${picked.name}`);

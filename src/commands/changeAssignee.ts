@@ -1,33 +1,19 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
-import { primeUserAvatars, userAvatarUri } from '../ui/userAvatar';
+import { pickUser } from '../ui/pickers';
 
 export async function changeAssignee(client: YouTrackClient, cache: Cache, issueId: string): Promise<void> {
-  const users = await client.listUsers('', 200);
-  if (!users.length) {
-    vscode.window.showInformationMessage('YouTrack: no users found');
-    return;
-  }
-  await primeUserAvatars(users.map((u) => u.avatarUrl));
-  type Item = vscode.QuickPickItem & { login?: string };
-  const items: Item[] = [
-    { label: '$(circle-slash) Unassign', login: '' },
-    { label: '', kind: vscode.QuickPickItemKind.Separator },
-    ...users.map<Item>((u) => ({
-      label: u.fullName || u.login,
-      description: u.login,
-      login: u.login,
-      iconPath: userAvatarUri(u.avatarUrl) ?? new vscode.ThemeIcon('person'),
-    })),
-  ];
-  const picked = await vscode.window.showQuickPick<Item>(items, {
-    placeHolder: 'Assign to…',
-    matchOnDescription: true,
-    ignoreFocusOut: true,
+  const issue = await client.fetchIssue(issueId);
+  const assigneeField = issue.customFields.find((f) => f.name === 'Assignee');
+  const currentLogin = assigneeField?.value.kind === 'user' ? assigneeField.value.login : undefined;
+  const picked = await pickUser(client, `Assign ${issueId}`, {
+    allowClear: true,
+    clearLabel: 'Unassign',
+    currentValue: currentLogin,
   });
-  if (!picked || picked.login === undefined) return;
-  await client.assignIssue(issueId, picked.login);
+  if (!picked) return;
+  await client.assignIssue(issueId, picked.login ?? '');
   cache.invalidateIssue(issueId);
   vscode.window.showInformationMessage(
     picked.login ? `YouTrack: ${issueId} assigned to ${picked.login}` : `YouTrack: ${issueId} unassigned`,

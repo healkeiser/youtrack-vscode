@@ -32,7 +32,15 @@
           </optgroup>
         </select>
       </label>
+      <label class="sprint-label">Color by
+        <select id="colorByPicker">
+          <option value="state">State</option>
+          <option value="priority">Priority</option>
+          <option value="none">None</option>
+        </select>
+      </label>
       <button type="button" id="createBtn" class="refresh-btn" title="Create new issue"><i class="codicon codicon-add"></i> New</button>
+      <button type="button" id="openInBrowserBtn" class="refresh-btn" title="Open board in YouTrack"><i class="codicon codicon-link-external"></i></button>
       <button type="button" id="refreshBtn" class="refresh-btn" title="Refresh board"><i class="codicon codicon-refresh"></i></button>
     </div>
     <div class="board-filters" id="boardFilters">

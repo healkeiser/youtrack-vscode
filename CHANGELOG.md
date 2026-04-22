@@ -3,6 +3,90 @@
 All notable changes to this extension are documented here.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] — 2026-04-22
+
+Major UX + content overhaul. Everything below is new since 0.4.1.
+
+### Added — Editing surfaces
+- **Inline pickers everywhere.** Every side-panel pill (State, Priority, Assignee, user custom fields, enum/version/state custom fields, Tags, Links, Work Item Type) opens a VS Code-styled dropdown anchored directly under the clicked pill. Features: search input, arrow-key navigation, Enter to pick, Esc / click-outside to close. Visual fidelity: colored dots for enum/priority using the YouTrack-configured hex, avatars for users loaded from the direct HTTPS URL, codicons + theme colors for state (matching the sidebar), `$(check)` multi-select checkmarks for Tags, action rows (Unassign / Clear / Create new tag) above a thin separator.
+- **Inline inputs for date, datetime, period, string, integer, float, bool** with the same anchored-dropdown UX. Date fields use a native `<input type="date">`; datetime fields use `datetime-local` and only appear when YouTrack reports the field as `DateTimeIssueCustomField`; period fields accept `1h 30m` / `45m` / `3h` syntax; numeric fields validate as you type; bool fields show a two-item Yes/No picker.
+- **Name-based date detection** — fields like `End date`, `Start date`, `Timer time`, `Due date` get a date picker even when YouTrack stores them as bare `SimpleIssueCustomField` integers. Epoch-ms heuristic looks at UTC midnight to decide date vs datetime.
+- **Tags can be created inline** — a `$(add) Create new tag…` row at the top of the tag multi-select opens a tiny name prompt, creates the tag, attaches it to the current issue, and re-renders.
+- **Issue link editor** — Manage Links row on the side panel opens an inline picker listing each existing link (with a trash remove action) followed by every available link-type verb. Adding a link prompts for a target issue ID and POSTs through YouTrack's `/api/commands` endpoint.
+- **Colored dots match YouTrack** — State / Priority / enum pickers and pills render dots / codicons tinted with the exact hex YouTrack has configured, not bucketed theme colors.
+- **Avatars in user pickers** — Change Assignee, user-field edit, and @mention pickers show each user's YouTrack profile picture with a generic `person` codicon fallback.
+- **Sort toggle for Comments + Activity** — a small `Newest first ↕ / Oldest first ↕` button in the Comments section header flips the sort direction for both streams at once; the preference persists across panels via `globalState`.
+
+### Added — Comments
+- **Comment-as-card layout** — each comment sits in its own soft rounded surface with a 32px avatar gutter on the left, author + verb + relative time in the header, body below. Activity feed (work items + field changes) uses the same card treatment with uniform 28px avatars. Relative time (`3h ago`, `2d ago`) with full datetime on hover.
+- **Full activity feed** with field changes — the Activity section merges comments, work items, and field-change history (state transitions, priority changes, tag add/remove, link add/remove, attachment changes, sprint moves, resolution) from YouTrack's `/activities` stream.
+- **Comment attachments** bind to the comment, not the issue — clicking the paperclip (or pasting a screenshot) into the Add-a-Comment form queues files in memory and renders a preview tile below the textarea. On post, the comment is created first, then each file uploads directly to `POST /api/issues/{id}/comments/{commentId}/attachments` so YouTrack links them properly (they render as tiles under the comment, matching the web UI — never inlined as markdown).
+- **Attachment thumbnails inside comments** — second-pass HTML rewrite resolves `<img src="filename.ext">` and `<a href="filename.ext">` references to the full signed URL regardless of how YouTrack stored the reference.
+- **Inline image lightbox gallery** — click any image attachment (global or inline-in-comment) to open a fixed-position overlay with the full-size image, caption, thumbnail strip, previous/next arrow buttons, keyboard navigation (`←` / `→` / `Esc`), and scroll-into-view for the active thumbnail. Single-image attachments just show the large image with no strip.
+
+### Added — Layout & spacing
+- **Full-width separators** under every section heading (Description / Attachments / Comments / Activity). **Details** heading on Create Issue mirrors the Issue Detail side panel.
+- **Section icons** — every labeled section has a codicon in its title (`file-media` for Attachments, `comment-discussion` for Comments, `history` for Activity, `clock` for Log time, `note` for Description, `info` for Details).
+- **Cohesive spacing** — both panels use the same `.main { display: flex; gap }` rhythm and identical side-panel layout (360px column, 110px label width).
+- **Attachments grid scrolls horizontally** — always a single row, overflow-x: auto, instead of wrapping into rows that push the rest of the panel down.
+- **Estimate progress bar is readable when over-budget** — white label with drop-shadow for legibility on any fill color; shows `+NN%` bold when over.
+- **Small-window layout** — on narrow panels (<880px), the layout collapses to a single column with Details at the bottom (previously hoisted above main).
+
+### Added — Agile board
+- **Sprint / Group / Color by / filters persist across sessions** — the board's layout prefs survive panel close + VS Code restart, keyed per-board via `globalState`.
+- **Color by field** — pick which field drives the card's left-border accent (State / Priority / None). Uses the YouTrack-configured bundle color, not bucketed theme colors.
+- **Open Board in Browser** — new `$(link-external)` icon in the board header and as an inline action on each sidebar Boards tree item.
+- **Sprintless boards** — boards with the "Disable sprints" admin option are still listed (with a `no sprints` annotation in the picker); the sprint dropdown is hidden on those boards and the Open-in-Browser URL drops the sprint segment.
+
+### Added — Issue creation
+- **Create Issue drafts** — summary, description, selected tags, project/type/priority/assignee persist to `globalState` and are restored if you reopen the panel; cleared on successful submit.
+- **Workspace issue templates** — drop markdown files into `.youtrack/templates/` in any workspace folder; they appear in a new **Template** dropdown. First `# Title` line becomes the summary, rest becomes the description.
+- **Same picker/input affordances** as Issue Detail — Create Issue's Project, Type, Priority, Assignee, Tags all use the inline picker with the same visual treatment.
+
+### Added — Workflow
+- **My Weekly Worklog** — `YouTrack: My Weekly Worklog` lists your work items since Monday, grouped by issue with totals; pick any row to open that issue.
+- **Peek issue** — place the cursor on an `ABC-123` token and press `Ctrl+Alt+P` / `Cmd+Alt+P` to open the issue beside the current view without stealing focus.
+- **Get Started walkthrough** — first-run walkthrough (Sign in → Open first issue → Branch → Customize) under **Welcome → Walkthroughs**.
+
+### Fixed
+- Pickers commit on **pointerdown** — click events aren't reliably dispatched inside VS Code webviews for elements under a `position: fixed` container, so delegated click-based picks were silently lost. pointerdown fires consistently.
+- Attaching via the comment toolbar no longer reloads the panel mid-edit, so in-flight comment drafts survive.
+- Attachment tile click opens the lightbox cleanly instead of also launching a browser tab (we render tiles as `<div data-href>` rather than `<a href>` so there's no default navigation to suppress).
+- State pills render with icon + text vertically centered via a shared `.icon-label` inline-flex container.
+- DateTime fields display their time component ("16 Apr 2026, 08:22") instead of the date alone.
+- Bundle-value pickers (State / Priority / enum fields) sort by the admin-configured `ordinal` position so order matches YouTrack.
+- Sidebar tree icons unified — Assigned to me and Issues views share the same codicon + theme-color rendering.
+
+### Changed
+- `changeState`, `changePriority`, `changeAssignee`, `editCustomField` delegate to shared `pickers.ts` helpers — single source of truth for native QuickPick paths.
+- Consolidated `formatPeriod`, `formatBytes`, `escapeHtml` into `src/util/format.ts`; `stateVisuals` into `src/util/stateVisuals.ts`.
+- `inlineInput` merged into `inlinePicker.js` as `YT.inlinePicker.openInput` — one file, one positioning/close code path.
+
+## [0.6.0] — 2026-04-21
+
+### Added
+- **Inline picker** — anchored dropdown that replaces top-of-screen QuickPicks for pill clicks on both Issue Detail and Create Issue panels. Single-select for State/Priority/Assignee/enum custom fields; multi-select with checkmarks for Tags; actions-only mode for Links management. Supports arrow-key navigation, search, and flips above the pill if there isn't enough room below.
+- **State icons match the sidebar** — same codicon + theme color (`pass-filled`/`sync`/`eye`/`circle-slash`/`debug-pause`) across the tree, pills, and inline picker.
+- **Log time → Type** is now an inline picker pill instead of a raw `<select>`.
+- **Cohesive spacing** — both panels use the same `.main { display: flex; gap }` rhythm and identical side-panel layout (360px column, 110px label width).
+
+### Fixed
+- Attaching via the comment toolbar no longer reloads the panel mid-edit, so in-flight comment drafts survive.
+- State / Priority pills now render with icon + text properly centered (`.icon-label` inline-flex).
+
+## [0.5.0] — 2026-04-21
+
+### Added
+- **Full activity feed.** The Activity section now merges comments, work-item logs, *and* field-change history (state transitions, assignment changes, priority bumps, summary/description edits, tag add/remove, link add/remove, attachment add/remove, sprint moves, project moves, resolution) from YouTrack's `/activities` stream into a single chronological feed.
+- **Issue link editor.** A **Manage…** row at the bottom of the links section opens a QuickPick listing every existing link with a `$(trash)` remove action, followed by every available link-type verb (e.g. "depends on", "is duplicated by", "relates to") as an add action. Adding prompts for a target issue ID. New command: `YouTrack: Manage Issue Links…`.
+- **Paste screenshot → attachment.** Pasting an image (from a screenshot tool, clipboard, or file) into any markdown textarea (description/comment/edit) on the Issue Detail panel uploads it as an attachment and inserts `![filename](url)` at the cursor.
+- **My Weekly Worklog.** New command `YouTrack: My Weekly Worklog` lists your work items since Monday, grouped by issue with per-issue totals and a grand total at the top; pick any row to open that issue.
+- **Create Issue drafts.** Summary, description, selected tags, project/type/priority/assignee now persist to `globalState` and are restored if you reopen the Create Issue panel. Cleared on successful create.
+- **Workspace issue templates.** Drop markdown files into `.youtrack/templates/` in your workspace; they appear in a new **Template** dropdown on the Create Issue panel. The first `# Title` line becomes the summary; the rest becomes the description.
+- **Estimate progress bar.** When an issue has an Estimation period field, the side panel renders a `<spent> / <estimate> · <pct>%` bar under it, sourced from the sum of logged work items. Turns red when you blow past the estimate.
+- **Peek issue.** Place the cursor on an `ABC-123` token in any file and press `Ctrl+Alt+P` / `Cmd+Alt+P` (or run `YouTrack: Peek Issue Under Cursor`) to open the issue in a side column without stealing focus.
+- **Get Started walkthrough.** First-run walkthrough (`contributes.walkthroughs`) with four steps: Sign in, Open first issue, Branch from issue, Customize. Visible under **Welcome → Walkthroughs → Get Started with YouTrack**.
+
 ## [0.4.1] — 2026-04-21
 
 ### Added
@@ -80,6 +164,9 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Branch-from-issue flow with a configurable `youtrack.branch.template` (`{id}`, `{summary}`, `{type}`, `{state}`, `{assignee}`, `{project}`, `{field:<Name>}` placeholders).
 - Security hardening: strict CSP with per-load nonces on every webview, `sanitize-html` on all rendered markdown.
 
+[0.7.0]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.7.0
+[0.6.0]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.6.0
+[0.5.0]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.5.0
 [0.4.1]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.4.1
 [0.4.0]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.4.0
 [0.3.5]: https://github.com/healkeiser/youtrack-vscode/releases/tag/v0.3.5

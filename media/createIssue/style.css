@@ -1,8 +1,6 @@
 /* createIssue — panel-specific rules only. Layout, side panel,
    markdown editor, and md-body live in shared.css. */
 
-.main { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
-
 .header { padding: 1rem; }
 .project-hint { text-transform: none; letter-spacing: 0; font-weight: 500; }
 

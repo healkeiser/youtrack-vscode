@@ -8,6 +8,9 @@ import { parseDuration } from '../domain/timeTracker';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError } from '../client/errors';
 import { primeUserAvatars, userAvatarUri } from './userAvatar';
+import { escapeHtml, formatPeriod, formatBytes } from '../util/format';
+import { buildPickerItems } from './inlinePickerBroker';
+import { stateVisuals } from '../util/stateVisuals';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -34,10 +37,6 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   },
 };
 
-function escapeHtml(s: unknown): string {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
-}
 
 function resolveMentions(raw: string, userLookup: Map<string, User>): string {
   const MENTION_RE = /@([A-Za-z0-9._\-]+)/g;
@@ -48,11 +47,57 @@ function resolveMentions(raw: string, userLookup: Map<string, User>): string {
   });
 }
 
-function renderBody(raw: string | null | undefined, userLookup: Map<string, User>): string {
+// YouTrack stores image/file references inside comment markdown as
+// `![](filename.png)` or `[label](filename.pdf)` — just the bare
+// attachment name, not a URL. The browser would treat that as a relative
+// reference and fail to load anything. Resolve each to the real signed
+// URL by looking it up in the issue's attachments list. Tolerates URL-
+// encoded spaces and percent-encoded names.
+function resolveAttachmentRefs(raw: string, attachments: Attachment[]): string {
+  if (!raw || !attachments.length) return raw;
+  const byName = new Map<string, string>();
+  for (const a of attachments) byName.set(a.name, a.url);
+  return raw.replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (match, bang, text, url) => {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return match;      // already absolute
+    if (url.startsWith('//') || url.startsWith('/')) return match;
+    if (url.includes('/')) return match;                     // looks pathy
+    const candidate = (() => {
+      try { return decodeURIComponent(url); } catch { return url; }
+    })();
+    const hit = byName.get(candidate) ?? byName.get(url);
+    if (!hit) return match;
+    return `${bang}[${text || candidate}](${hit})`;
+  });
+}
+
+// Second pass: rewrite any <img src="filename"> / <a href="filename">
+// in the already-rendered HTML. Catches cases where YouTrack stores
+// weird markup or a reference-style link we can't reach pre-markdown.
+function resolveAttachmentHtmlRefs(html: string, attachments: Attachment[]): string {
+  if (!html || !attachments.length) return html;
+  const byName = new Map<string, string>();
+  for (const a of attachments) byName.set(a.name.toLowerCase(), a.url);
+  return html.replace(/(\s(?:src|href)=")([^"]+)"/gi, (match, prefix, url) => {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return match;
+    if (url.startsWith('//') || url.startsWith('/')) return match;
+    if (url.includes('/')) return match;
+    const candidate = (() => { try { return decodeURIComponent(url); } catch { return url; } })();
+    const hit = byName.get(candidate.toLowerCase());
+    return hit ? `${prefix}${hit}"` : match;
+  });
+}
+
+function renderBody(
+  raw: string | null | undefined,
+  userLookup: Map<string, User>,
+  attachments: Attachment[] = [],
+): string {
   if (!raw) return '';
   const withMentions = resolveMentions(raw, userLookup);
-  const html = marked.parse(withMentions, { async: false }) as string;
-  return sanitizeHtml(html, SANITIZE_OPTIONS);
+  const withRefs = resolveAttachmentRefs(withMentions, attachments);
+  const html = marked.parse(withRefs, { async: false }) as string;
+  const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
+  return resolveAttachmentHtmlRefs(sanitized, attachments);
 }
 
 function stateSlug(name: string): string {
@@ -93,45 +138,67 @@ function renderUserChip(user: User | null | undefined): string {
   return `<span class="user-chip">${renderAvatar(user)}<span>${escapeHtml(user.fullName || user.login)}</span></span>`;
 }
 
-function formatBytes(bytes: number): string {
-  const n = Number(bytes);
-  if (!Number.isFinite(n) || n <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let i = 0;
-  let v = n;
-  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
-  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
-}
-
-function formatPeriod(seconds: number): string {
-  const total = Number(seconds) || 0;
-  if (!total) return '—';
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
-
 // DateIssueCustomField and DateTimeIssueCustomField collapse into the
 // same `date` kind — show the time component only when it carries info
 // (i.e. the value isn't midnight local-time), otherwise render a bare
 // date. Avoids noisy "12:00:00 AM" tails on pure-date fields.
-function formatDateOrDateTime(iso: string): string {
+function renderAttachmentTile(a: Attachment): string {
+  const isImage = (a.mimeType ?? '').toLowerCase().startsWith('image/')
+    || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
+  const size = formatBytes(a.size);
+  if (isImage) {
+    // No href: images open in the in-panel lightbox on pointerdown. The
+    // URL is carried in data-href so it's still copyable via JS if we
+    // want to add "copy link" later.
+    return `<div class="attachment-tile image" data-href="${escapeHtml(a.url)}" data-lightbox="1" title="${escapeHtml(a.name)} — ${size}">
+        <img src="${escapeHtml(a.url)}" alt="${escapeHtml(a.name)}">
+        <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
+      </div>`;
+  }
+  return `<a class="attachment-tile file" href="${escapeHtml(a.url)}" title="${escapeHtml(a.name)} — ${size}">
+      <i class="codicon codicon-file"></i>
+      <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
+    </a>`;
+}
+
+// "2 hours ago", "just now", etc. — used in comment/activity headers
+// alongside a full-datetime tooltip. Compact because the header row is
+// already busy with author + verb.
+function formatRelative(epochMs: number): string {
+  const ms = Date.now() - epochMs;
+  if (!Number.isFinite(ms)) return '';
+  const s = Math.round(ms / 1000);
+  if (s < 45) return 'just now';
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `${d}d ago`;
+  const w = Math.round(d / 7);
+  if (w < 5) return `${w}w ago`;
+  const mo = Math.round(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  const y = Math.round(d / 365);
+  return `${y}y ago`;
+}
+
+function formatDateOrDateTime(iso: string, hasTime = true): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
+  if (!hasTime) return d.toLocaleDateString();
   const isMidnight = d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0;
   return isMidnight ? d.toLocaleDateString() : d.toLocaleString();
 }
 
-function valueAsText(v: CustomFieldValue): string {
+function valueAsText(v: CustomFieldValue, fieldType?: string): string {
   switch (v.kind) {
     case 'empty':   return '—';
     case 'enum':    return v.name ?? '—';
     case 'state':   return v.name ?? '—';
     case 'user':    return v.fullName ?? v.login ?? '—';
     case 'string':  return v.text ?? '—';
-    case 'date':    return v.iso ? formatDateOrDateTime(v.iso) : '—';
+    case 'date':    return v.iso ? formatDateOrDateTime(v.iso, fieldType === 'datetime') : '—';
     case 'period':  return formatPeriod(v.seconds);
     case 'number':  return String(v.value ?? 0);
     case 'bool':    return v.value ? 'Yes' : 'No';
@@ -159,6 +226,7 @@ function formattingToolbarHtml(): string {
       <button type="button" data-md="quote" title="Quote"><i class="codicon codicon-quote"></i></button>
       <span class="sep"></span>
       <button type="button" data-md="mention" title="Mention user"><i class="codicon codicon-mention"></i></button>
+      <button type="button" data-md="attach" title="Attach file"><i class="codicon codicon-cloud-upload"></i></button>
     </div>
   `;
 }
@@ -173,44 +241,162 @@ function renderTag(tag: Tag): string {
   return `<span class="tag-pill" style="${escapeHtml(style)}">${escapeHtml(tag.name)}</span>`;
 }
 
-function renderSideField(f: CustomField): string {
+function renderChangeVerb(a: {
+  category: string;
+  field?: string;
+  added: string[];
+  removed: string[];
+}): string {
+  const field = a.field ? `<em>${escapeHtml(a.field)}</em>` : '';
+  const from = a.removed.length ? escapeHtml(a.removed.join(', ')) : '';
+  const to = a.added.length ? escapeHtml(a.added.join(', ')) : '';
+  switch (a.category) {
+    case 'TagsCategory':
+      if (a.added.length && !a.removed.length) return `added tag <b>${to}</b>`;
+      if (a.removed.length && !a.added.length) return `removed tag <b>${from}</b>`;
+      return `changed tags`;
+    case 'LinksCategory':
+      if (a.added.length && !a.removed.length) return `added link ${field ? field + ' ' : ''}<b>${to}</b>`;
+      if (a.removed.length && !a.added.length) return `removed link ${field ? field + ' ' : ''}<b>${from}</b>`;
+      return `changed links`;
+    case 'AttachmentsCategory':
+      if (a.added.length && !a.removed.length) return `attached <b>${to}</b>`;
+      if (a.removed.length && !a.added.length) return `removed attachment <b>${from}</b>`;
+      return `updated attachments`;
+    case 'SummaryCategory':
+      return `edited the summary`;
+    case 'DescriptionCategory':
+      return `edited the description`;
+    case 'IssueCreatedCategory':
+      return `created this issue`;
+    case 'IssueResolvedCategory':
+      return to ? `resolved as <b>${to}</b>` : `marked as unresolved`;
+    case 'SprintCategory':
+      if (a.added.length && !a.removed.length) return `added to sprint <b>${to}</b>`;
+      if (a.removed.length && !a.added.length) return `removed from sprint <b>${from}</b>`;
+      return `changed sprint`;
+    case 'ProjectCategory':
+      return `moved ${from ? `from <b>${from}</b> ` : ''}${to ? `to <b>${to}</b>` : ''}`;
+    case 'CustomFieldCategory':
+    default: {
+      if (from && to) return `changed ${field || 'a field'} from <b>${from}</b> to <b>${to}</b>`;
+      if (to) return `set ${field || 'a field'} to <b>${to}</b>`;
+      if (from) return `cleared ${field || 'a field'} (was <b>${from}</b>)`;
+      return `updated ${field || 'a field'}`;
+    }
+  }
+}
+
+function renderEstimateBar(estSeconds: number, spentSeconds: number): string {
+  if (!estSeconds || estSeconds <= 0) return '';
+  // Fill width clamps at 100% (can't extend beyond the track); the label
+  // shows the true percentage so users know how much over they are.
+  const truePct = Math.round((spentSeconds / estSeconds) * 100);
+  const fillPct = Math.min(100, truePct);
+  const over = spentSeconds > estSeconds;
+  const label = over
+    ? `${formatPeriod(spentSeconds)} / ${formatPeriod(estSeconds)} · <b>+${truePct - 100}%</b>`
+    : `${formatPeriod(spentSeconds)} / ${formatPeriod(estSeconds)} · ${truePct}%`;
+  return `<div class="estimate-bar${over ? ' over' : ''}" title="${formatPeriod(spentSeconds)} of ${formatPeriod(estSeconds)}">
+    <div class="estimate-fill${over ? ' over' : ''}" style="width:${fillPct}%"></div>
+    <div class="estimate-label">${label}</div>
+  </div>`;
+}
+
+function renderSideField(f: CustomField, ctx?: { spentSeconds?: number }): string {
   const v = f.value;
   const name = escapeHtml(f.name);
   if (f.name === 'State' && (v.kind === 'state' || v.kind === 'enum')) {
-    const letter = v.name[0]?.toUpperCase() ?? '?';
-    const style = v.color?.background
-      ? `background:${v.color.background};color:${v.color.foreground || 'white'}`
-      : '';
-    const extraClass = style ? '' : ` ${stateSlug(v.name)}`;
-    return `<div class="side-field editable-pill" data-pill="changeState" title="Click to change state"><span class="label">${name}</span><span class="value"><span class="badge-letter${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+    const vis = stateVisuals(v.name);
+    // Prefer the YouTrack-configured bundle color so the pill icon matches
+    // what the YouTrack web UI shows; fall back to the shape's theme color.
+    const ytBg = v.color?.background;
+    const color = ytBg
+      ? `color:${escapeHtml(ytBg)}`
+      : (vis.color ? `color:var(--vscode-${vis.color.replace(/\./g, '-')})` : '');
+    return `<div class="side-field editable-pill" data-pill="changeState" data-inline-kind="state" title="Click to change state"><span class="label">${name}</span><span class="value icon-label"><i class="codicon codicon-${vis.icon}" style="${color}"></i>${escapeHtml(v.name)}</span></div>`;
   }
   if (f.name === 'Priority' && v.kind === 'enum') {
-    const letter = v.name[0]?.toUpperCase() ?? '?';
-    const style = v.color?.background
-      ? `background:${v.color.background};color:${v.color.foreground || 'white'}`
-      : '';
-    const extraClass = style ? '' : ` ${prioritySlug(v.name)}`;
-    return `<div class="side-field editable-pill" data-pill="changePriority" title="Click to change priority"><span class="label">${name}</span><span class="value"><span class="badge-letter priority-badge${extraClass}" style="${escapeHtml(style)}">${escapeHtml(letter)}</span> ${escapeHtml(v.name)}</span></div>`;
+    const bg = v.color?.background ? escapeHtml(v.color.background) : 'var(--vscode-descriptionForeground)';
+    return `<div class="side-field editable-pill" data-pill="changePriority" data-inline-kind="priority" title="Click to change priority"><span class="label">${name}</span><span class="value icon-label"><span class="ip-dot" style="background:${bg}"></span>${escapeHtml(v.name)}</span></div>`;
   }
   if (v.kind === 'user') {
     const isAssignee = f.name === 'Assignee';
-    if (isAssignee) {
-      return `<div class="side-field editable-pill" data-pill="changeAssignee" title="Click to change assignee"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
-    }
-    return `<div class="side-field editable-pill" data-pill="editField" data-field-name="${escapeHtml(f.name)}" title="Click to edit"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
+    const pillAttrs = isAssignee
+      ? `data-pill="changeAssignee" data-inline-kind="user" data-field-name="Assignee" data-allow-clear="1" data-clear-label="Unassign"`
+      : `data-pill="editField" data-inline-kind="user" data-field-name="${escapeHtml(f.name)}" data-allow-clear="1" data-clear-label="Clear ${name}"`;
+    return `<div class="side-field editable-pill" ${pillAttrs} title="Click to change ${isAssignee ? 'assignee' : name}"><span class="label">${name}</span><span class="value">${renderUserChip({ id: '', login: v.login, fullName: v.fullName, avatarUrl: v.avatarUrl })}</span></div>`;
   }
   if (f.name === 'Assignee' && v.kind === 'empty') {
-    return `<div class="side-field editable-pill" data-pill="changeAssignee" title="Click to assign"><span class="label">${name}</span><span class="value"><em>Unassigned</em></span></div>`;
+    return `<div class="side-field editable-pill" data-pill="changeAssignee" data-inline-kind="user" data-field-name="Assignee" data-allow-clear="1" data-clear-label="Unassign" title="Click to assign"><span class="label">${name}</span><span class="value"><em>Unassigned</em></span></div>`;
   }
   // Generic editable: any remaining field becomes a pill that opens the
   // editCustomField dispatcher keyed off the field type.
-  if (f.type !== 'unknown') {
+  // `unknown`-typed fields that were promoted to kind='date' by the
+  // epoch-ms heuristic should still be editable as dates.
+  const isPromotedDate = f.type === 'unknown' && v.kind === 'date';
+  if (f.type !== 'unknown' || isPromotedDate) {
     const valueHtml = v.kind === 'empty'
       ? `<em>—</em>`
-      : escapeHtml(valueAsText(v));
-    return `<div class="side-field editable-pill" data-pill="editField" data-field-name="${escapeHtml(f.name)}" title="Click to edit ${name}"><span class="label">${name}</span><span class="value">${valueHtml}</span></div>`;
+      : escapeHtml(valueAsText(v, f.type));
+    const isEstimation = /estim/i.test(f.name) && v.kind === 'period';
+    const bar = isEstimation && v.kind === 'period'
+      ? renderEstimateBar(v.seconds, ctx?.spentSeconds ?? 0)
+      : '';
+    // Every editable field type gets an inline-kind so the webview
+    // anchors a dropdown (picker or input) directly under the pill.
+    // Raw values are surfaced via data attributes so the input can
+    // pre-fill. Name-based hints catch fields YouTrack returns as
+    // Simple/int with epoch-ms values but that users clearly think of
+    // as dates ("End date", "Start date", "Due date", "Timer time"…).
+    const DATEY_NAME = /(^|\s)(date|time|deadline|due|started?|ended?|finished?|completed?|created|updated|scheduled)(\s|$)/i;
+    const namedAsDate = DATEY_NAME.test(f.name);
+    let inlineKind: string;
+    // Order matters: explicit server types win over name heuristics, so
+    // a field called "Timer time" that's actually a period stays a period.
+    if (f.type === 'enum' || f.type === 'version') inlineKind = 'enum';
+    else if (f.type === 'state') inlineKind = 'state';
+    else if (f.type === 'bool') inlineKind = 'bool';
+    else if (f.type === 'period') inlineKind = 'period';
+    else if (f.type === 'datetime') inlineKind = 'datetime';
+    else if (f.type === 'date') inlineKind = 'date';
+    else if (f.type === 'string') inlineKind = 'string';
+    else if (v.kind === 'date') inlineKind = 'date';
+    else if (namedAsDate && (f.type === 'int' || f.type === 'float' || f.type === 'unknown')) inlineKind = 'date';
+    else if (f.type === 'int') inlineKind = 'int';
+    else if (f.type === 'float') inlineKind = 'float';
+    else inlineKind = '';
+    let rawValueAttr = '';
+    if (v.kind === 'date' && v.iso) {
+      const d = new Date(v.iso);
+      if (inlineKind === 'datetime') {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        rawValueAttr = ` data-raw-value="${escapeHtml(local)}"`;
+      } else {
+        rawValueAttr = ` data-raw-value="${escapeHtml(d.toISOString().slice(0, 10))}"`;
+      }
+    }
+    else if (v.kind === 'period' && v.seconds) rawValueAttr = ` data-raw-value="${escapeHtml(formatPeriod(v.seconds))}"`;
+    else if (v.kind === 'string' && v.text) rawValueAttr = ` data-raw-value="${escapeHtml(v.text)}"`;
+    else if (v.kind === 'number') {
+      // A date-like name with a numeric epoch-ms value becomes the date
+      // picker's default; otherwise pass the number through as-is.
+      if (inlineKind === 'date' && typeof v.value === 'number' && v.value > 1_000_000_000_000) {
+        rawValueAttr = ` data-raw-value="${escapeHtml(new Date(v.value).toISOString().slice(0, 10))}"`;
+      } else {
+        rawValueAttr = ` data-raw-value="${escapeHtml(String(v.value ?? ''))}"`;
+      }
+    }
+    else if (v.kind === 'bool') rawValueAttr = ` data-raw-value="${v.value ? '1' : '0'}"`;
+    const allowClear = inlineKind === 'date' || inlineKind === 'datetime' || inlineKind === 'period'
+      || inlineKind === 'string' || inlineKind === 'int' || inlineKind === 'float';
+    const inlineAttrs = inlineKind
+      ? ` data-inline-kind="${inlineKind}"${rawValueAttr}${allowClear ? ' data-allow-clear="1"' : ''}${allowClear ? ` data-clear-label="Clear ${escapeHtml(f.name)}"` : ''}`
+      : '';
+    return `<div class="side-field editable-pill" data-pill="editField" data-field-name="${escapeHtml(f.name)}"${inlineAttrs} title="Click to edit ${name}"><span class="label">${name}</span><span class="value">${valueHtml}${bar}</span></div>`;
   }
-  return `<div class="side-field"><span class="label">${name}</span><span class="value">${escapeHtml(valueAsText(v))}</span></div>`;
+  return `<div class="side-field"><span class="label">${name}</span><span class="value">${escapeHtml(valueAsText(v, f.type))}</span></div>`;
 }
 
 export class IssueDetailPanel {
@@ -219,6 +405,7 @@ export class IssueDetailPanel {
   private workTypes: Array<{ id: string; name: string }> = [];
   private userLookup = new Map<string, User>();
   private currentUserLogin = '';
+  private sortDir: 'newest' | 'oldest' = 'newest';
 
   private constructor(
     private extensionUri: vscode.Uri,
@@ -226,21 +413,38 @@ export class IssueDetailPanel {
     private cache: Cache,
     private issueId: string,
     private context: vscode.ExtensionContext,
+    opts?: { beside?: boolean; preserveFocus?: boolean },
   ) {
+    const column = opts?.beside ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active;
     this.panel = vscode.window.createWebviewPanel(
-      'youtrackIssue', issueId, vscode.ViewColumn.Active,
-      { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')], retainContextWhenHidden: true },
+      'youtrackIssue', issueId,
+      { viewColumn: column, preserveFocus: !!opts?.preserveFocus },
+      { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media'), context.globalStorageUri], retainContextWhenHidden: true },
     );
     this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack.png');
+    this.sortDir = context.globalState.get<'newest' | 'oldest'>('youtrack.activitySort', 'newest');
     this.panel.webview.html = this.shellHtml();
     this.panel.onDidDispose(() => IssueDetailPanel.panels.delete(issueId));
     this.panel.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
   }
 
-  static show(extensionUri: vscode.Uri, client: YouTrackClient, cache: Cache, issueId: string, context: vscode.ExtensionContext): void {
+  static show(
+    extensionUri: vscode.Uri,
+    client: YouTrackClient,
+    cache: Cache,
+    issueId: string,
+    context: vscode.ExtensionContext,
+    opts?: { beside?: boolean; preserveFocus?: boolean },
+  ): void {
     const existing = IssueDetailPanel.panels.get(issueId);
-    if (existing) { existing.panel.reveal(); return; }
-    const p = new IssueDetailPanel(extensionUri, client, cache, issueId, context);
+    if (existing) {
+      existing.panel.reveal(
+        opts?.beside ? vscode.ViewColumn.Beside : undefined,
+        !!opts?.preserveFocus,
+      );
+      return;
+    }
+    const p = new IssueDetailPanel(extensionUri, client, cache, issueId, context, opts);
     IssueDetailPanel.panels.set(issueId, p);
   }
 
@@ -277,10 +481,11 @@ export class IssueDetailPanel {
     const truncated = issue.summary.length > 60 ? issue.summary.slice(0, 60).trimEnd() + '…' : issue.summary;
     this.panel.title = `${issue.idReadable}: ${truncated}`;
 
-    const [comments, attachments, workItems, types, users, me] = await Promise.all([
+    const [comments, attachments, workItems, activities, types, users, me] = await Promise.all([
       this.client.fetchComments(this.issueId).catch(() => [] as Comment[]),
       this.client.fetchAttachments(this.issueId).catch(() => [] as Attachment[]),
       this.client.fetchWorkItems(this.issueId).catch(() => [] as WorkItem[]),
+      this.client.fetchIssueActivities(this.issueId).catch(() => [] as Awaited<ReturnType<typeof this.client.fetchIssueActivities>>),
       this.workTypes.length
         ? Promise.resolve(this.workTypes)
         : this.client.listWorkItemTypes().catch(() => [] as Array<{ id: string; name: string }>),
@@ -295,7 +500,7 @@ export class IssueDetailPanel {
     for (const u of users) this.userLookup.set(u.login, u);
     if (me && me.login) this.currentUserLogin = me.login;
 
-    this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems) });
+    this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems, activities) });
     // Ship the user directory to the webview so inline @-autocomplete
     // can run against it without round-tripping to the extension.
     const userRoster = [...this.userLookup.values()].map((u) => ({
@@ -304,40 +509,39 @@ export class IssueDetailPanel {
     this.panel.webview.postMessage({ type: 'userRoster', users: userRoster });
   }
 
-  private renderHtml(issue: Issue, comments: Comment[], attachments: Attachment[], workItems: WorkItem[]): string {
-    const sideFields = issue.customFields.map(renderSideField).join('');
+  private renderHtml(
+    issue: Issue,
+    comments: Comment[],
+    attachments: Attachment[],
+    workItems: WorkItem[],
+    activities: Array<{ id: string; timestamp: number; category: string; field?: string; added: string[]; removed: string[]; author: User }> = [],
+  ): string {
+    const spentSeconds = workItems.reduce((sum, w) => sum + (w.duration || 0), 0);
+    const sideFields = issue.customFields.map((f) => renderSideField(f, { spentSeconds })).join('');
     const projectRow = `<div class="side-field"><span class="label">Project</span><span class="value">${escapeHtml(issue.project.shortName)}</span></div>`;
     const reporterRow = issue.reporter
       ? `<div class="side-field"><span class="label">Reporter</span><span class="value">${renderUserChip(issue.reporter)}</span></div>`
       : '';
-    const tagsRow = `<div class="side-field editable-pill" data-pill="editTags" title="Click to edit tags"><span class="label">Tags</span><span class="value tags-value">${
+    const currentTagIds = issue.tags.map((t) => t.id).join(',');
+    const tagsRow = `<div class="side-field editable-pill" data-pill="editTags" data-inline-kind="tags" data-current-ids="${escapeHtml(currentTagIds)}" title="Click to edit tags"><span class="label">Tags</span><span class="value tags-value">${
       issue.tags.length ? issue.tags.map(renderTag).join('') : '<span class="muted">Click to add…</span>'
     }</span></div>`;
-    const linksRows = issue.links.length
+    const linkRowsHtml = issue.links.length
       ? issue.links.map((link: IssueLink) => {
           const chips = link.issues.map((i) => `<a class="link-chip${i.resolved ? ' resolved' : ''}" data-open-issue="${escapeHtml(i.idReadable)}" title="${escapeHtml(i.summary)}">${escapeHtml(i.idReadable)}</a>`).join('');
           return `<div class="side-field side-link-row"><span class="label">${escapeHtml(link.name)}</span><span class="value link-chips">${chips}</span></div>`;
         }).join('')
       : '';
+    const existingLinksJson = JSON.stringify(issue.links.flatMap((l) =>
+      l.issues.map((i) => ({ verb: l.name, targetId: i.idReadable, targetSummary: i.summary })),
+    ));
+    const linksRows = `${linkRowsHtml}<div class="side-field editable-pill" data-pill="manageLinks" data-inline-kind="links" data-existing-links='${escapeHtml(existingLinksJson)}' title="Click to add or remove links"><span class="label">Links</span><span class="value"><span class="muted icon-label"><i class="codicon codicon-link"></i>Manage…</span></span></div>`;
 
-    const attachHtml = attachments.map((a) => {
-      const isImage = (a.mimeType ?? '').toLowerCase().startsWith('image/')
-        || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
-      const size = formatBytes(a.size);
-      if (isImage) {
-        return `<a class="attachment-tile image" href="${escapeHtml(a.url)}" title="${escapeHtml(a.name)} — ${size}">
-            <img src="${escapeHtml(a.url)}" alt="${escapeHtml(a.name)}">
-            <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
-          </a>`;
-      }
-      return `<a class="attachment-tile file" href="${escapeHtml(a.url)}" title="${escapeHtml(a.name)} — ${size}">
-          <i class="codicon codicon-file"></i>
-          <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
-        </a>`;
-    }).join('');
+    const attachHtml = attachments.map((a) => renderAttachmentTile(a)).join('');
 
     type Entry = { ts: number; html: string };
-    const entries: Entry[] = [];
+    const commentEntries: Entry[] = [];
+    const historyEntries: Entry[] = [];
     for (const c of comments) {
       const isMine = !!c.author?.login && c.author.login === this.currentUserLogin;
       const editForm = isMine ? `
@@ -351,35 +555,99 @@ export class IssueDetailPanel {
               </div>
             </form>` : '';
       const editBtn = isMine ? `<button type="button" class="comment-edit-btn" data-edit-comment="${escapeHtml(c.id)}" title="Edit"><i class="codicon codicon-edit"></i></button>` : '';
-      entries.push({
+      // Resolve refs against BOTH the global list and the comment's own
+      // attachment list. Extra attachments that came with this comment but
+      // aren't referenced from its markdown get rendered as tiles below.
+      const mergedAttachments = [...c.attachments, ...attachments];
+      const refNames = new Set<string>();
+      const refRe = /!?\[[^\]]*\]\(([^)\s]+)\)/g;
+      let match: RegExpExecArray | null;
+      while ((match = refRe.exec(c.text || '')) !== null) {
+        const url = match[1];
+        if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('/') || url.includes('/')) continue;
+        try { refNames.add(decodeURIComponent(url).toLowerCase()); } catch { refNames.add(url.toLowerCase()); }
+      }
+      const unreferenced = c.attachments.filter((a) => !refNames.has(a.name.toLowerCase()));
+      const tilesHtml = unreferenced.length
+        ? `<div class="attachment-grid comment-attachments">${unreferenced.map((a) => renderAttachmentTile(a)).join('')}</div>`
+        : '';
+      const fullWhen = escapeHtml(new Date(c.created).toLocaleString());
+      const relWhen = escapeHtml(formatRelative(c.created));
+      commentEntries.push({
         ts: c.created,
         html: `
-          <div class="activity-entry" data-activity-comment="${escapeHtml(c.id)}">
-            <div class="meta">${renderAvatar(c.author)}<b>${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>commented · ${escapeHtml(new Date(c.created).toLocaleString())}<span class="spacer"></span>${editBtn}</div>
-            <div class="body md-body comment-view">${renderBody(c.text, this.userLookup)}</div>
-            ${editForm}
+          <div class="activity-entry comment" data-activity-comment="${escapeHtml(c.id)}">
+            <div class="entry-gutter">${renderAvatar(c.author)}</div>
+            <div class="entry-content">
+              <div class="entry-header">
+                <b class="entry-author">${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>
+                <span class="entry-verb">commented</span>
+                <span class="entry-time" title="${fullWhen}">${relWhen}</span>
+                <span class="spacer"></span>${editBtn}
+              </div>
+              <div class="body md-body comment-view">${renderBody(c.text, this.userLookup, mergedAttachments)}</div>
+              ${tilesHtml}
+              ${editForm}
+            </div>
           </div>`,
       });
     }
     for (const w of workItems) {
       const dur = formatPeriod(w.duration);
       const typeLabel = w.type?.name ? ` · ${escapeHtml(w.type.name)}` : '';
-      entries.push({
+      const fullWhen = escapeHtml(new Date(w.date).toLocaleString());
+      const relWhen = escapeHtml(formatRelative(w.date));
+      historyEntries.push({
         ts: w.date,
         html: `
           <div class="activity-entry work">
-            <div class="meta">${renderAvatar(w.author)}<b>${escapeHtml(w.author?.fullName ?? w.author?.login ?? '')}</b>logged <strong>${dur}</strong>${typeLabel} · ${escapeHtml(new Date(w.date).toLocaleDateString())}</div>
-            ${w.text ? `<div class="body">${renderBody(w.text, this.userLookup)}</div>` : ''}
+            <div class="entry-gutter">${renderAvatar(w.author)}</div>
+            <div class="entry-content">
+              <div class="entry-header">
+                <b class="entry-author">${escapeHtml(w.author?.fullName ?? w.author?.login ?? '')}</b>
+                <span class="entry-verb">logged <strong>${dur}</strong>${typeLabel}</span>
+                <span class="entry-time" title="${fullWhen}">${relWhen}</span>
+              </div>
+              ${w.text ? `<div class="body">${renderBody(w.text, this.userLookup, attachments)}</div>` : ''}
+            </div>
           </div>`,
       });
     }
-    entries.sort((a, b) => b.ts - a.ts);
-    const activityHtml = entries.length ? entries.map((e) => e.html).join('') : '<div style="color:var(--vscode-descriptionForeground);font-style:italic;padding:0.5rem 0">No activity yet.</div>';
+    for (const a of activities) {
+      const fullWhen = escapeHtml(new Date(a.timestamp).toLocaleString());
+      const relWhen = escapeHtml(formatRelative(a.timestamp));
+      historyEntries.push({
+        ts: a.timestamp,
+        html: `
+          <div class="activity-entry change">
+            <div class="entry-gutter">${renderAvatar(a.author)}</div>
+            <div class="entry-content">
+              <div class="entry-header">
+                <b class="entry-author">${escapeHtml(a.author?.fullName ?? a.author?.login ?? '')}</b>
+                <span class="entry-verb">${renderChangeVerb(a)}</span>
+                <span class="entry-time" title="${fullWhen}">${relWhen}</span>
+              </div>
+            </div>
+          </div>`,
+      });
+    }
+    const cmp = this.sortDir === 'oldest'
+      ? (a: Entry, b: Entry) => a.ts - b.ts
+      : (a: Entry, b: Entry) => b.ts - a.ts;
+    commentEntries.sort(cmp);
+    historyEntries.sort(cmp);
+    const commentsHtml = commentEntries.length
+      ? commentEntries.map((e) => e.html).join('')
+      : '<div style="color:var(--vscode-descriptionForeground);font-style:italic;padding:0.5rem 0">No comments yet.</div>';
+    const historyHtml = historyEntries.length
+      ? historyEntries.map((e) => e.html).join('')
+      : '<div style="color:var(--vscode-descriptionForeground);font-style:italic;padding:0.5rem 0">No activity yet.</div>';
+    const historyCount = historyEntries.length;
 
-    const typeOpts = this.workTypes.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+    void this.workTypes; // list fetched on demand by the inline picker
 
     const descriptionBody = issue.description
-      ? `<div class="description md-body">${renderBody(issue.description, this.userLookup)}</div>`
+      ? `<div class="description md-body">${renderBody(issue.description, this.userLookup, attachments)}</div>`
       : `<div class="description empty">No description.</div>`;
 
     return `
@@ -427,7 +695,7 @@ export class IssueDetailPanel {
           </div>
           <div class="section">
             <div class="section-head">
-              <h3>Attachments</h3>
+              <h3><i class="codicon codicon-file-media"></i>Attachments</h3>
               <button type="button" class="btn" data-attach-pick><i class="codicon codicon-cloud-upload"></i> Attach</button>
             </div>
             ${attachments.length
@@ -436,30 +704,43 @@ export class IssueDetailPanel {
             <input type="file" data-attach-input multiple hidden>
           </div>
           <div class="section">
-            <h3>Activity</h3>
-            ${activityHtml}
+            <div class="section-head">
+              <h3><i class="codicon codicon-comment-discussion"></i>Comments</h3>
+              <button type="button" class="btn ghost sort-toggle" data-sort-toggle title="Toggle sort order">
+                <i class="codicon codicon-${this.sortDir === 'oldest' ? 'arrow-up' : 'arrow-down'}"></i>
+                ${this.sortDir === 'oldest' ? 'Oldest first' : 'Newest first'}
+              </button>
+            </div>
+            ${commentsHtml}
             <button type="button" class="btn inline-toggle" data-inline-toggle="comment"><i class="codicon codicon-add"></i><span class="toggle-label">Add a comment</span></button>
             <form class="add-comment md-form${this.getDraft('addComment') ? '' : ' collapsed'}" data-collapsible="comment">
               ${formattingToolbarHtml()}
-              <textarea name="text" data-draft-scope="addComment" placeholder="Write a comment... (markdown supported)" required>${escapeHtml(this.getDraft('addComment'))}</textarea>
+              <textarea name="text" data-draft-scope="addComment" placeholder="Write a comment... (markdown supported)">${escapeHtml(this.getDraft('addComment'))}</textarea>
               <div class="md-preview md-body" hidden></div>
+              <div class="queued-attachments attachment-grid" hidden></div>
               <button type="submit" class="btn primary">Post Comment</button>
             </form>
           </div>
+          <details class="section activity-section">
+            <summary><h3><i class="codicon codicon-history"></i>Activity${historyCount ? ` <span class="muted count">(${historyCount})</span>` : ''}</h3></summary>
+            ${historyHtml}
+          </details>
           <div class="section">
-            <h3>Log time</h3>
+            <h3><i class="codicon codicon-clock"></i>Log time</h3>
             <button type="button" class="btn inline-toggle" data-inline-toggle="logtime"><i class="codicon codicon-add"></i><span class="toggle-label">Add spent time</span></button>
             <form class="log-time collapsed" data-collapsible="logtime">
               <label>Duration</label><input name="duration" placeholder="1h30m" required>
               <label>Date</label><input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}" required>
-              <label>Type</label><select name="type">${typeOpts}</select>
+              <label>Type</label>
+              <button type="button" class="btn type-pick editable-pill" data-work-type-pick data-work-type-id="" title="Click to pick a type"><span class="muted">(no type)</span></button>
+              <input type="hidden" name="type" value="">
               <label>Note</label><input name="text" placeholder="optional">
               <button type="submit" class="btn primary">Log</button>
             </form>
           </div>
         </div>
         <aside class="side">
-          <h4>Details</h4>
+          <h4><i class="codicon codicon-info"></i>Details</h4>
           ${projectRow}
           ${reporterRow}
           ${sideFields}
@@ -496,9 +777,26 @@ export class IssueDetailPanel {
     }
     if (msg.type === 'addComment') {
       const text = String(msg.text ?? '').trim();
-      if (!text) return;
+      const files: Array<{ name: string; mime: string; dataBase64: string }> =
+        Array.isArray(msg.files) ? msg.files : [];
+      if (!text && !files.length) return;
       try {
-        await this.client.addComment(this.issueId, text);
+        // Create the comment first (text only), then upload each queued
+        // file to the comment's own /attachments endpoint so YouTrack
+        // binds them to the comment (they render as tiles below it,
+        // matching the web UI — never inlined as markdown).
+        const created = await this.client.addComment(this.issueId, text || ' ');
+        for (const f of files) {
+          try {
+            const bytes = Buffer.from(String(f.dataBase64 ?? ''), 'base64');
+            await this.client.uploadAttachmentToComment(
+              this.issueId, created.id,
+              String(f.name ?? 'file'), bytes, String(f.mime ?? 'application/octet-stream'),
+            );
+          } catch (e) {
+            showYouTrackError(e, 'attach to comment', 'warning');
+          }
+        }
         await this.setDraft('addComment', '');
         await this.reload();
       } catch (e) {
@@ -566,6 +864,140 @@ export class IssueDetailPanel {
       }
       return;
     }
+    if (msg.type === 'openInlinePicker') {
+      try {
+        const issue = await this.cache.getIssue(this.issueId, (id) => this.client.fetchIssue(id));
+        const projectId = issue.project.id;
+        const req = {
+          requestId: String(msg.requestId),
+          kind: msg.kind,
+          fieldName: msg.fieldName,
+          projectId,
+          allowClear: !!msg.allowClear,
+          clearLabel: msg.clearLabel,
+          currentIds: Array.isArray(msg.currentIds) ? msg.currentIds.map(String) : undefined,
+          existingLinks: Array.isArray(msg.existingLinks) ? msg.existingLinks : undefined,
+        };
+        const payload = await buildPickerItems(this.client, this.panel.webview, req);
+        this.panel.webview.postMessage({ type: 'inlinePickerItems', requestId: req.requestId, ...payload });
+      } catch (e) {
+        showYouTrackError(e, 'load options');
+      }
+      return;
+    }
+    if (msg.type === 'toggleIssueTag') {
+      try {
+        if (msg.picked) await this.client.addTagToIssue(this.issueId, String(msg.tagId));
+        else await this.client.removeTagFromIssue(this.issueId, String(msg.tagId));
+      } catch (e) {
+        showYouTrackError(e, 'toggle tag');
+      }
+      return;
+    }
+    if (msg.type === 'createAndAttachTag') {
+      const name = await vscode.window.showInputBox({
+        title: 'Create new tag',
+        prompt: 'Tag name',
+        validateInput: (v) => (v.trim() ? undefined : 'Name required'),
+      });
+      if (!name || !name.trim()) return;
+      try {
+        const tag = await this.client.createTag(name.trim());
+        await this.client.addTagToIssue(this.issueId, tag.id);
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, 'create tag');
+      }
+      return;
+    }
+    if (msg.type === 'reloadIssue') {
+      this.cache.invalidateIssue(this.issueId);
+      await this.reload();
+      return;
+    }
+    if (msg.type === 'toggleActivitySort') {
+      this.sortDir = this.sortDir === 'newest' ? 'oldest' : 'newest';
+      await this.context.globalState.update('youtrack.activitySort', this.sortDir);
+      await this.reload();
+      return;
+    }
+    if (msg.type === 'removeIssueLink') {
+      try {
+        await this.client.runCommand([this.issueId], `remove ${String(msg.verb)} ${String(msg.targetId)}`);
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, 'remove link');
+      }
+      return;
+    }
+    if (msg.type === 'addIssueLink') {
+      const target = await vscode.window.showInputBox({
+        title: `Add link: ${String(msg.verb)}`,
+        prompt: 'Target issue ID (e.g. ABC-123)',
+        validateInput: (v) => /^[A-Za-z][A-Za-z0-9_]*-\d+$/.test(v.trim()) ? undefined : 'Expected a YouTrack issue ID like ABC-123',
+      });
+      if (!target) return;
+      try {
+        await this.client.runCommand([this.issueId], `${String(msg.verb)} ${target.trim()}`);
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, 'add link');
+      }
+      return;
+    }
+    if (msg.type === 'applyInlinePick') {
+      try {
+        const kind = String(msg.kind);
+        const fieldName = String(msg.fieldName ?? '');
+        const rawValue = msg.valueId;
+        const isClear = rawValue === '__clear__' || rawValue === null || rawValue === undefined;
+        const strValue = isClear ? null : String(rawValue);
+        if (kind === 'state') {
+          if (!isClear) await this.client.transitionState(this.issueId, strValue!);
+        } else if (kind === 'priority') {
+          if (!isClear) await this.client.setPriority(this.issueId, strValue!);
+          else await this.client.setCustomField(this.issueId, 'Priority', 'enum', null);
+        } else if (kind === 'enum') {
+          await this.client.setCustomField(this.issueId, fieldName, 'enum', strValue);
+        } else if (kind === 'user') {
+          if (fieldName === 'Assignee') await this.client.assignIssue(this.issueId, strValue ?? '');
+          else await this.client.setCustomField(this.issueId, fieldName, 'user', strValue);
+        } else if (kind === 'bool') {
+          await this.client.setCustomField(this.issueId, fieldName, 'bool', strValue === '1');
+        } else if (kind === 'string') {
+          await this.client.setCustomField(this.issueId, fieldName, 'string', strValue);
+        } else if (kind === 'date') {
+          await this.client.setCustomField(this.issueId, fieldName, 'date', isClear ? null : Date.parse(strValue!));
+        } else if (kind === 'datetime') {
+          // HTML `datetime-local` gives "YYYY-MM-DDTHH:MM" without timezone;
+          // Date.parse interprets it as local time, which is what the user
+          // picked in their calendar.
+          await this.client.setCustomField(this.issueId, fieldName, 'datetime', isClear ? null : Date.parse(strValue!));
+        } else if (kind === 'period') {
+          const seconds = isClear ? null : parseDuration(strValue!);
+          if (!isClear && seconds == null) {
+            vscode.window.showErrorMessage('YouTrack: could not parse duration.');
+            return;
+          }
+          await this.client.setCustomField(this.issueId, fieldName, 'period', seconds);
+        } else if (kind === 'int') {
+          await this.client.setCustomField(this.issueId, fieldName, 'int', isClear ? null : Number(strValue));
+        } else if (kind === 'float') {
+          await this.client.setCustomField(this.issueId, fieldName, 'float', isClear ? null : Number(strValue));
+        } else {
+          vscode.window.showWarningMessage(`YouTrack: unsupported pick kind "${kind}" for ${fieldName}`);
+          return;
+        }
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, `apply ${msg.fieldName ?? msg.kind}`);
+      }
+      return;
+    }
     if (msg.type === 'cmd') {
       if (msg.id === 'refresh') {
         this.cache.invalidateIssue(this.issueId);
@@ -584,6 +1016,7 @@ export class IssueDetailPanel {
         changeState: 'youtrack.changeState',
         changePriority: 'youtrack.changePriority',
         editTags: 'youtrack.editTags',
+        manageLinks: 'youtrack.manageLinks',
         logTime: 'youtrack.logTime',
         startTimer: 'youtrack.startTimer',
         createBranch: 'youtrack.createBranch',
@@ -601,9 +1034,26 @@ export class IssueDetailPanel {
         const bytes = Buffer.from(String(msg.dataBase64 ?? ''), 'base64');
         const filename = String(msg.name ?? 'file');
         const mime = String(msg.mime ?? 'application/octet-stream');
+        const mode = String(msg.mode ?? 'standalone'); // 'inline' | 'standalone'
         await this.client.uploadAttachment(this.issueId, filename, bytes, mime);
-        vscode.window.showInformationMessage(`YouTrack: uploaded ${filename}`);
-        await this.reload();
+        if (mode === 'inline') {
+          // Description / comment-edit: inline markdown makes sense
+          // because those bodies are long-form markdown.
+          this.cache.invalidateIssue(this.issueId);
+          const list = await this.client.fetchAttachments(this.issueId).catch(() => []);
+          const match = list.filter((a) => a.name === filename).pop();
+          if (match) {
+            const isImage = (match.mimeType ?? '').toLowerCase().startsWith('image/')
+              || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(match.name);
+            const md = isImage
+              ? `![${filename}](${match.url})`
+              : `[${filename}](${match.url})`;
+            this.panel.webview.postMessage({ type: 'pasteInserted', markdown: md });
+          }
+        } else {
+          vscode.window.showInformationMessage(`YouTrack: uploaded ${filename}`);
+          await this.reload();
+        }
       } catch (e) {
         showYouTrackError(e, 'attachment upload');
       }

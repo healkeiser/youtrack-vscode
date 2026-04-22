@@ -4,9 +4,13 @@ let meta = { boardTitle: '', boardId: '', sprintId: '', sprints: [] };
 const persisted = vscode.getState() ?? {};
 let sortMode = persisted.sortMode ?? 'default';
 let filters = persisted.filters ?? { text: '', assignee: '', priority: '', tag: '' };
+let colorBy = persisted.colorBy ?? 'state';
 
 function persist() {
-  vscode.setState({ ...(vscode.getState() ?? {}), sortMode, filters });
+  // Webview state: survives panel hide/show within the session.
+  vscode.setState({ ...(vscode.getState() ?? {}), sortMode, filters, colorBy });
+  // GlobalState via host: survives panel close + VS Code restart.
+  vscode.postMessage({ type: 'saveBoardPrefs', sortMode, filters, colorBy });
 }
 
 window.addEventListener('message', (evt) => {
@@ -14,6 +18,15 @@ window.addEventListener('message', (evt) => {
   if (msg.type === 'render') {
     state = msg.state;
     if (msg.meta) meta = msg.meta;
+    // On the first render of a fresh panel, hydrate from the host's
+    // globalState so the prefs survive across sessions. We prefer the
+    // webview state if it's already set (live edits in this session).
+    if (msg.prefs && !persisted.sortMode && !persisted.filters && !persisted.colorBy) {
+      if (typeof msg.prefs.sortMode === 'string') sortMode = msg.prefs.sortMode;
+      if (typeof msg.prefs.colorBy === 'string') colorBy = msg.prefs.colorBy;
+      if (msg.prefs.filters) filters = { text: '', assignee: '', priority: '', tag: '', ...msg.prefs.filters };
+      vscode.setState({ ...(vscode.getState() ?? {}), sortMode, filters, colorBy });
+    }
     renderHeader();
     renderFilters();
     render();
@@ -58,6 +71,19 @@ function issuePriorityColor(issue) {
   const f = customField(issue, 'Priority');
   if (!f || !f.value || f.value.kind !== 'enum') return null;
   return f.value.color || null;
+}
+
+function issueStateColor(issue) {
+  const f = customField(issue, 'State');
+  if (!f || !f.value) return null;
+  if (f.value.kind === 'state' || f.value.kind === 'enum') return f.value.color || null;
+  return null;
+}
+
+function cardAccentColor(issue, mode) {
+  if (mode === 'priority') return issuePriorityColor(issue)?.background || null;
+  if (mode === 'state')    return issueStateColor(issue)?.background || null;
+  return null; // 'none' or unknown
 }
 
 function priorityRank(name) {
@@ -172,8 +198,12 @@ function renderHeader() {
   const titleEl = document.getElementById('boardTitle');
   if (titleEl) titleEl.textContent = meta.boardTitle || 'Agile Board';
 
+  // Hide the sprint picker entirely for boards that have sprints
+  // disabled in YouTrack — there's nothing to choose between.
   const picker = document.getElementById('sprintPicker');
-  if (picker && Array.isArray(meta.sprints)) {
+  const sprintWrap = picker?.closest('.sprint-label');
+  if (sprintWrap) sprintWrap.hidden = meta.sprintsEnabled === false;
+  if (picker && Array.isArray(meta.sprints) && meta.sprintsEnabled !== false) {
     picker.innerHTML = meta.sprints.map((s) =>
       `<option value="${escape(s.id)}"${s.id === meta.sprintId ? ' selected' : ''}>${escape(s.name)}${s.current ? ' (current)' : ''}</option>`
     ).join('');
@@ -186,13 +216,24 @@ function renderHeader() {
   if (refresh) refresh.onclick = () => vscode.postMessage({ type: 'refresh' });
   const create = document.getElementById('createBtn');
   if (create) create.onclick = () => vscode.postMessage({ type: 'createIssue' });
+  const openExternal = document.getElementById('openInBrowserBtn');
+  if (openExternal) openExternal.onclick = () => vscode.postMessage({ type: 'openInBrowser' });
 
   const sortSelect = document.getElementById('sortPicker');
   if (sortSelect) {
     sortSelect.value = sortMode;
     sortSelect.onchange = () => {
       sortMode = sortSelect.value;
-      vscode.setState({ ...(vscode.getState() ?? {}), sortMode });
+      persist();
+      render();
+    };
+  }
+  const colorBySelect = document.getElementById('colorByPicker');
+  if (colorBySelect) {
+    colorBySelect.value = colorBy;
+    colorBySelect.onchange = () => {
+      colorBy = colorBySelect.value;
+      persist();
       render();
     };
   }
@@ -422,8 +463,17 @@ function renderCard(issue, colId) {
     ? `<span class="spacer"></span><span class="user-chip">${avatarHtml(assignee)}${escape(assignee.fullName || assignee.login || '')}</span>`
     : '';
 
+  // Card left-border color is driven by the user-picked field (State
+  // by default, Priority optional, None to disable). Prefer the literal
+  // YouTrack hex; fall back to the name-heuristic class for State when
+  // the bundle has no color configured.
+  const accent = cardAccentColor(issue, colorBy);
+  const accentStyle = accent ? ` style="border-left-color:${escape(accent)}"` : '';
+  const legacyStateCls = colorBy === 'state' && !accent ? sCls : '';
+  const colorClass = colorBy === 'none' ? 'no-accent' : '';
+
   return `
-    <div class="card ${sCls}" draggable="true" data-issue-id="${escape(issue.idReadable)}" data-from-column="${escape(colId)}">
+    <div class="card ${legacyStateCls} ${colorClass}"${accentStyle} draggable="true" data-issue-id="${escape(issue.idReadable)}" data-from-column="${escape(colId)}">
       <div class="id-row">
         <span class="id">${escape(issue.idReadable)}</span>
         ${priorityBadge}

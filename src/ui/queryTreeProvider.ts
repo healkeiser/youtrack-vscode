@@ -3,6 +3,7 @@ import type { Cache } from '../cache/cache';
 import type { YouTrackClient } from '../client/youtrackClient';
 import type { Issue } from '../client/types';
 import type { SidebarState } from './sidebarState';
+import { stateVisuals } from '../util/stateVisuals';
 
 type Node =
   | { kind: 'project'; shortName: string; issues: Issue[] }
@@ -20,8 +21,6 @@ export interface QuerySource {
   savedQueryName?: string;
 }
 
-interface StateVisuals { icon: string; color?: string }
-
 function issueStateName(issue: Issue): string {
   const field = issue.customFields.find((f) => f.name === 'State');
   if (!field) return '';
@@ -30,17 +29,6 @@ function issueStateName(issue: Issue): string {
   return '';
 }
 
-function stateVisuals(state: string): StateVisuals {
-  const s = state.toLowerCase();
-  if (!s) return { icon: 'circle-outline' };
-  if (/(done|fixed|closed|resolved|verified|complete)/.test(s)) return { icon: 'pass-filled', color: 'testing.iconPassed' };
-  if (/(progress|develop|working|wip|active)/.test(s)) return { icon: 'sync', color: 'charts.blue' };
-  if (/(review|pending|waiting|qa|test)/.test(s)) return { icon: 'eye', color: 'charts.yellow' };
-  if (/(cancel|reject|won|invalid|duplicate|obsolete)/.test(s)) return { icon: 'circle-slash', color: 'charts.red' };
-  if (/(block|hold|paused)/.test(s)) return { icon: 'debug-pause', color: 'charts.orange' };
-  if (/(submit|open|reopen|new|backlog|todo|to do)/.test(s)) return { icon: 'circle-outline' };
-  return { icon: 'circle-outline' };
-}
 
 export class QueryTreeProvider implements vscode.TreeDataProvider<Node> {
   private _emitter = new vscode.EventEmitter<Node | undefined>();

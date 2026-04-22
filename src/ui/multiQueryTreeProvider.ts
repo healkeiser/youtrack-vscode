@@ -4,6 +4,7 @@ import type { YouTrackClient } from '../client/youtrackClient';
 import type { Issue } from '../client/types';
 import type { SidebarState } from './sidebarState';
 import type { QuerySource } from './queryTreeProvider';
+import { stateVisuals } from '../util/stateVisuals';
 
 type Node =
   | { kind: 'section'; sectionId: string }
@@ -33,16 +34,6 @@ function issueStateName(issue: Issue): string {
   return '';
 }
 
-function stateVisuals(state: string): { icon: string; color?: string } {
-  const s = state.toLowerCase();
-  if (!s) return { icon: 'circle-outline' };
-  if (/(done|fixed|closed|resolved|verified|complete)/.test(s)) return { icon: 'pass-filled', color: 'testing.iconPassed' };
-  if (/(progress|develop|working|wip|active)/.test(s)) return { icon: 'sync', color: 'charts.blue' };
-  if (/(review|pending|waiting|qa|test)/.test(s)) return { icon: 'eye', color: 'charts.yellow' };
-  if (/(cancel|reject|won|invalid|duplicate|obsolete)/.test(s)) return { icon: 'circle-slash', color: 'charts.red' };
-  if (/(block|hold|paused)/.test(s)) return { icon: 'debug-pause', color: 'charts.orange' };
-  return { icon: 'circle-outline' };
-}
 
 export class MultiQueryTreeProvider implements vscode.TreeDataProvider<Node> {
   private _emitter = new vscode.EventEmitter<Node | undefined>();

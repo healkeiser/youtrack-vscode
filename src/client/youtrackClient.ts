@@ -5,6 +5,8 @@ import type {
   AgileBoard, Sprint, BoardView, BoardColumn,
 } from './types';
 
+const COMMENT_FIELDS = 'id,text,created,author(id,login,fullName,avatarUrl),attachments(id,name,url,size,mimeType)';
+
 const ISSUE_FIELDS = [
   'id', 'idReadable', 'summary', 'description',
   'created', 'updated', 'resolved',
@@ -39,7 +41,8 @@ function mapCustomFieldValue(raw: any, type: CustomFieldType, baseUrl?: string):
       return { kind: 'user', login: u?.login ?? raw.login ?? '', fullName: u?.fullName ?? raw.fullName ?? raw.login ?? '', avatarUrl: u?.avatarUrl ?? '' };
     }
     case 'string':  return { kind: 'string', text: String(raw.text ?? raw) };
-    case 'date':    return { kind: 'date', iso: new Date(raw).toISOString() };
+    case 'date':
+    case 'datetime': return { kind: 'date', iso: new Date(raw).toISOString() };
     case 'period':  return { kind: 'period', seconds: Number(raw.minutes ?? 0) * 60 };
     case 'int':
     case 'float':   return { kind: 'number', value: Number(raw) };
@@ -56,7 +59,7 @@ function inferType($type: string): CustomFieldType {
   if ($type.includes('EnumIssueCustomField')) return 'enum';
   if ($type.includes('StateIssueCustomField')) return 'state';
   if ($type.includes('SingleUserIssueCustomField')) return 'user';
-  if ($type.includes('DateTimeIssueCustomField')) return 'date';
+  if ($type.includes('DateTimeIssueCustomField')) return 'datetime';
   if ($type.includes('DateIssueCustomField')) return 'date';
   if ($type.includes('PeriodIssueCustomField')) return 'period';
   if ($type.includes('IntegerIssueCustomField')) return 'int';
@@ -85,14 +88,11 @@ function mapCustomField(raw: any, baseUrl?: string): CustomField {
   let value = mapCustomFieldValue(raw.value, type, baseUrl);
 
   // Promote timestamp-shaped values whose field name suggests a date
-  // into the `date` kind regardless of the classified type. YouTrack
-  // reports these as IntegerIssueCustomField, SimpleIssueCustomField,
-  // or (depending on how they were configured) the generic parent —
-  // we can't rely on $type alone. What we can rely on: raw.value is a
-  // plain number in epoch-ms range and the field name looks date-ish.
-  // Keep `type` as 'unknown' to disable the generic field editor,
-  // since the underlying schema is Integer and our date writer would
-  // POST the wrong $type.
+  // into the `date` / `datetime` type. YouTrack reports these as
+  // IntegerIssueCustomField when the workspace configured a plain int
+  // to store epoch-ms — we can't rely on $type alone. Decide which
+  // type to use based on the stored time: midnight-UTC → pure date,
+  // anything else → datetime (YouTrack's UI renders these with hours).
   const rawVal = raw.value;
   const candidate = typeof rawVal === 'number'
     ? rawVal
@@ -101,8 +101,14 @@ function mapCustomField(raw: any, baseUrl?: string): CustomField {
       && typeof raw.name === 'string'
       && DATEY_NAME_RE.test(raw.name)
       && looksLikeEpochMs(candidate)) {
-    type = 'unknown';
-    value = { kind: 'date', iso: new Date(candidate).toISOString() };
+    const d = new Date(candidate);
+    // YouTrack Date fields are stored as UTC midnight (00:00:00.000 UTC
+    // of that day). Anything with a non-zero UTC time component is a
+    // DateTime value.
+    const utcMidnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    const hasTime = candidate !== utcMidnight;
+    type = hasTime ? 'datetime' : 'date';
+    value = { kind: 'date', iso: d.toISOString() };
   }
 
   return { name: raw.name, type, value };
@@ -251,36 +257,129 @@ export class YouTrackClient {
   async updateComment(issueId: string, commentId: string, text: string): Promise<Comment> {
     const raw = await this.call<any>(`/api/issues/${issueId}/comments/${commentId}`, {
       method: 'POST',
-      query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
+      query: { fields: COMMENT_FIELDS },
       body: { text },
     });
-    return {
-      id: raw.id,
-      text: raw.text ?? '',
-      author: mapUser(raw.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
-      created: raw.created,
-    };
+    return this.mapComment(raw);
   }
 
   async addComment(issueId: string, text: string): Promise<Comment> {
     const raw = await this.call<any>(`/api/issues/${issueId}/comments`, {
       method: 'POST',
-      query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
+      query: { fields: COMMENT_FIELDS },
       body: { text },
     });
+    return this.mapComment(raw);
+  }
+
+  private mapComment(raw: any): Comment {
+    const attachments: Attachment[] = Array.isArray(raw.attachments)
+      ? raw.attachments.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          url: a.url?.startsWith('http') ? a.url : `${this.baseUrl}${a.url ?? ''}`,
+          size: a.size ?? 0,
+          mimeType: a.mimeType ?? '',
+        }))
+      : [];
     return {
       id: raw.id,
       text: raw.text ?? '',
       author: mapUser(raw.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
       created: raw.created,
+      attachments,
     };
+  }
+
+  // Activities stream: field changes, link add/remove, tag add/remove, state
+  // transitions, etc. Categories correspond to YouTrack's ActivityCategory
+  // enum; we filter out CommentActivity / WorkItemActivity because those
+  // are fetched via dedicated endpoints and rendered with richer bodies.
+  async fetchIssueActivities(issueId: string): Promise<Array<{
+    id: string;
+    timestamp: number;
+    category: string;
+    field?: string;
+    added: string[];
+    removed: string[];
+    author: User;
+  }>> {
+    const raw = await this.call<any[]>(`/api/issues/${issueId}/activities`, {
+      query: {
+        fields: [
+          'id', 'timestamp', 'author(id,login,fullName,avatarUrl)',
+          'category(id)', 'targetMember', 'field(name,presentation,customField(name),$type)',
+          'added(id,name,text,login,fullName,avatarUrl,presentation,idReadable,summary)',
+          'removed(id,name,text,login,fullName,avatarUrl,presentation,idReadable,summary)',
+        ].join(','),
+        $top: '100',
+        categories: 'CustomFieldCategory,IssueResolvedCategory,LinksCategory,TagsCategory,SummaryCategory,DescriptionCategory,IssueCreatedCategory,SprintCategory,AttachmentsCategory,ProjectCategory',
+      },
+    }).catch(() => [] as any[]);
+    const out: Array<{
+      id: string; timestamp: number; category: string;
+      field?: string; added: string[]; removed: string[]; author: User;
+    }> = [];
+    for (const a of raw) {
+      const category = a.category?.id ?? '';
+      const fieldName = a.field?.customField?.name ?? a.field?.name ?? a.field?.presentation;
+      const renderSide = (x: any): string => {
+        if (x == null) return '';
+        if (typeof x === 'string') return x;
+        return x.name ?? x.text ?? x.presentation ?? x.idReadable ?? x.fullName ?? x.login ?? '';
+      };
+      const added = Array.isArray(a.added) ? a.added.map(renderSide).filter(Boolean) : [];
+      const removed = Array.isArray(a.removed) ? a.removed.map(renderSide).filter(Boolean) : [];
+      if (!added.length && !removed.length) continue;
+      out.push({
+        id: a.id,
+        timestamp: a.timestamp,
+        category,
+        field: fieldName,
+        added,
+        removed,
+        author: mapUser(a.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
+      });
+    }
+    return out;
   }
 
   async fetchComments(issueId: string): Promise<Comment[]> {
     const raw = await this.call<any[]>(`/api/issues/${issueId}/comments`, {
-      query: { fields: 'id,text,created,author(id,login,fullName,avatarUrl)' },
+      query: { fields: COMMENT_FIELDS },
     });
-    return raw.map((r) => ({ id: r.id, text: r.text ?? '', author: mapUser(r.author, this.baseUrl)!, created: r.created }));
+    return raw.map((r) => this.mapComment(r));
+  }
+
+  async uploadAttachmentToComment(
+    issueId: string,
+    commentId: string,
+    filename: string,
+    bytes: Uint8Array,
+    mimeType = 'application/octet-stream',
+  ): Promise<void> {
+    const boundary = `----ytvsc-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+    const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename.replace(/"/g, '\\"')}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
+    const footer = `\r\n--${boundary}--\r\n`;
+    const encoder = new TextEncoder();
+    const headerBytes = encoder.encode(header);
+    const footerBytes = encoder.encode(footer);
+    const body = new Uint8Array(headerBytes.length + bytes.length + footerBytes.length);
+    body.set(headerBytes, 0);
+    body.set(bytes, headerBytes.length);
+    body.set(footerBytes, headerBytes.length + bytes.length);
+
+    const url = `${this.baseUrl.replace(/\/$/, '')}/api/issues/${issueId}/comments/${commentId}/attachments`;
+    const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: 'application/json',
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      },
+      body,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   }
 
   async uploadAttachment(issueId: string, filename: string, bytes: Uint8Array, mimeType = 'application/octet-stream'): Promise<void> {
@@ -405,10 +504,14 @@ export class YouTrackClient {
 
   async fetchProjectStateValues(projectId: string): Promise<string[]> {
     const raw = await this.call<any>(`/api/admin/projects/${projectId}/customFields`, {
-      query: { fields: 'field(name),bundle(values(name))' },
+      query: { fields: 'field(name),bundle(values(name,ordinal))' },
     });
     const stateField = (raw as any[]).find((f) => f.field?.name === 'State');
-    return stateField?.bundle?.values?.map((v: any) => v.name) ?? [];
+    const values = (stateField?.bundle?.values ?? []) as any[];
+    return values
+      .slice()
+      .sort((a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0))
+      .map((v: any) => v.name);
   }
 
   async fetchProjectPriorityValues(projectId: string): Promise<string[]> {
@@ -417,10 +520,14 @@ export class YouTrackClient {
 
   async fetchProjectFieldValues(projectId: string, fieldName: string): Promise<string[]> {
     const raw = await this.call<any>(`/api/admin/projects/${projectId}/customFields`, {
-      query: { fields: 'field(name),bundle(values(name))' },
+      query: { fields: 'field(name),bundle(values(name,ordinal))' },
     });
     const field = (raw as any[]).find((f) => f.field?.name === fieldName);
-    return field?.bundle?.values?.map((v: any) => v.name) ?? [];
+    const values = (field?.bundle?.values ?? []) as any[];
+    return values
+      .slice()
+      .sort((a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0))
+      .map((v: any) => v.name);
   }
 
   async fetchProjectFieldValuesDetailed(
@@ -428,13 +535,20 @@ export class YouTrackClient {
     fieldName: string,
   ): Promise<Array<{ name: string; color?: { background?: string; foreground?: string } }>> {
     const raw = await this.call<any>(`/api/admin/projects/${projectId}/customFields`, {
-      query: { fields: 'field(name),bundle(values(name,color(background,foreground)))' },
+      query: { fields: 'field(name),bundle(values(name,ordinal,color(background,foreground)))' },
     });
     const field = (raw as any[]).find((f) => f.field?.name === fieldName);
-    return (field?.bundle?.values ?? []).map((v: any) => ({
-      name: v.name,
-      color: v.color ? { background: v.color.background, foreground: v.color.foreground } : undefined,
-    }));
+    const values = (field?.bundle?.values ?? []) as any[];
+    // Sort by the admin-configured ordinal so the picker mirrors the
+    // order defined on YouTrack (Priority: Critical, Highest, High, …
+    // rather than whatever the API happens to return).
+    return values
+      .slice()
+      .sort((a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0))
+      .map((v: any) => ({
+        name: v.name,
+        color: v.color ? { background: v.color.background, foreground: v.color.foreground } : undefined,
+      }));
   }
 
   async setPriority(issueId: string, priorityName: string): Promise<void> {
@@ -466,7 +580,7 @@ export class YouTrackClient {
   async setCustomField(
     issueId: string,
     fieldName: string,
-    fieldType: 'enum' | 'state' | 'user' | 'string' | 'date' | 'period' | 'int' | 'float' | 'bool' | 'version',
+    fieldType: 'enum' | 'state' | 'user' | 'string' | 'date' | 'datetime' | 'period' | 'int' | 'float' | 'bool' | 'version',
     valueLiteral: string | number | boolean | null,
   ): Promise<void> {
     const cf: any = { name: fieldName };
@@ -495,6 +609,10 @@ export class YouTrackClient {
         cf.$type = 'DateIssueCustomField';
         cf.value = valueLiteral == null ? null : Number(valueLiteral);
         break;
+      case 'datetime':
+        cf.$type = 'DateTimeIssueCustomField';
+        cf.value = valueLiteral == null ? null : Number(valueLiteral);
+        break;
       case 'period':
         cf.$type = 'PeriodIssueCustomField';
         cf.value = valueLiteral == null ? null : { $type: 'PeriodValue', minutes: Math.round(Number(valueLiteral) / 60) };
@@ -515,6 +633,63 @@ export class YouTrackClient {
     await this.call(`/api/issues/${issueId}`, {
       method: 'POST',
       body: { customFields: [cf] },
+    });
+  }
+
+  // Issue-link types are project-agnostic. Each type has two "sides":
+  // sourceToTarget (e.g. "depends on") and targetToSource (e.g. "is required
+  // for"). Some types are symmetric (one shared name, both sides equal).
+  async listIssueLinkTypes(): Promise<Array<{
+    id: string; name: string;
+    sourceToTarget: string; targetToSource: string;
+    directed: boolean;
+  }>> {
+    const raw = await this.call<any[]>('/api/issueLinkTypes', {
+      query: { fields: 'id,name,sourceToTarget,targetToSource,directed', $top: '200' },
+    });
+    return raw.map((r) => ({
+      id: r.id,
+      name: r.name,
+      sourceToTarget: r.sourceToTarget ?? r.name,
+      targetToSource: r.targetToSource ?? r.name,
+      directed: !!r.directed,
+    }));
+  }
+
+  // YouTrack's REST /commands endpoint accepts the same human-readable
+  // syntax as the in-app command window, so "depends on ABC-123" or
+  // "remove depends on ABC-123" works with no opaque link-side-id
+  // resolution required.
+  async fetchMyWorkItemsSince(login: string, sinceMs: number): Promise<Array<{
+    id: string; duration: number; date: number;
+    issueId: string; issueSummary: string;
+  }>> {
+    const raw = await this.call<any[]>('/api/workItems', {
+      query: {
+        fields: 'id,duration(minutes),date,author(login),issue(idReadable,summary)',
+        $top: '500',
+        author: login,
+        startDate: String(sinceMs),
+      },
+    }).catch(() => [] as any[]);
+    return raw
+      .filter((r) => r.author?.login === login && r.date >= sinceMs)
+      .map((r) => ({
+        id: r.id,
+        duration: Number(r.duration?.minutes ?? 0) * 60,
+        date: r.date,
+        issueId: r.issue?.idReadable ?? '',
+        issueSummary: r.issue?.summary ?? '',
+      }));
+  }
+
+  async runCommand(issueIds: string[], query: string): Promise<void> {
+    await this.call('/api/commands', {
+      method: 'POST',
+      body: {
+        issues: issueIds.map((id) => ({ idReadable: id })),
+        query,
+      },
     });
   }
 
@@ -548,11 +723,12 @@ export class YouTrackClient {
 
   async fetchAgileBoards(): Promise<AgileBoard[]> {
     const raw = await this.call<any[]>('/api/agiles', {
-      query: { fields: 'id,name,projects(shortName)' },
+      query: { fields: 'id,name,projects(shortName),sprintsSettings(disableSprints)' },
     });
     return raw.map((r) => ({
       id: r.id, name: r.name,
       projects: (r.projects ?? []).map((p: any) => ({ shortName: p.shortName })),
+      sprintsEnabled: !r.sprintsSettings?.disableSprints,
     }));
   }
 

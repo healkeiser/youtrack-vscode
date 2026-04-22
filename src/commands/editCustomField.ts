@@ -4,8 +4,8 @@ import type { Cache } from '../cache/cache';
 import type { CustomField, CustomFieldType, Issue } from '../client/types';
 import { parseDuration } from '../domain/timeTracker';
 import { showYouTrackError } from '../client/errors';
-import { colorDotUri } from '../ui/colorDot';
-import { primeUserAvatars, userAvatarUri } from '../ui/userAvatar';
+import { pickFieldValue, pickUser } from '../ui/pickers';
+import { formatPeriod } from '../util/format';
 
 // Interactive editor for any custom field on an issue. Dispatches on the
 // field's type to the most appropriate VS Code input (QuickPick for
@@ -31,44 +31,21 @@ export async function editCustomField(
           vscode.window.showWarningMessage(`YouTrack: can't edit ${field.name} without project context.`);
           return false;
         }
-        const values = await client.fetchProjectFieldValuesDetailed(projectId, field.name);
-        if (!values.length) {
-          vscode.window.showWarningMessage(`YouTrack: no values configured for ${field.name} in this project.`);
-          return false;
-        }
-        type Item = vscode.QuickPickItem & { name: string };
-        const items: Item[] = values.map((v) => ({
-          label: v.name,
-          name: v.name,
-          iconPath: colorDotUri(v.color?.background),
-        }));
-        const picked = await vscode.window.showQuickPick<Item>(items, {
+        const picked = await pickFieldValue(client, projectId, field.name, {
           title: `Change ${field.name}`,
-          placeHolder: currentText(field),
+          currentValue: currentText(field) === '—' ? undefined : currentText(field),
         });
         if (!picked) return false;
         newValue = picked.name;
         break;
       }
       case 'user': {
-        const users = await client.listUsers('', 200).catch(() => []);
-        await primeUserAvatars(users.map((u) => u.avatarUrl));
-        type Item = vscode.QuickPickItem & { login?: string | null };
-        const items: Item[] = [
-          { label: '$(circle-slash) Clear assignee', login: null },
-          { label: '', kind: vscode.QuickPickItemKind.Separator },
-          ...users.map<Item>((u) => ({
-            label: u.fullName || u.login,
-            description: u.login,
-            login: u.login,
-            iconPath: userAvatarUri(u.avatarUrl) ?? new vscode.ThemeIcon('person'),
-          })),
-        ];
-        const picked = await vscode.window.showQuickPick<Item>(items, {
-          title: `Change ${field.name}`,
-          matchOnDescription: true,
+        const picked = await pickUser(client, `Change ${field.name}`, {
+          allowClear: true,
+          clearLabel: `Clear ${field.name}`,
+          currentValue: currentText(field) === '—' ? undefined : currentText(field),
         });
-        if (!picked || picked.login === undefined) return false;
+        if (!picked) return false;
         newValue = picked.login;
         break;
       }
@@ -81,11 +58,15 @@ export async function editCustomField(
         newValue = picked === 'Yes';
         break;
       }
-      case 'date': {
+      case 'date':
+      case 'datetime': {
         const current = currentText(field);
+        const prompt = field.type === 'datetime'
+          ? 'Enter date+time (YYYY-MM-DD HH:mm) or blank to clear'
+          : 'Enter a date (YYYY-MM-DD) or blank to clear';
         const input = await vscode.window.showInputBox({
           title: `Set ${field.name}`,
-          prompt: 'Enter a date (YYYY-MM-DD) or blank to clear',
+          prompt,
           value: current && current !== '—' ? current : '',
         });
         if (input === undefined) return false;
@@ -173,13 +154,6 @@ function currentText(f: CustomField): string {
   }
 }
 
-function formatPeriod(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
 
 // Tiny helper the panel uses to find a field on a fresh issue fetch.
 export async function editFieldByName(

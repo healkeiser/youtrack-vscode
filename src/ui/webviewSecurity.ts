@@ -29,6 +29,7 @@ export function renderPanelHtml(
     .replace('{{CODICONS}}', asWebview(vscode.Uri.joinPath(mediaRoot, 'codicons', 'codicon.css')))
     .replace('{{SHARED}}', asWebview(vscode.Uri.joinPath(mediaRoot, 'shared.css')))
     .replace('{{MD_EDITOR}}', asWebview(vscode.Uri.joinPath(mediaRoot, 'mdEditor.js')))
+    .replace('{{INLINE_PICKER}}', asWebview(vscode.Uri.joinPath(mediaRoot, 'inlinePicker.js')))
     .replace('{{STYLE}}', asWebview(vscode.Uri.joinPath(panelUri, 'style.css')))
     .replace('{{MAIN}}', asWebview(vscode.Uri.joinPath(panelUri, 'main.js')));
 }

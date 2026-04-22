@@ -16,6 +16,8 @@ import { changeState } from './commands/changeState';
 import { changePriority } from './commands/changePriority';
 import { editFieldByName } from './commands/editCustomField';
 import { editTags } from './commands/editTags';
+import { manageLinks } from './commands/manageLinks';
+import { showWeeklyWorklog } from './commands/weeklyWorklog';
 import { postBranchActivity } from './commands/postBranchActivity';
 import { createIssueFromSelection } from './commands/createIssueFromSelection';
 import { showYouTrackError } from './client/errors';
@@ -126,6 +128,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await recents.touch(issue.idReadable, issue.summary);
       } catch { /* opening shouldn't fail because of recents */ }
     }),
+    vscode.commands.registerCommand('youtrack.peekIssue', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const doc = editor.document;
+      // Prefer explicit selection; otherwise grab the token under the cursor.
+      let id: string | undefined;
+      if (!editor.selection.isEmpty) {
+        id = doc.getText(editor.selection).trim();
+      } else {
+        const range = doc.getWordRangeAtPosition(editor.selection.active, /\b[A-Z][A-Z0-9_]+-\d+\b/);
+        if (range) id = doc.getText(range);
+      }
+      if (!id || !/^[A-Z][A-Z0-9_]+-\d+$/.test(id)) {
+        vscode.window.showInformationMessage('YouTrack: place the cursor on an issue key like ABC-123.');
+        return;
+      }
+      IssueDetailPanel.show(context.extensionUri, client, cache, id, context, {
+        beside: true, preserveFocus: true,
+      });
+    }),
     vscode.commands.registerCommand('youtrack.goToIssue', async () => {
       const id = await goToIssue();
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
@@ -135,10 +157,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
     }),
     vscode.commands.registerCommand('youtrack.createIssueFromSelection', () => {
-      createIssueFromSelection(context.extensionUri, client);
+      createIssueFromSelection(context.extensionUri, client, context);
     }),
     vscode.commands.registerCommand('youtrack.createIssue', () => {
-      CreateIssuePanel.show(context.extensionUri, client);
+      CreateIssuePanel.show(context.extensionUri, client, context);
     }),
     vscode.commands.registerCommand('youtrack.assignToMe', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
@@ -166,6 +188,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!issueId) return;
       await editTags(client, cache, issueId);
     }),
+    vscode.commands.registerCommand('youtrack.manageLinks', async (arg?: unknown) => {
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await manageLinks(client, cache, issueId);
+    }),
+    vscode.commands.registerCommand('youtrack.weeklyWorklog', () => showWeeklyWorklog(client)),
     vscode.commands.registerCommand('youtrack.editField', async (arg: { id?: string; field?: string } | unknown) => {
       const obj = (arg && typeof arg === 'object') ? arg as any : {};
       const issueId = await resolveIssueId(obj.id ?? arg);
@@ -202,6 +230,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const url = `${creds!.baseUrl.replace(/\/$/, '')}/issue/${issueId}`;
       await vscode.env.openExternal(vscode.Uri.parse(url));
     }),
+    vscode.commands.registerCommand('youtrack.openBoardInBrowser', async (arg?: unknown) => {
+      // Works whether invoked from a sidebar tree item (which passes an
+      // AgileBoard / object with `id`) or from a panel-internal message
+      // that passes { boardId, sprintId? }.
+      const base = creds!.baseUrl.replace(/\/$/, '');
+      let boardId: string | undefined;
+      let sprintId: string | undefined;
+      if (typeof arg === 'string') {
+        boardId = arg;
+      } else if (arg && typeof arg === 'object') {
+        const o = arg as { id?: string; boardId?: string; sprintId?: string };
+        boardId = o.boardId ?? o.id;
+        sprintId = o.sprintId;
+      }
+      if (!boardId) return;
+      const url = sprintId
+        ? `${base}/agiles/${boardId}/${sprintId}`
+        : `${base}/agiles/${boardId}/current`;
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    }),
     vscode.commands.registerCommand('youtrack.startWork', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
       if (!issueId) return;
@@ -209,7 +257,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await createBranch(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.openBoard', (boardId?: string) =>
-      openBoard(context.extensionUri, client, typeof boardId === 'string' ? boardId : undefined),
+      openBoard(context.extensionUri, client, context, typeof boardId === 'string' ? boardId : undefined),
     ),
   );
 

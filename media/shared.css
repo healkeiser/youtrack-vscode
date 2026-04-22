@@ -9,6 +9,19 @@ body {
   margin: 0;
   padding: 0;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Body-size text blocks avoid single-word orphans on wrap. */
+.md-body, .description, .activity-entry .body, .summary {
+  text-wrap: pretty;
+}
+/* Headings balance across lines so no line is absurdly short. */
+h1, h2, h3, h4, .summary, .section h3, .side h4 {
+  text-wrap: balance;
 }
 
 /* The HTML `hidden` attribute must win over any later display rule. */
@@ -20,7 +33,9 @@ body {
 body.vscode-dark, body.vscode-high-contrast { color-scheme: dark; }
 body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
 
-/* Card surface */
+/* Card surface — layered shadow reads as depth, the 1-px border
+   becomes a hairline that adapts to the theme. Concentric: inner
+   controls (buttons, inputs, pills) get a smaller radius. */
 .card-surface,
 .section,
 .header,
@@ -29,11 +44,32 @@ body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
 .card {
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--vscode-panel-border);
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+body.vscode-dark .card-surface,
+body.vscode-dark .section,
+body.vscode-dark .header,
+body.vscode-dark .side,
+body.vscode-dark .column,
+body.vscode-dark .card,
+body.vscode-high-contrast .card-surface,
+body.vscode-high-contrast .section,
+body.vscode-high-contrast .header,
+body.vscode-high-contrast .side,
+body.vscode-high-contrast .column,
+body.vscode-high-contrast .card {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 /* Section heading — same font-size as body; differentiated by weight,
-   color, uppercase, and letter-spacing. No shrinking. */
+   color, uppercase, and letter-spacing. No shrinking. Icons before
+   the label use inline-flex so they sit on the same optical baseline
+   regardless of codicon metrics. */
 .section h3,
 .side h4,
 .column h4 {
@@ -43,6 +79,16 @@ body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
   letter-spacing: 0.04em;
   color: var(--vscode-descriptionForeground);
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.section h3 > .codicon,
+.side h4 > .codicon,
+.column h4 > .codicon {
+  font-size: 1em;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 /* Letter badge */
@@ -95,6 +141,11 @@ body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }
   object-fit: cover;
   border-radius: 50%;
   background: inherit;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+body.vscode-dark .avatar img,
+body.vscode-high-contrast .avatar img {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 .user-chip { display: inline-flex; align-items: center; gap: 0.4rem; }
 
@@ -176,12 +227,18 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
   color: var(--vscode-button-secondaryForeground);
   border: 1px solid var(--vscode-button-border, transparent);
   padding: 0.4rem 0.9rem;
-  border-radius: 3px;
+  border-radius: 4px;
   font-size: 1em;
   line-height: 1.4;
   cursor: pointer;
+  min-height: 28px;
+  position: relative;
+  transition-property: background, color, scale, border-color;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 .btn:hover { background: var(--vscode-button-secondaryHoverBackground); }
+.btn:active:not(:disabled) { scale: 0.96; }
 .btn.primary {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
@@ -244,14 +301,18 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
   max-width: 1600px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 1rem;
   padding: 1rem;
   align-items: start;
 }
-@media (max-width: 820px) {
+@media (max-width: 880px) {
   .layout { grid-template-columns: 1fr; }
-  .side { order: -1; }
+  /* Stack DOM order: main (header / description / comments / activity)
+     first, Details second. Previously Details was hoisted above main
+     with `order: -1`, which on narrow panels pushed the issue body
+     entirely off-screen behind a tall Details column. */
+  .side { position: static; top: auto; }
 }
 
 .id-row {
@@ -272,10 +333,42 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
   margin: 0 0 0.85rem 0;
 }
 
+/* Main column: flex stacking so Attachments / Comments / Activity / Log
+   time etc. have identical vertical rhythm on both Issue Detail and
+   Create Issue panels. */
+.main { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
+
+/* Staggered enter for the section cards — only on the VERY first render
+   so subsequent reloads (picker applies, sort toggle, refresh) feel
+   instant instead of replaying the animation. Webview JS adds
+   `.ytvsc-initial` to <body> once, then removes it after the stagger
+   completes. */
+@keyframes ytvsc-enter {
+  from { opacity: 0; translate: 0 4px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+body.ytvsc-initial .main > .section,
+body.ytvsc-initial .main > .header,
+body.ytvsc-initial .side {
+  animation: ytvsc-enter 0.24s cubic-bezier(0.2, 0, 0, 1) both;
+}
+body.ytvsc-initial .main > .header           { animation-delay: 0ms; }
+body.ytvsc-initial .main > .section:nth-of-type(1) { animation-delay: 60ms; }
+body.ytvsc-initial .main > .section:nth-of-type(2) { animation-delay: 120ms; }
+body.ytvsc-initial .main > .section:nth-of-type(3) { animation-delay: 180ms; }
+body.ytvsc-initial .main > .section:nth-of-type(4) { animation-delay: 220ms; }
+body.ytvsc-initial .main > .section:nth-of-type(5) { animation-delay: 260ms; }
+body.ytvsc-initial .side                     { animation-delay: 40ms; }
+@media (prefers-reduced-motion: reduce) {
+  body.ytvsc-initial .main > .section,
+  body.ytvsc-initial .main > .header,
+  body.ytvsc-initial .side { animation: none; }
+}
+
 .side { padding: 1rem; position: sticky; top: 1rem; }
 .side-field {
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 110px 1fr;
   gap: 0.5rem;
   padding: 0.55rem 0;
   align-items: center;
@@ -310,6 +403,317 @@ button { cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
 }
 .editable-pill:hover { background: var(--vscode-list-hoverBackground); }
 .editable-pill + .editable-pill { border-top: 1px solid var(--vscode-panel-border); }
+
+.icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--vscode-descriptionForeground);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.9em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.btn.ghost:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+
+/* Image lightbox (click an attachment thumbnail to open) */
+.yt-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  cursor: zoom-out;
+  padding: 48px 72px 24px 72px;
+  box-sizing: border-box;
+}
+.yt-lightbox .yt-lb-stage {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+}
+.yt-lightbox .yt-lb-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  user-select: none;
+  cursor: default;
+  display: block;
+  transition-property: opacity;
+  transition-duration: 0.15s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.yt-lightbox .yt-lb-close,
+.yt-lightbox .yt-lb-nav {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 1.15em;
+  padding: 0;
+  transition-property: background, scale;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.yt-lightbox .yt-lb-close:active,
+.yt-lightbox .yt-lb-nav:active { scale: 0.96; }
+.yt-lightbox .yt-lb-close { top: 12px; right: 12px; }
+.yt-lightbox .yt-lb-prev  { left: 16px;  top: 50%; transform: translateY(-50%); }
+.yt-lightbox .yt-lb-next  { right: 16px; top: 50%; transform: translateY(-50%); }
+.yt-lightbox .yt-lb-close:hover,
+.yt-lightbox .yt-lb-nav:hover { background: rgba(0, 0, 0, 0.85); }
+.yt-lightbox .yt-lb-caption {
+  margin-top: 0.6rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 0.35rem 0.75rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+  max-width: 80vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+.yt-lightbox .yt-lb-strip {
+  margin-top: 0.85rem;
+  display: flex;
+  gap: 0.4rem;
+  max-width: 90vw;
+  overflow-x: auto;
+  padding: 0.3rem 0.3rem 0.5rem;
+  scrollbar-width: thin;
+  cursor: default;
+}
+.yt-lightbox .yt-lb-thumb {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0.65;
+  transition-property: opacity, border-color, scale;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  background: rgba(0, 0, 0, 0.3);
+}
+.yt-lightbox .yt-lb-thumb:hover { opacity: 0.95; }
+.yt-lightbox .yt-lb-thumb:active { scale: 0.96; }
+.yt-lightbox .yt-lb-thumb.active {
+  opacity: 1;
+  border-color: var(--vscode-focusBorder, #4682B4);
+}
+.yt-lightbox .yt-lb-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  outline-offset: -1px;
+}
+
+/* Inline picker (anchored dropdown) — replaces native QuickPick for
+   pill clicks on Issue Detail and Create Issue panels. Mimics VS Code's
+   dropdown styling so it feels native. */
+.inline-picker {
+  position: fixed;
+  z-index: 999999;
+  pointer-events: auto !important;
+  background: var(--vscode-quickInput-background, var(--vscode-editorWidget-background));
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-focusBorder, var(--vscode-quickInput-border, var(--vscode-panel-border)));
+  /* Outer radius = inner .ip-item radius (3) + 3px padding. */
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+  display: flex; flex-direction: column;
+  max-width: 420px;
+  overflow: hidden;
+}
+.inline-picker * { pointer-events: auto !important; }
+body.vscode-light .inline-picker,
+body.vscode-high-contrast-light .inline-picker {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.20),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.ip-search {
+  padding: 0.45rem 0.6rem;
+  border: none;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  outline: none;
+  background: transparent;
+  color: var(--vscode-input-foreground);
+  font: inherit;
+}
+.ip-search:focus { border-bottom-color: var(--vscode-focusBorder); }
+.ip-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+.ip-item {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  user-select: none;
+  min-height: 1.8rem;
+  border-radius: 3px;
+  margin: 0 0.2rem;
+  transition-property: background, color;
+  transition-duration: 0.08s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.ip-item.active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.ip-item:active:not([aria-disabled="true"]) { scale: 0.98; }
+.ip-item.action { font-style: italic; }
+.ip-item .ip-label { flex: 0 0 auto; }
+.ip-item .ip-desc {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  margin-left: auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 50%;
+}
+.ip-item.active .ip-desc { color: var(--vscode-list-activeSelectionForeground); opacity: 0.85; }
+.ip-icon { font-size: 1em; flex: 0 0 auto; width: 16px; text-align: center; }
+.ip-check { font-size: 1em; flex: 0 0 auto; width: 16px; text-align: center; opacity: 0.8; }
+.ip-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.ip-avatar {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+body.vscode-dark .ip-avatar,
+body.vscode-high-contrast .ip-avatar {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.ip-sep {
+  height: 1px;
+  background: var(--vscode-panel-border);
+  margin: 0.2rem 0;
+}
+
+.inline-input-box { padding: 0; }
+.inline-input-box .ip-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: transparent;
+  color: var(--vscode-input-foreground);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  box-sizing: border-box;
+}
+.inline-input-box .ip-input:focus { outline: none; border-bottom-color: var(--vscode-focusBorder); }
+.inline-input-box .ip-hint {
+  padding: 0.35rem 0.7rem 0 0.7rem;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+}
+.inline-input-box .ip-error {
+  padding: 0.25rem 0.7rem 0 0.7rem;
+  color: var(--vscode-errorForeground);
+  font-size: 0.85em;
+}
+.inline-input-box .ip-actions {
+  display: flex; gap: 0.35rem;
+  padding: 0.5rem 0.7rem;
+  justify-content: flex-end;
+}
+
+.activity-section summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.activity-section summary::-webkit-details-marker { display: none; }
+.activity-section summary::before {
+  content: '\eab6';                 /* codicon-chevron-right */
+  font-family: 'codicon';
+  font-size: 1em;
+  transition: transform 0.15s ease;
+  color: var(--vscode-descriptionForeground);
+}
+.activity-section[open] summary::before { transform: rotate(90deg); }
+.activity-section summary h3 {
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.activity-section summary .count { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.estimate-bar {
+  margin-top: 0.4rem;
+  position: relative;
+  height: 16px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.estimate-fill {
+  height: 100%;
+  background: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
+  transition: width 0.2s ease;
+}
+.estimate-fill.over { background: var(--vscode-charts-red, var(--vscode-errorForeground)); }
+.estimate-label {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: #ffffff;
+  /* Two-layer shadow keeps the label readable on any fill color —
+     partial-blue + empty-background when on-track, full-red when over. */
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.85),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  letter-spacing: 0.01em;
+}
 
 /* =================================================================
    Markdown editor — Write/Preview tabs + toolbar + preview body.
