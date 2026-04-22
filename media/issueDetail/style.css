@@ -80,6 +80,22 @@
   font-size: 0.88em;
   cursor: help;
 }
+.visibility-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.8em;
+  cursor: help;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.visibility-badge .codicon { font-size: 0.95em; line-height: 1; }
 /* Every entry gets the same soft surface so Comments and Activity feel
    like the same UI treatment. Change entries are compact (no body), so
    they end up a thin single-line card. */
@@ -98,7 +114,8 @@
 .activity-entry.work .entry-header:only-child {
   margin-bottom: 0;
 }
-.comment-edit-btn {
+.comment-edit-btn,
+.comment-react-btn {
   background: transparent;
   color: var(--vscode-descriptionForeground);
   border: 1px solid transparent;
@@ -110,6 +127,43 @@
   transition-duration: 0.12s;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
+.activity-entry:hover .comment-react-btn { opacity: 1; }
+.comment-react-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+
+.reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.55rem 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border: 1px solid transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 0.9em;
+  line-height: 1.3;
+  transition-property: background, border-color, scale;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.reaction-chip:hover { background: var(--vscode-list-hoverBackground); }
+.reaction-chip:active { scale: 0.94; }
+.reaction-chip.active {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.reaction-chip .reaction-glyph { font-size: 1.05em; line-height: 1; }
+.reaction-chip .reaction-count { font-variant-numeric: tabular-nums; }
 .activity-entry:hover .comment-edit-btn { opacity: 1; }
 .comment-edit-btn:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--vscode-foreground); }
 .comment-edit { margin-top: 0.4rem; }
@@ -158,6 +212,55 @@
   width: 160px;
 }
 .comment-attachments { margin-top: 0.6rem; }
+
+/* Subtasks list — each row is a clickable link chip with a state
+   indicator and the child issue's id + summary. */
+.subtasks-list { display: flex; flex-direction: column; }
+.subtask-row {
+  display: grid;
+  grid-template-columns: 1.15em auto 1fr;
+  gap: 0.55rem;
+  align-items: baseline;
+  padding: 0.35rem 0.55rem;
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  transition-property: background, scale;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.subtask-row:hover { background: var(--vscode-list-hoverBackground); }
+.subtask-row:active { scale: 0.99; }
+.subtask-row.resolved { opacity: 0.7; }
+.subtask-row.resolved .subtask-summary { text-decoration: line-through; }
+.subtask-row .codicon { color: var(--vscode-descriptionForeground); line-height: 1; }
+.subtask-row.resolved .codicon { color: var(--vscode-testing-iconPassed, var(--vscode-charts-green)); }
+.subtask-row .subtask-id {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  font-weight: 600;
+}
+.subtask-row .subtask-summary {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.subtask-progress {
+  display: inline-flex; align-items: center;
+  flex: 0 0 110px;
+}
+.subtask-progress-track {
+  flex: 1;
+  height: 6px;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.subtask-progress-fill {
+  display: block; height: 100%;
+  background: var(--vscode-charts-green, var(--vscode-testing-iconPassed));
+  transition: width 0.2s ease;
+}
 
 /* Queued attachments under the add-comment textarea (pre-post). Match
    the regular attachment-tile sizing but add a remove button in the

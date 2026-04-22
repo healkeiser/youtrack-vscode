@@ -162,6 +162,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.createIssue', () => {
       CreateIssuePanel.show(context.extensionUri, client, context);
     }),
+    vscode.commands.registerCommand('youtrack.createIssueWithState', (stateName: unknown) => {
+      const target = typeof stateName === 'string' && stateName ? stateName : '';
+      CreateIssuePanel.show(context.extensionUri, client, context, async (createdId) => {
+        if (!target) return;
+        try { await client.transitionState(createdId, target); }
+        catch (e) { showYouTrackError(e, `set state ${target}`, 'warning'); }
+      });
+    }),
     vscode.commands.registerCommand('youtrack.assignToMe', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
       if (!issueId) return;

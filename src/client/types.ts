@@ -68,12 +68,23 @@ export interface Issue {
   links: IssueLink[];
 }
 
+export interface CommentReaction {
+  id: string;
+  reaction: string;
+  author: User;
+}
+
 export interface Comment {
   id: string;
   text: string;
   author: User;
   created: number;
   attachments: Attachment[];
+  reactions: CommentReaction[];
+  /** True when YouTrack has a LimitedVisibility on this comment. */
+  restricted: boolean;
+  /** Human label of the visibility constraint ("Developers", "Admin, QA", …). */
+  visibilityLabel: string;
 }
 
 export interface Attachment {

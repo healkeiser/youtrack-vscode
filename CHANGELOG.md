@@ -3,6 +3,26 @@
 All notable changes to this extension are documented here.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] — 2026-04-22
+
+### Added
+- **Subtasks section** on the issue panel with a live `done / total` progress bar and clickable child-issue rows.
+- **Per-column `+ New` button** on the Agile board — creates an issue pre-seeded to that column's state.
+- **Keyboard shortcuts inside the issue panel**: `C` focus comment box, `R` toggle activity sort, `E` edit description, `?` show cheat sheet.
+- **Restricted-visibility badge** on comments with `LimitedVisibility` (group/user label on hover).
+- **VCS commits in the activity feed** — `pushed commit <hash>` entries rendered alongside state transitions and field changes.
+- **Drop-zone affordance** on the Agile board — dashed outline + focus highlight while dragging a card.
+- **Branch-aware command palette** — `Go to Issue by ID`, `Transition State`, etc. pre-fill the input with the issue key parsed from the current git branch (fallback: token under the cursor).
+
+### Changed
+- Comment reaction endpoint polish; restricted-visibility rendering pulls `permittedGroups` / `permittedUsers` metadata.
+- README rewritten with Marketplace badges, Quick Start, keyboard-shortcut tables, and a `docs/screenshots/` section.
+- Attachment `byName` maps memoized once per render (instead of per comment) — faster rendering on heavy threads.
+- Avatar and color-dot caches prune entries older than 30 days on startup to keep `globalStorage` small.
+
+### Removed
+- Dead `fieldRenderer.ts` module.
+
 ## [0.7.0] — 2026-04-22
 
 Major UX + content overhaul. Everything below is new since 0.4.1.

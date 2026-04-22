@@ -21,6 +21,21 @@ export function initUserAvatars(context: vscode.ExtensionContext, c: YouTrackCli
   client = c;
   try { fs.mkdirSync(storageDir, { recursive: true }); }
   catch { /* swallow — userAvatarUri falls back to undefined */ }
+  pruneStale(storageDir);
+}
+
+// Drop cached avatars that haven't been used in 30 days.
+function pruneStale(dir: string): void {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  try {
+    for (const name of fs.readdirSync(dir)) {
+      const p = path.join(dir, name);
+      try {
+        const st = fs.statSync(p);
+        if (st.isFile() && st.atimeMs < cutoff) fs.unlinkSync(p);
+      } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
 }
 
 function cachePath(url: string): string | undefined {

@@ -530,7 +530,11 @@ function renderFlatBoard(board) {
     const count = (state.issuesByColumn[col.id] ?? []).length;
     const h = document.createElement('div');
     h.className = 'swim-header-col';
-    h.innerHTML = `<span>${escape(col.name)}</span><span class="count-badge">${count}</span>`;
+    h.innerHTML = `
+      <span class="col-name">${escape(col.name)}</span>
+      <span class="count-badge">${count}</span>
+      <button type="button" class="col-new-btn" data-new-in-column="${escape(col.id)}" title="Create issue in ${escape(col.name)}"><i class="codicon codicon-add"></i></button>
+    `;
     header.appendChild(h);
   }
   container.appendChild(header);
@@ -589,7 +593,11 @@ function renderSwimlaneBoard(board) {
     const total = state.issuesByColumn[col.id]?.length ?? 0;
     const h = document.createElement('div');
     h.className = 'swim-header-col';
-    h.innerHTML = `<span>${escape(col.name)}</span><span class="count-badge">${total}</span>`;
+    h.innerHTML = `
+      <span class="col-name">${escape(col.name)}</span>
+      <span class="count-badge">${total}</span>
+      <button type="button" class="col-new-btn" data-new-in-column="${escape(col.id)}" title="Create issue in ${escape(col.name)}"><i class="codicon codicon-add"></i></button>
+    `;
     header.appendChild(h);
   }
   container.appendChild(header);
@@ -653,8 +661,22 @@ function render() {
   board.innerHTML = '';
   if (isSwimlaneMode()) renderSwimlaneBoard(board);
   else renderFlatBoard(board);
+  wireColumnCreateButtons(board);
   if (filtersActive()) applyFilters();
   else updateFilterCount();
+}
+
+function wireColumnCreateButtons(board) {
+  board.querySelectorAll('[data-new-in-column]').forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const columnId = btn.dataset.newInColumn;
+      const col = state.columns.find((c) => c.id === columnId);
+      const stateName = col?.states?.[0] ?? '';
+      vscode.postMessage({ type: 'createIssueInColumn', columnId, state: stateName });
+    });
+  });
 }
 
 vscode.postMessage({ type: 'ready' });

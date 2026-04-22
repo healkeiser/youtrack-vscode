@@ -96,6 +96,15 @@ export class AgileBoardPanel {
       void this.reload();
       return;
     }
+    if (msg.type === 'createIssueInColumn') {
+      // "+" on a column header — when the new issue lands we'll
+      // transition it to the column's first state so it shows up
+      // where the user asked.
+      const stateName = typeof msg.state === 'string' ? msg.state : '';
+      await vscode.commands.executeCommand('youtrack.createIssueWithState', stateName);
+      void this.reload();
+      return;
+    }
     if (msg.type === 'openInBrowser') {
       // If the board has sprints disabled, open the root board URL
       // without a sprint segment — YouTrack resolves it to its own

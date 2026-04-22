@@ -4,6 +4,46 @@ let pendingPasteTarget = null;
 let firstRender = true;
 const mentionRoster = new Map(); // login -> {login, fullName, avatarUrl}
 
+// Panel-wide keyboard shortcuts. Only fire when the user isn't typing
+// into an input/textarea and no modal (inline picker/input) is open.
+document.addEventListener('keydown', (e) => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const t = e.target;
+  const tag = t?.tagName;
+  const editing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable;
+  if (editing) return;
+  if (document.querySelector('.inline-picker, .yt-lightbox')) return;
+
+  switch (e.key.toLowerCase()) {
+    case 'c': {
+      const toggle = document.querySelector('[data-inline-toggle="comment"]');
+      if (toggle?.classList.contains('btn')) toggle.click();
+      const ta = document.querySelector('form.add-comment textarea');
+      if (ta) { e.preventDefault(); ta.focus(); }
+      break;
+    }
+    case 'r': {
+      const sort = document.querySelector('[data-sort-toggle]');
+      if (sort) { e.preventDefault(); sort.click(); }
+      break;
+    }
+    case 'e': {
+      const edit = document.querySelector('.editable[data-field="description"] [data-edit="description"]');
+      if (edit) { e.preventDefault(); edit.click(); }
+      break;
+    }
+    case '?': {
+      e.preventDefault();
+      showKeyboardHelp();
+      break;
+    }
+  }
+});
+
+function showKeyboardHelp() {
+  vscode.postMessage({ type: 'showKeyboardHelp' });
+}
+
 window.addEventListener('message', (evt) => {
   const msg = evt.data;
   if (msg.type === 'render') {
@@ -22,6 +62,7 @@ window.addEventListener('message', (evt) => {
     wireEditables();
     wireMdTabs();
     wireCommentEdits();
+    wireCommentReactions();
     wirePills();
     wireLinkChips();
     wireDraftPersistence();
@@ -396,6 +437,57 @@ function wireLinkChips() {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       vscode.postMessage({ type: 'openLinkedIssue', id: el.dataset.openIssue });
+    });
+  });
+}
+
+function wireCommentReactions() {
+  // The emoji set matches the host's REACTION_EMOJI. Kept inline so we
+  // can render the inline picker without a host round-trip.
+  const REACTIONS = [
+    { name: 'thumbs-up',  glyph: '👍', label: 'thumbs up' },
+    { name: 'thumbs-down', glyph: '👎', label: 'thumbs down' },
+    { name: 'smile',      glyph: '😄', label: 'smile' },
+    { name: 'tada',       glyph: '🎉', label: 'tada' },
+    { name: 'thinking',   glyph: '🤔', label: 'thinking' },
+    { name: 'heart',      glyph: '❤️', label: 'heart' },
+    { name: 'rocket',     glyph: '🚀', label: 'rocket' },
+    { name: 'eyes',       glyph: '👀', label: 'eyes' },
+  ];
+  document.querySelectorAll('[data-react-comment]').forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const commentId = btn.dataset.reactComment;
+      if (!commentId) return;
+      YT.inlinePicker.open(btn, {
+        items: REACTIONS.map((r) => ({
+          id: r.name,
+          label: `${r.glyph}  ${r.label}`,
+        })),
+        onPick: (item) => {
+          vscode.postMessage({
+            type: 'addCommentReaction',
+            commentId,
+            reaction: item.id,
+          });
+        },
+      });
+    });
+  });
+  // Toggle chips (existing reactions). "active" chip → remove my reaction,
+  // otherwise → add my own (in addition to the group).
+  document.querySelectorAll('.reaction-chip').forEach((chip) => {
+    chip.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const commentId = chip.dataset.reactCommentTarget;
+      if (!commentId) return;
+      const removeId = chip.dataset.removeReactionId;
+      const addName = chip.dataset.addReaction;
+      if (removeId) {
+        vscode.postMessage({ type: 'removeCommentReaction', commentId, reactionId: removeId });
+      } else if (addName) {
+        vscode.postMessage({ type: 'addCommentReaction', commentId, reaction: addName });
+      }
     });
   });
 }

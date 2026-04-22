@@ -53,10 +53,14 @@ function resolveMentions(raw: string, userLookup: Map<string, User>): string {
 // reference and fail to load anything. Resolve each to the real signed
 // URL by looking it up in the issue's attachments list. Tolerates URL-
 // encoded spaces and percent-encoded names.
-function resolveAttachmentRefs(raw: string, attachments: Attachment[]): string {
-  if (!raw || !attachments.length) return raw;
+function buildAttachmentByName(attachments: Attachment[]): Map<string, string> {
   const byName = new Map<string, string>();
-  for (const a of attachments) byName.set(a.name, a.url);
+  for (const a of attachments) byName.set(a.name.toLowerCase(), a.url);
+  return byName;
+}
+
+function resolveAttachmentRefs(raw: string, byName: Map<string, string>): string {
+  if (!raw || !byName.size) return raw;
   return raw.replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (match, bang, text, url) => {
     if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return match;      // already absolute
     if (url.startsWith('//') || url.startsWith('/')) return match;
@@ -64,7 +68,7 @@ function resolveAttachmentRefs(raw: string, attachments: Attachment[]): string {
     const candidate = (() => {
       try { return decodeURIComponent(url); } catch { return url; }
     })();
-    const hit = byName.get(candidate) ?? byName.get(url);
+    const hit = byName.get(candidate.toLowerCase()) ?? byName.get(url.toLowerCase());
     if (!hit) return match;
     return `${bang}[${text || candidate}](${hit})`;
   });
@@ -73,10 +77,8 @@ function resolveAttachmentRefs(raw: string, attachments: Attachment[]): string {
 // Second pass: rewrite any <img src="filename"> / <a href="filename">
 // in the already-rendered HTML. Catches cases where YouTrack stores
 // weird markup or a reference-style link we can't reach pre-markdown.
-function resolveAttachmentHtmlRefs(html: string, attachments: Attachment[]): string {
-  if (!html || !attachments.length) return html;
-  const byName = new Map<string, string>();
-  for (const a of attachments) byName.set(a.name.toLowerCase(), a.url);
+function resolveAttachmentHtmlRefs(html: string, byName: Map<string, string>): string {
+  if (!html || !byName.size) return html;
   return html.replace(/(\s(?:src|href)=")([^"]+)"/gi, (match, prefix, url) => {
     if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return match;
     if (url.startsWith('//') || url.startsWith('/')) return match;
@@ -90,14 +92,15 @@ function resolveAttachmentHtmlRefs(html: string, attachments: Attachment[]): str
 function renderBody(
   raw: string | null | undefined,
   userLookup: Map<string, User>,
-  attachments: Attachment[] = [],
+  attachments: Attachment[] | Map<string, string> = [],
 ): string {
   if (!raw) return '';
+  const byName = attachments instanceof Map ? attachments : buildAttachmentByName(attachments);
   const withMentions = resolveMentions(raw, userLookup);
-  const withRefs = resolveAttachmentRefs(withMentions, attachments);
+  const withRefs = resolveAttachmentRefs(withMentions, byName);
   const html = marked.parse(withRefs, { async: false }) as string;
   const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS);
-  return resolveAttachmentHtmlRefs(sanitized, attachments);
+  return resolveAttachmentHtmlRefs(sanitized, byName);
 }
 
 function stateSlug(name: string): string {
@@ -142,6 +145,53 @@ function renderUserChip(user: User | null | undefined): string {
 // same `date` kind — show the time component only when it carries info
 // (i.e. the value isn't midnight local-time), otherwise render a bare
 // date. Avoids noisy "12:00:00 AM" tails on pure-date fields.
+// YouTrack's reaction name → emoji. Matches the set offered in the web
+// UI's reaction picker. Unknown names fall through as the name itself.
+const REACTION_EMOJI: Record<string, string> = {
+  'thumbs-up': '👍',
+  'thumbs-down': '👎',
+  'smile': '😄',
+  'tada': '🎉',
+  'thinking': '🤔',
+  'heart': '❤️',
+  'rocket': '🚀',
+  'eyes': '👀',
+};
+
+function reactionGlyph(name: string): string {
+  return REACTION_EMOJI[name] ?? name;
+}
+
+function renderReactionChips(
+  commentId: string,
+  reactions: Array<{ id: string; reaction: string; author: { login: string; fullName: string } }>,
+  currentUserLogin: string,
+): string {
+  if (!reactions.length) return '';
+  // Group identical reactions so we get "👍 2" chips instead of a
+  // separate pill per user. Track whether the current user reacted so
+  // the chip gets an "active" styling + their reaction id (for removal).
+  const groups = new Map<string, { glyph: string; count: number; myId?: string; who: string[] }>();
+  for (const r of reactions) {
+    const g = groups.get(r.reaction) ?? { glyph: reactionGlyph(r.reaction), count: 0, who: [] };
+    g.count += 1;
+    if (r.author.login === currentUserLogin) g.myId = r.id;
+    g.who.push(r.author.fullName || r.author.login);
+    groups.set(r.reaction, g);
+  }
+  const chips = [...groups.entries()].map(([name, g]) => {
+    const title = g.who.join(', ');
+    const action = g.myId
+      ? `data-remove-reaction-id="${escapeHtml(g.myId)}"`
+      : `data-add-reaction="${escapeHtml(name)}"`;
+    return `<button type="button" class="reaction-chip${g.myId ? ' active' : ''}" data-react-comment-target="${escapeHtml(commentId)}" ${action} title="${escapeHtml(title)}">
+      <span class="reaction-glyph">${g.glyph}</span>
+      <span class="reaction-count">${g.count}</span>
+    </button>`;
+  }).join('');
+  return `<div class="reactions-row">${chips}</div>`;
+}
+
 function renderAttachmentTile(a: Attachment): string {
   const isImage = (a.mimeType ?? '').toLowerCase().startsWith('image/')
     || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
@@ -277,6 +327,9 @@ function renderChangeVerb(a: {
       return `changed sprint`;
     case 'ProjectCategory':
       return `moved ${from ? `from <b>${from}</b> ` : ''}${to ? `to <b>${to}</b>` : ''}`;
+    case 'VcsChangeCategory':
+      if (to) return `pushed commit <b>${to}</b>`;
+      return `pushed a commit`;
     case 'CustomFieldCategory':
     default: {
       if (from && to) return `changed ${field || 'a field'} from <b>${from}</b> to <b>${to}</b>`;
@@ -517,6 +570,9 @@ export class IssueDetailPanel {
     activities: Array<{ id: string; timestamp: number; category: string; field?: string; added: string[]; removed: string[]; author: User }> = [],
   ): string {
     const spentSeconds = workItems.reduce((sum, w) => sum + (w.duration || 0), 0);
+    // Issue-level attachment lookup, built once and reused for every
+    // renderBody call below (description, comments, work items).
+    const issueByName = buildAttachmentByName(attachments);
     const sideFields = issue.customFields.map((f) => renderSideField(f, { spentSeconds })).join('');
     const projectRow = `<div class="side-field"><span class="label">Project</span><span class="value">${escapeHtml(issue.project.shortName)}</span></div>`;
     const reporterRow = issue.reporter
@@ -539,6 +595,33 @@ export class IssueDetailPanel {
 
     const attachHtml = attachments.map((a) => renderAttachmentTile(a)).join('');
 
+    // Subtasks — children linked via the "subtask of" / "parent for"
+    // relationship. YouTrack's link direction is OUTWARD from this
+    // issue when it's the parent; the link name varies by workspace
+    // ("parent for" / "subtask" / etc.) so we match on common patterns.
+    const subtaskLink = issue.links.find((l) => /parent for|subtask/i.test(l.name) && l.direction !== 'INWARD');
+    const subtasks = subtaskLink?.issues ?? [];
+    const subtasksDone = subtasks.filter((i) => i.resolved).length;
+    const subtasksPct = subtasks.length ? Math.round((subtasksDone / subtasks.length) * 100) : 0;
+    const subtasksHtml = subtasks.length ? `
+      <div class="section">
+        <div class="section-head">
+          <h3><i class="codicon codicon-type-hierarchy-sub"></i>Subtasks <span class="muted count">(${subtasksDone} / ${subtasks.length})</span></h3>
+          <span class="subtask-progress" title="${subtasksDone} of ${subtasks.length} resolved · ${subtasksPct}%">
+            <span class="subtask-progress-track"><span class="subtask-progress-fill" style="width:${subtasksPct}%"></span></span>
+          </span>
+        </div>
+        <div class="subtasks-list">
+          ${subtasks.map((i) => `
+            <a class="subtask-row${i.resolved ? ' resolved' : ''}" data-open-issue="${escapeHtml(i.idReadable)}" title="${escapeHtml(i.summary)}">
+              <i class="codicon codicon-${i.resolved ? 'pass-filled' : 'circle-large-outline'}"></i>
+              <span class="subtask-id">${escapeHtml(i.idReadable)}</span>
+              <span class="subtask-summary">${escapeHtml(i.summary)}</span>
+            </a>
+          `).join('')}
+        </div>
+      </div>` : '';
+
     type Entry = { ts: number; html: string };
     const commentEntries: Entry[] = [];
     const historyEntries: Entry[] = [];
@@ -555,10 +638,16 @@ export class IssueDetailPanel {
               </div>
             </form>` : '';
       const editBtn = isMine ? `<button type="button" class="comment-edit-btn" data-edit-comment="${escapeHtml(c.id)}" title="Edit"><i class="codicon codicon-edit"></i></button>` : '';
+      const reactBtn = `<button type="button" class="comment-react-btn" data-react-comment="${escapeHtml(c.id)}" title="Add reaction"><i class="codicon codicon-smiley"></i></button>`;
+      const reactionsHtml = renderReactionChips(c.id, c.reactions, this.currentUserLogin);
       // Resolve refs against BOTH the global list and the comment's own
       // attachment list. Extra attachments that came with this comment but
       // aren't referenced from its markdown get rendered as tiles below.
-      const mergedAttachments = [...c.attachments, ...attachments];
+      // For renderBody: start from issue-level map then overlay the
+      // comment's own attachments (comment-bound ones win if there's
+      // a name collision).
+      const commentByName = new Map(issueByName);
+      for (const a of c.attachments) commentByName.set(a.name.toLowerCase(), a.url);
       const refNames = new Set<string>();
       const refRe = /!?\[[^\]]*\]\(([^)\s]+)\)/g;
       let match: RegExpExecArray | null;
@@ -583,10 +672,12 @@ export class IssueDetailPanel {
                 <b class="entry-author">${escapeHtml(c.author?.fullName ?? c.author?.login ?? '')}</b>
                 <span class="entry-verb">commented</span>
                 <span class="entry-time" title="${fullWhen}">${relWhen}</span>
-                <span class="spacer"></span>${editBtn}
+                ${c.restricted ? `<span class="visibility-badge" title="Visible to ${escapeHtml(c.visibilityLabel)}"><i class="codicon codicon-lock"></i>${escapeHtml(c.visibilityLabel)}</span>` : ''}
+                <span class="spacer"></span>${reactBtn}${editBtn}
               </div>
-              <div class="body md-body comment-view">${renderBody(c.text, this.userLookup, mergedAttachments)}</div>
+              <div class="body md-body comment-view">${renderBody(c.text, this.userLookup, commentByName)}</div>
               ${tilesHtml}
+              ${reactionsHtml}
               ${editForm}
             </div>
           </div>`,
@@ -608,7 +699,7 @@ export class IssueDetailPanel {
                 <span class="entry-verb">logged <strong>${dur}</strong>${typeLabel}</span>
                 <span class="entry-time" title="${fullWhen}">${relWhen}</span>
               </div>
-              ${w.text ? `<div class="body">${renderBody(w.text, this.userLookup, attachments)}</div>` : ''}
+              ${w.text ? `<div class="body">${renderBody(w.text, this.userLookup, issueByName)}</div>` : ''}
             </div>
           </div>`,
       });
@@ -647,7 +738,7 @@ export class IssueDetailPanel {
     void this.workTypes; // list fetched on demand by the inline picker
 
     const descriptionBody = issue.description
-      ? `<div class="description md-body">${renderBody(issue.description, this.userLookup, attachments)}</div>`
+      ? `<div class="description md-body">${renderBody(issue.description, this.userLookup, issueByName)}</div>`
       : `<div class="description empty">No description.</div>`;
 
     return `
@@ -693,6 +784,7 @@ export class IssueDetailPanel {
               </form>
             </div>
           </div>
+          ${subtasksHtml}
           <div class="section">
             <div class="section-head">
               <h3><i class="codicon codicon-file-media"></i>Attachments</h3>
@@ -914,6 +1006,54 @@ export class IssueDetailPanel {
     if (msg.type === 'reloadIssue') {
       this.cache.invalidateIssue(this.issueId);
       await this.reload();
+      return;
+    }
+    if (msg.type === 'showKeyboardHelp') {
+      vscode.window.showInformationMessage(
+        'YouTrack panel shortcuts: C — focus add comment · R — toggle sort · E — edit description · ? — this help',
+      );
+      return;
+    }
+    if (msg.type === 'addCommentReaction') {
+      try {
+        await this.client.addCommentReaction(this.issueId, String(msg.commentId), String(msg.reaction));
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, 'add reaction');
+      }
+      return;
+    }
+    if (msg.type === 'removeCommentReaction') {
+      try {
+        await this.client.removeCommentReaction(this.issueId, String(msg.commentId), String(msg.reactionId));
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, 'remove reaction');
+      }
+      return;
+    }
+    if (msg.type === 'pickReaction') {
+      const commentId = String(msg.commentId ?? '');
+      if (!commentId) return;
+      type Item = vscode.QuickPickItem & { reaction?: string };
+      const items: Item[] = Object.entries(REACTION_EMOJI).map(([name, glyph]) => ({
+        label: `${glyph}  ${name.replace(/-/g, ' ')}`,
+        reaction: name,
+      }));
+      const picked = await vscode.window.showQuickPick<Item>(items, {
+        title: 'Add reaction',
+        placeHolder: 'Pick an emoji',
+      });
+      if (!picked?.reaction) return;
+      try {
+        await this.client.addCommentReaction(this.issueId, commentId, picked.reaction);
+        this.cache.invalidateIssue(this.issueId);
+        await this.reload();
+      } catch (e) {
+        showYouTrackError(e, 'add reaction');
+      }
       return;
     }
     if (msg.type === 'toggleActivitySort') {

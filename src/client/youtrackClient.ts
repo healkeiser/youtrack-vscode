@@ -5,7 +5,7 @@ import type {
   AgileBoard, Sprint, BoardView, BoardColumn,
 } from './types';
 
-const COMMENT_FIELDS = 'id,text,created,author(id,login,fullName,avatarUrl),attachments(id,name,url,size,mimeType)';
+const COMMENT_FIELDS = 'id,text,created,author(id,login,fullName,avatarUrl),attachments(id,name,url,size,mimeType),reactions(id,reaction,author(id,login,fullName,avatarUrl)),visibility($type,permittedGroups(name),permittedUsers(login,fullName))';
 
 const ISSUE_FIELDS = [
   'id', 'idReadable', 'summary', 'description',
@@ -282,13 +282,46 @@ export class YouTrackClient {
           mimeType: a.mimeType ?? '',
         }))
       : [];
+    const reactions = Array.isArray(raw.reactions)
+      ? raw.reactions.map((r: any) => ({
+          id: r.id,
+          reaction: r.reaction,
+          author: mapUser(r.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
+        }))
+      : [];
+    // Visibility: unlimited by default; restricted comments carry the
+    // groups/users they're visible to in the API response.
+    const vis = raw.visibility;
+    const restricted = !!vis && vis.$type === 'LimitedVisibility';
+    const visibilityLabel = restricted
+      ? [
+          ...(vis.permittedGroups ?? []).map((g: any) => g.name),
+          ...(vis.permittedUsers ?? []).map((u: any) => u.fullName || u.login),
+        ].filter(Boolean).join(', ') || 'restricted'
+      : '';
     return {
       id: raw.id,
       text: raw.text ?? '',
       author: mapUser(raw.author, this.baseUrl) ?? { id: '', login: '', fullName: '', avatarUrl: '' },
       created: raw.created,
       attachments,
+      reactions,
+      restricted,
+      visibilityLabel,
     };
+  }
+
+  async addCommentReaction(issueId: string, commentId: string, reaction: string): Promise<void> {
+    await this.call(`/api/issues/${issueId}/comments/${commentId}/reactions`, {
+      method: 'POST',
+      body: { reaction },
+    });
+  }
+
+  async removeCommentReaction(issueId: string, commentId: string, reactionId: string): Promise<void> {
+    await this.call(`/api/issues/${issueId}/comments/${commentId}/reactions/${reactionId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Activities stream: field changes, link add/remove, tag add/remove, state
@@ -313,7 +346,7 @@ export class YouTrackClient {
           'removed(id,name,text,login,fullName,avatarUrl,presentation,idReadable,summary)',
         ].join(','),
         $top: '100',
-        categories: 'CustomFieldCategory,IssueResolvedCategory,LinksCategory,TagsCategory,SummaryCategory,DescriptionCategory,IssueCreatedCategory,SprintCategory,AttachmentsCategory,ProjectCategory',
+        categories: 'CustomFieldCategory,IssueResolvedCategory,LinksCategory,TagsCategory,SummaryCategory,DescriptionCategory,IssueCreatedCategory,SprintCategory,AttachmentsCategory,ProjectCategory,VcsChangeCategory',
       },
     }).catch(() => [] as any[]);
     const out: Array<{

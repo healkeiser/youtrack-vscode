@@ -124,7 +124,7 @@ body { padding: 0; }
 .swim-header-col {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.45rem 0.8rem;
   font-size: 1em;
   text-transform: uppercase;
@@ -136,7 +136,23 @@ body { padding: 0; }
      horizontal line. */
   border-bottom: 1px solid var(--vscode-panel-border);
 }
+.swim-header-col .col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .swim-header-col:not(:last-child) { border-right: 1px solid var(--vscode-panel-border); }
+.col-new-btn {
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  cursor: pointer;
+  opacity: 0;
+  transition-property: opacity, background, color, scale;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.swim-header-col:hover .col-new-btn { opacity: 1; }
+.col-new-btn:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--vscode-foreground); }
+.col-new-btn:active { scale: 0.94; }
 
 .swim-lane { display: flex; flex-direction: column; }
 .swim-lane + .swim-lane { border-top: 1px solid var(--vscode-panel-border); }
@@ -181,10 +197,21 @@ body { padding: 0; }
   transition: background 0.1s ease, min-height 0.15s ease;
 }
 .swim-cell:not(:last-child) { border-right: 1px solid var(--vscode-panel-border); }
-.swim-cell.drop-target { background: var(--vscode-list-dropBackground, rgba(100,149,237,0.15)); }
+/* During drag: every cell gets a dashed outline to advertise itself as a
+   drop target; the one currently hovered gets a solid focus accent + a
+   tinted fill so users see exactly where the card will land. */
+body.is-dragging .swim-cell {
+  min-height: 9rem;
+  outline: 1.5px dashed var(--vscode-panel-border);
+  outline-offset: -6px;
+  border-radius: 6px;
+  transition: outline-color 0.12s ease, background 0.1s ease;
+}
+.swim-cell.drop-target {
+  background: var(--vscode-list-dropBackground, rgba(100, 149, 237, 0.15));
+  outline: 2px solid var(--vscode-focusBorder) !important;
+}
 .swim-cell .card:last-child { margin-bottom: 0; }
-/* Expand empty cells while something is being dragged so they remain easy drop targets */
-body.is-dragging .swim-cell { min-height: 9rem; }
 .board-loading { color: var(--vscode-descriptionForeground); font-style: italic; padding: 1rem; }
 
 .card {
