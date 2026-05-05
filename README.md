@@ -1,28 +1,57 @@
-# YouTrack Companion
+<p align="center">
+  <img src="media/youtrack.png" alt="YouTrack Companion" width="128">
+</p>
 
-[![VS Marketplace Version](https://vsmarketplacebadges.dev/version-short/healkeiser.youtrack-companion.svg?label=marketplace&style=flat)](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion)
-[![Open VSX Version](https://img.shields.io/open-vsx/v/healkeiser/youtrack-companion?label=open-vsx)](https://open-vsx.org/extension/healkeiser/youtrack-companion)
-[![GitHub release](https://img.shields.io/github/v/release/healkeiser/youtrack-companion?label=github%20release)](https://github.com/healkeiser/youtrack-companion/releases/latest)
-[![License](https://img.shields.io/github/license/healkeiser/youtrack-companion)](./LICENSE)
+### youtrack-companion
 
-> Distributed via the **[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion)**, **[Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion)** (for VSCodium / Cursor / Theia), and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**.
+Third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail panel, agile board, time tracking, AI assist via Claude Code, and a pile of editor-native workflows that turn the extension into a "create a ticket and keep coding" loop rather than a "read tickets while coding" loop.
+
+[**Marketplace**](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion) · [**Open VSX**](https://open-vsx.org/extension/healkeiser/youtrack-companion) · [**Releases**](https://github.com/healkeiser/youtrack-companion/releases)
+
+> [!NOTE]
+> Distributed via the VS Code Marketplace, Open VSX (for VSCodium / Cursor / Theia / Gitpod), and direct GitHub Releases.
 >
 > If you previously installed it as `valentinbeaumont.youtrack-vscode` or `valentinbeaumont.youtrack-companion`, those identifiers are retired. Uninstall the old extension and install `healkeiser.youtrack-companion`. Settings under the `youtrack.*` namespace are preserved across the switch — no reconfiguration needed.
 
-A third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
+## Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [About](#about)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Features](#features)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Settings](#settings)
+- [Security](#security)
+- [Screenshots](#screenshots)
+- [Develop](#develop)
+- [License](#license)
+- [Contact](#contact)
+
+## About
+
+A community-built companion for [YouTrack Cloud](https://www.jetbrains.com/youtrack/) inside Visual Studio Code. Reads issues, edits custom fields, drives the agile board, tracks time, and stitches the whole experience into the editor's native surfaces — hovers, code lenses, code actions, the SCM input, the activity bar, and the status bar.
 
 Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with JetBrains.
 
-## Install
+## Installation
 
 ### VS Code (Microsoft Marketplace)
+
 `Ctrl+Shift+P` → **Extensions: Install Extensions** → search **YouTrack Companion** by `healkeiser`.
-Or from the command line: `code --install-extension healkeiser.youtrack-companion`.
+
+Or from the command line:
+
+```
+code --install-extension healkeiser.youtrack-companion
+```
 
 ### VSCodium / Cursor / Theia / Gitpod (Open VSX)
+
 Search **YouTrack Companion** in the Extensions sidebar — those editors talk to Open VSX out of the box.
 
 ### Manual / air-gapped / corporate setups
+
 A single universal `.vsix` ships per release — same artifact across Windows, macOS, and Linux because the AI features spawn the user's own `claude` CLI rather than bundling per-platform binaries.
 
 ```powershell
@@ -51,21 +80,17 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 4. Paste a permanent token. Generate one in YouTrack: **avatar → Profile → Account Security → New token**, scope it to **YouTrack** (not read-only).
 5. Open the YouTrack activity-bar icon on the left and pick a view.
 
-## Screenshots
-
-| Sidebar + Create Issue | Issue detail | Agile board |
-| --- | --- | --- |
-| ![Sidebar](docs/screenshots/sidebar.png) | ![Issue detail](docs/screenshots/issue-detail.png) | ![Agile board](docs/screenshots/agile-board.png) |
-
 ## Features
 
 ### Sidebar
+
 - Five views in a dedicated activity-bar container: **Notifications**, **Assigned to me**, **Recently opened**, **Issues**, **Agile Boards**.
 - Per-view filter state: text filter, state filter, tag filter, `#Unresolved` toggle (on by default for _Assigned to me_), sort mode, group-by-project. Filters on _Assigned to me_ don't bleed into the _Issues_ umbrella and vice-versa.
 - _Issues_ view rolls up **Reported by me**, **Commented by me**, **All issues**, **All tickets** under a single section.
 - Right-click any issue → change state, assign to me, log time, create branch, copy ID/link, open in browser.
 
 ### Issue detail panel
+
 - Two-column layout with a sticky side panel. Every side-panel row — State, Priority, Assignee, and every project custom field (enum, state, user, version, bool, date, period, string, int, float) — is a clickable pill that opens a type-aware editor.
 - **Subtasks section** with a live progress bar (`done / total`) and clickable child-issue rows that deep-link into their own panels.
 - Editable summary and description with Markdown **Write**/**Preview** tabs, a full formatting toolbar (bold, italic, strikethrough, code, code block, link, quote, bullet/numbered lists, mention), and double-click-to-edit.
@@ -74,10 +99,12 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 - **Reactions** on comments — click the smiley next to Edit to add/remove emoji reactions; existing reactions render as pills with counts and a toggle on click.
 - **Restricted-visibility badge** on comments with a `LimitedVisibility` constraint (shows the group/user label on hover).
 - **Activity feed** with inline edit on your own comments, VCS commits, and state/field changes rendered as semantic verbs. Work-item log-time form with a collapsible "Add time" trigger. Drag-and-drop attachments onto the panel.
+- **Live attachment thumbnails** — image attachments load in the panel and inline-markdown image refs (`![](file.png)`) resolve via a local cache that fetches with auth, so YouTrack-signed URLs that the webview can't load directly still render.
 - **Panel keyboard shortcuts**: `C` focus comment box · `R` toggle activity sort · `E` edit description · `?` show cheat sheet.
-- Toolbar: **Start Work** (transition + branch), **Timer**, **Branch**, Refresh, Copy Link, Open in browser.
+- Toolbar: **Start Work** (transition + branch), **Timer**, **Branch**, Refresh, Copy Link, Open in browser. With AI enabled (see below): ✨ **Summarize** and 💬 **Discuss** appear inline next to the Branch button.
 
 ### Agile board
+
 - Sprint picker, swimlane grouping (by Priority, Assignee, or State) or flat view, column sorting (recently updated / created / ID / summary).
 - Drag cards across columns to transition state, with a dashed drop-zone outline and focus highlight while dragging.
 - **Per-column `+` button** to create a new issue pre-seeded with that column's state.
@@ -85,14 +112,17 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 - **Create Issue** button opens the form panel pre-selected to the current board's project.
 
 ### Create Issue
+
 - Two-column form panel mirroring the detail shell. Project, Type, Priority, Assignee on the right; full Markdown editor on the left with the same toolbar/tabs as comments.
 - **Create from editor selection**: right-click on selected code → **YouTrack: Create Issue from Selection**. Pre-fills summary with `filename.ts:42-58 — first line of snippet` and description with a fenced code block keyed to the document's language id.
 
 ### Time tracking
+
 - Live timer with a status-bar item (per-second ticker) that persists across window reloads. Stopping rounds up and posts a work item automatically.
 - Standalone **Log Time** form on the issue panel for manual entries, with configurable work-item types.
 
 ### Git integration
+
 - **Branch from issue** with a configurable template — `youtrack.branch.template` supports `{id}`, `{summary}`, `{type}`, `{state}`, `{assignee}`, `{project}`, and `{field:<CustomFieldName>}` placeholders. Sanitized tokens (lowercase, diacritic-stripped, separator-joined) with a configurable length cap on `{summary}`.
 - **Current-issue status-bar badge** that reads the current git branch, extracts the issue key, and shows `$(tasklist) ID` with a rich tooltip.
 - **Branch-aware command palette**: `YouTrack: Go to Issue by ID`, `Transition State`, and friends pre-fill the input with the issue key from the current branch when you have no argument.
@@ -100,6 +130,7 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 - **Post branch activity**: manual command that collects commits ahead of upstream on the current branch and posts them as a markdown bullet list comment on the linked issue (confirm / edit / cancel).
 
 ### Editor-surface affordances
+
 - **Hover** any `ABC-123`-shaped token in any file → summary, state, assignee, quick-open link.
 - **CodeLens** above any `TODO` / `FIXME` / `XXX` / `HACK` / `NOTE` comment referencing an issue key → `ABC-123 · In Progress · <summary>`; click opens the panel. With AI enabled, a second `$(sparkle) Ask Claude` lens opens the same TODO in your Claude Code terminal pre-loaded with the issue context.
 - **Quick Fix** on bare TODO/FIXME/XXX/HACK/NOTE comments (no issue id yet) — `Ctrl+.` → **Create YouTrack issue from this TODO**. AI drafts the ticket from surrounding code, you review in the Create Issue panel, and the line is rewritten to include the new id on submit.
@@ -107,7 +138,8 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 
 ### AI assist (Claude integration)
 
-> Optional. Off by default — enable with `youtrack.ai.enabled = true`. Requires [Claude Code](https://claude.com/claude-code) installed and on `PATH`; auth is inherited from whatever Claude Code is signed into (personal Max plan, Team plan, API key, Bedrock, Vertex).
+> [!IMPORTANT]
+> Optional, off by default. Enable with `youtrack.ai.enabled = true`. Requires [Claude Code](https://claude.com/claude-code) installed and on `PATH`; auth is inherited from whatever Claude Code is signed into (personal Max plan, Team plan, API key, Bedrock, Vertex).
 
 - The extension spawns the user's own `claude` CLI in `--print --output-format stream-json` mode and pipes events through the YouTrack MCP server (`<host>/mcp`). No SDK is bundled — the `.vsix` stays under 1MB instead of carrying a per-platform Claude Code binary. No API key in extension settings.
 - **Summarize Issue** — sidebar context menu, panel toolbar, or `youtrack.ai.summarizeIssue`. Streams a structured TL;DR / Context / Open questions / Next steps into a markdown doc beside your editor.
@@ -119,12 +151,16 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 - **Logs** — `YouTrack: Show Logs` opens the diagnostics output channel.
 
 ### Notifications
+
 - Unread notifications render with a `bell-dot` icon; inline `✓` to mark one read or a **Mark All as Read** action in the view toolbar.
 
 ### Quality
+
 - Strict CSP with per-load script nonces on every webview, `sanitize-html` on all rendered Markdown, no inline scripts, no `eval`.
 - Friendly error handling: YouTrack Cloud's "read-only mode" (maintenance windows) renders as a single coalesced notice instead of raw JSON; 401/403 point to the sign-in command; other server errors render just the `error_description`.
-- Caches (user avatars, field color dots) prune entries older than 30 days on startup to keep `globalStorage` lean.
+- **Reactive UI**: every mutation (manual or AI-driven) flows through a single `Cache.onChange` event, so sidebar trees, the issue panel, and any open agile board reflect changes without a manual refresh click.
+- **Account-clean sign-in / sign-out**: switching YouTrack accounts wipes per-account state (recents, comment drafts, active timer, board prefs) and reloads the window automatically — no half-state where the sidebar still shows the previous user's "Assigned to me".
+- Caches (user avatars, field color dots, attachment images) prune stale entries on startup (30 days for avatars / dots, 7 days for attachments) to keep `globalStorage` lean.
 
 ## Keyboard shortcuts
 
@@ -184,21 +220,42 @@ frame-src  'none';
 
 No inline scripts, no `eval`, no third-party CDN assets. Rendered markdown (comments, descriptions, work-item notes) passes through `sanitize-html` with an explicit allow-list of tags and schemes before hitting the DOM.
 
+## Screenshots
+
+| Sidebar + Create Issue | Issue detail | Agile board |
+| --- | --- | --- |
+| ![Sidebar](docs/screenshots/sidebar.png) | ![Issue detail](docs/screenshots/issue-detail.png) | ![Agile board](docs/screenshots/agile-board.png) |
+
 ## Develop
 
 ```bash
 npm install
 npm run build        # esbuild bundle → dist/extension.js
+npm run watch        # rebuild on save
 npm test             # vitest unit suite
-npx vsce package     # → youtrack-vscode-<ver>.vsix
+npm run package      # → youtrack-companion-<ver>.vsix
+npm run reinstall    # build + package + install + reload (one-shot iteration loop)
 ```
 
-Pull requests welcome at [healkeiser/youtrack-companion](https://github.com/healkeiser/youtrack-companion).
+VS Code task entries mirror these (`Ctrl+Shift+P` → **Run Task**): _Build / Watch / Package / Install / Reinstall / Test Extension (Local)_, plus _Generate Changelog_ and _Get Current Git Tag_ utilities.
+
+### Cutting a release
+
+```
+Ctrl+Shift+P → Run Task → Release Extension → patch | minor | major
+```
+
+Triggers `release.yml` via `gh workflow run` — the workflow bumps `package.json`, regenerates `CHANGELOG.md`, tags `vX.Y.Z`, builds, runs tests, packages a universal `.vsix`, creates the GitHub release, and publishes to Open VSX (if `OVSX_TOKEN` secret is set) and the VS Code Marketplace (if `VSCE_PAT` is set). Skips registries cleanly when the secret is absent.
+
+Pull requests welcome.
 
 ## License
 
 MIT. See [LICENSE](./LICENSE).
 
----
+> [!NOTE]
+> YouTrack and JetBrains are trademarks of JetBrains s.r.o. This extension is an independent community project and is not affiliated with, endorsed by, or sponsored by JetBrains.
 
-YouTrack and JetBrains are trademarks of JetBrains s.r.o. This extension is an independent community project and is not affiliated with, endorsed by, or sponsored by JetBrains.
+## Contact
+
+Project Link: [youtrack-companion](https://github.com/healkeiser/youtrack-companion)
