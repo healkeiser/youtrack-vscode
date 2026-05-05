@@ -21,22 +21,23 @@ Or from the command line: `code --install-extension healkeiser.youtrack-companio
 Search **YouTrack Companion** in the Extensions sidebar — those editors talk to Open VSX out of the box.
 
 ### Manual / air-gapped / corporate setups
-Install from the latest `.vsix` published as a GitHub Release:
+Each release publishes one `.vsix` per platform (`win32-x64`, `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`). The Marketplace and Open VSX pick the right one for you automatically; for direct `.vsix` install, grab the file matching your OS/arch from the [latest release](https://github.com/healkeiser/youtrack-companion/releases/latest):
 
 ```powershell
-# Latest release, one liner. Uses the GitHub redirect so it always
-# resolves to the newest tag.
-$vsix = (Invoke-RestMethod https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest).assets `
-  | Where-Object name -like '*.vsix' | Select-Object -First 1 -ExpandProperty browser_download_url
-Invoke-WebRequest $vsix -OutFile youtrack-companion.vsix
-code --install-extension youtrack-companion.vsix
+# Windows x64
+$asset = (Invoke-RestMethod https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest).assets `
+  | Where-Object name -like '*win32-x64*.vsix' | Select-Object -First 1
+Invoke-WebRequest $asset.browser_download_url -OutFile $asset.name
+code --install-extension $asset.name
 ```
 
 ```bash
-# bash / zsh equivalent
-curl -L -o youtrack-companion.vsix \
-  $(curl -s https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest \
-    | grep browser_download_url | grep '\.vsix' | head -1 | cut -d '"' -f 4)
+# Linux x64 — replace the grep target with your platform: linux-arm64,
+# darwin-x64, darwin-arm64, etc.
+PLATFORM=linux-x64
+URL=$(curl -s https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest \
+  | grep browser_download_url | grep "${PLATFORM}.*\\.vsix" | head -1 | cut -d '"' -f 4)
+curl -L -o youtrack-companion.vsix "$URL"
 code --install-extension youtrack-companion.vsix
 ```
 
