@@ -53,9 +53,7 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 
 ## Screenshots
 
-> _Screenshots live under `docs/screenshots/`. Drop updated captures there and they will render below._
-
-| Sidebar | Issue detail | Agile board |
+| Sidebar + Create Issue | Issue detail | Agile board |
 | --- | --- | --- |
 | ![Sidebar](docs/screenshots/sidebar.png) | ![Issue detail](docs/screenshots/issue-detail.png) | ![Agile board](docs/screenshots/agile-board.png) |
 
