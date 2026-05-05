@@ -3,6 +3,14 @@
 All notable changes to this extension are documented here.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Distribution change — 2026-05-05
+
+The extension is being republished under a new Marketplace publisher: **`healkeiser`**.
+
+The previous publisher slug `valentinbeaumont` is retired and dormant. Existing installs of `valentinbeaumont.youtrack-vscode` or `valentinbeaumont.youtrack-companion` no longer receive updates — both listings were removed from the Marketplace prior to this republish. Users on the old identifier should uninstall it and install `healkeiser.youtrack-companion`. All settings under the `youtrack.*` namespace are preserved across the switch.
+
+The extension is also now distributed via [Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion) (for VSCodium, Cursor, Theia, Gitpod) and direct [GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases) for manual / air-gapped installs.
+
 ## [0.9.0] — 2026-04-28
 
 ### Changed

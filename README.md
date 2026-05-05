@@ -6,6 +6,8 @@
 [![License](https://img.shields.io/github/license/healkeiser/youtrack-companion)](./LICENSE)
 
 > Distributed via the **[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion)**, **[Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion)** (for VSCodium / Cursor / Theia), and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**.
+>
+> If you previously installed it as `valentinbeaumont.youtrack-vscode` or `valentinbeaumont.youtrack-companion`, those identifiers are retired. Uninstall the old extension and install `healkeiser.youtrack-companion`. Settings under the `youtrack.*` namespace are preserved across the switch — no reconfiguration needed.
 
 A third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
 
