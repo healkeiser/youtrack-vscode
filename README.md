@@ -1,11 +1,11 @@
 # YouTrack Companion
 
-[![Open VSX Version](https://img.shields.io/open-vsx/v/valentinbeaumont/youtrack-companion?label=open-vsx)](https://open-vsx.org/extension/valentinbeaumont/youtrack-companion)
-[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/valentinbeaumont/youtrack-companion?label=installs)](https://open-vsx.org/extension/valentinbeaumont/youtrack-companion)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/healkeiser/youtrack-companion?label=open-vsx)](https://open-vsx.org/extension/healkeiser/youtrack-companion)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/healkeiser/youtrack-companion?label=installs)](https://open-vsx.org/extension/healkeiser/youtrack-companion)
 [![GitHub release](https://img.shields.io/github/v/release/healkeiser/youtrack-companion?label=github%20release)](https://github.com/healkeiser/youtrack-companion/releases/latest)
 [![License](https://img.shields.io/github/license/healkeiser/youtrack-companion)](./LICENSE)
 
-> Distributed via **[Open VSX](https://open-vsx.org/extension/valentinbeaumont/youtrack-companion)** and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**. Not currently on the VS Code Marketplace.
+> Distributed via **[Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion)** and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**. Not currently on the VS Code Marketplace.
 
 A third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
 
@@ -102,7 +102,7 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 - **Hover** any `ABC-123`-shaped token in any file → summary, state, assignee, quick-open link.
 - **CodeLens** above any `TODO` / `FIXME` / `XXX` / `HACK` / `NOTE` comment referencing an issue key → `ABC-123 · In Progress · <summary>`; click opens the panel. With AI enabled, a second `$(sparkle) Ask Claude` lens opens the same TODO in your Claude Code terminal pre-loaded with the issue context.
 - **Quick Fix** on bare TODO/FIXME/XXX/HACK/NOTE comments (no issue id yet) — `Ctrl+.` → **Create YouTrack issue from this TODO**. AI drafts the ticket from surrounding code, you review in the Create Issue panel, and the line is rewritten to include the new id on submit.
-- **URI handler**: `vscode://valentinbeaumont.youtrack-vscode/ABC-123` opens the issue.
+- **URI handler**: `vscode://healkeiser.youtrack-companion/ABC-123` opens the issue.
 
 ### AI assist (Claude integration)
 

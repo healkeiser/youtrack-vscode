@@ -1,0 +1,190 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        // -------------------------------------------------------------------
+        // Release flow
+        // -------------------------------------------------------------------
+        {
+            "label": "Release Extension",
+            "detail": "Bump version + regenerate changelog + tag + build + GitHub release + Open VSX publish via release.yml workflow_dispatch.",
+            "icon": {
+                "id": "rocket",
+                "color": "terminal.ansiCyan"
+            },
+            "type": "shell",
+            "command": "gh",
+            "args": [
+                "workflow",
+                "run",
+                "release.yml",
+                "-f",
+                "bump=${input:bump}",
+                "&&",
+                "gh",
+                "run",
+                "watch"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        // -------------------------------------------------------------------
+        // Local development
+        // -------------------------------------------------------------------
+        {
+            "label": "Build Extension (Local)",
+            "detail": "esbuild bundle into dist/extension.js. The default build task.",
+            "type": "shell",
+            "command": "npm run build",
+            "icon": {
+                "id": "tools",
+                "color": "terminal.ansiYellow"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Watch Extension (Local)",
+            "detail": "esbuild --watch. Re-bundles on every save.",
+            "type": "shell",
+            "command": "npm run watch",
+            "icon": {
+                "id": "eye",
+                "color": "terminal.ansiYellow"
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Package Extension (Local)",
+            "detail": "Build + vsce package — produces a .vsix in the repo root for hand-testing.",
+            "type": "shell",
+            "command": "npm run build && npx vsce package --no-yarn",
+            "icon": {
+                "id": "package",
+                "color": "terminal.ansiGreen"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Install Extension (Local)",
+            "detail": "code --install-extension on the most recent .vsix in the repo root. Reload VS Code afterwards.",
+            "type": "shell",
+            "command": "powershell -ExecutionPolicy Bypass -Command \"$vsix = Get-ChildItem -Filter '*.vsix' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if (-not $vsix) { throw 'No .vsix found - run Package Extension (Local) first.' }; code --install-extension $vsix.FullName --force\"",
+            "icon": {
+                "id": "extensions",
+                "color": "terminal.ansiGreen"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Test Extension",
+            "detail": "vitest unit suite.",
+            "type": "shell",
+            "command": "npm test",
+            "icon": {
+                "id": "beaker",
+                "color": "terminal.ansiBlue"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        // -------------------------------------------------------------------
+        // Utilities
+        // -------------------------------------------------------------------
+        {
+            "label": "Get Current Git Tag",
+            "detail": "Print the most recent git tag on the current branch.",
+            "type": "shell",
+            "command": "git describe --tags --abbrev=0",
+            "icon": {
+                "id": "tag",
+                "color": "terminal.ansiCyan"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Generate Changelog",
+            "detail": "Regenerate CHANGELOG.md via auto-changelog. Normally handled by Release Extension; use this for ad-hoc touch-ups.",
+            "type": "shell",
+            "command": "npm install && npm run changelog",
+            "icon": {
+                "id": "history",
+                "color": "terminal.ansiYellow"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Prune Stale Local Branches",
+            "detail": "Delete local branches whose remote-tracking ref is gone.",
+            "type": "shell",
+            "command": "git fetch --prune && git branch -vv | findstr ': gone]' | for /F \"tokens=1\" %a in ('more') do git branch -D %a",
+            "icon": {
+                "id": "trash",
+                "color": "terminal.ansiRed"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "bump",
+            "type": "pickString",
+            "description": "Version bump",
+            "options": [
+                { "label": "🟢 Patch (bugfixes)", "value": "patch" },
+                { "label": "🟡 Minor (new features)", "value": "minor" },
+                { "label": "🔴 Major (breaking changes)", "value": "major" }
+            ],
+            "default": "patch"
+        }
+    ]
+}

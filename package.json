@@ -3,7 +3,7 @@
   "displayName": "YouTrack Companion",
   "description": "Third-party YouTrack Cloud companion: sidebar, full-fidelity issue detail, agile board, time tracker, branch-from-issue.",
   "version": "0.14.6",
-  "publisher": "valentinbeaumont",
+  "publisher": "healkeiser",
   "author": {
     "name": "Valentin Beaumont",
     "email": "valentin.onze@gmail.com"
@@ -894,7 +894,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "package": "vsce package",
-    "test:integration": "tsc -p tsconfig.test.json && node ./test-dist/test/runTest.js"
+    "test:integration": "tsc -p tsconfig.test.json && node ./test-dist/test/runTest.js",
+    "changelog": "npx --yes auto-changelog --commit-limit false --hide-credit"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

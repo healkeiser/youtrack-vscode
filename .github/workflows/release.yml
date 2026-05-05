@@ -1,30 +1,150 @@
 name: Release
 
+# Two entry points, both produce the same outcome (version bump,
+# changelog, .vsix on the GitHub release, Open VSX upload):
+#
+#   1. workflow_dispatch with a `bump` input — invoked from VS Code's
+#      "Release Extension" task. The workflow itself bumps the version
+#      in package.json, regenerates CHANGELOG.md, commits + tags, and
+#      then proceeds with the build/release/publish chain.
+#
+#   2. push: tags 'v*.*.*' — for direct git-push releases (e.g. when
+#      the bump was done by hand). The bump step is skipped because
+#      package.json already matches the tag.
 on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump (patch | minor | major)"
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major]
   push:
-    tags: [ 'v*' ]
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  release:
+    # windows-latest is needed because the Claude Agent SDK ships a
+    # platform-specific native binary (claude.exe on Windows). The
+    # .vsix produced here only carries the win32-x64 binary; if you
+    # later want a multi-platform release, this job becomes a matrix
+    # over (os, arch) with `vsce package --target <triple>`.
     runs-on: windows-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       - run: npm ci
+
+      # Bump path — only fires when launched via workflow_dispatch with
+      # a bump input. We update package.json, regenerate CHANGELOG.md
+      # via auto-changelog (already in devDependencies), commit, and
+      # tag. The tag push then propagates to subsequent steps via
+      # `git describe`.
+      - name: Bump version + changelog (workflow_dispatch only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: pwsh
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # `npm version` updates package.json + package-lock.json and
+          # creates a v-prefixed git tag. We disable git-tag here and
+          # tag manually after the changelog commit so the tag points
+          # at the same commit that has the new CHANGELOG.md.
+          $newVersion = (npm version ${{ inputs.bump }} --no-git-tag-version) -replace '^v',''
+          Write-Host "Bumped to $newVersion"
+
+          # Regenerate the changelog so the new tag's section is in
+          # place before we commit. The tag doesn't exist yet, so we
+          # tell auto-changelog the upcoming version explicitly via
+          # --next-version; it then renders the unreleased commits
+          # under that header.
+          npx --yes auto-changelog --commit-limit false --hide-credit --next-version "v$newVersion"
+
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "[BUILD] Bump version to $newVersion" -m "[skip ci]"
+          git tag -a "v$newVersion" -m "Version $newVersion"
+          git push origin main
+          git push origin "v$newVersion"
+
+          echo "BUMPED_VERSION=$newVersion" >> $env:GITHUB_ENV
+
+      - name: Resolve tag + version
+        id: tag
+        shell: pwsh
+        run: |
+          $tag = git describe --tags --abbrev=0
+          $version = $tag -replace '^v',''
+          Write-Host "tag=$tag version=$version"
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
       - run: npm run build
       - run: npm test
       - run: npm run package
-      - uses: softprops/action-gh-release@v2
+
+      - name: Extract changelog section for this release
+        id: changelog-section
+        shell: pwsh
+        run: |
+          $version = '${{ steps.tag.outputs.version }}'
+          if (-not (Test-Path CHANGELOG.md)) {
+            "section=See release notes for details." | Out-File $env:GITHUB_OUTPUT -Append
+            return
+          }
+          # Lifted from .ls-rez-master/release.yml. Match either
+          # `## [vX.Y.Z]...` or `## [X.Y.Z]...` and copy lines until
+          # the next `## [...]` header.
+          $lines = Get-Content CHANGELOG.md
+          $section = New-Object System.Collections.Generic.List[string]
+          $found = $false
+          foreach ($line in $lines) {
+            if ($line -match "^## \[v?$([regex]::Escape($version))\]") { $found = $true; continue }
+            if ($found -and $line -match '^## \[v?[0-9]+\.[0-9]+\.[0-9]+\]') { break }
+            if ($found) { $section.Add($line) }
+          }
+          $body = ($section -join "`n").Trim()
+          if (-not $body) { $body = "See CHANGELOG.md for details." }
+          "section<<EOF" | Out-File $env:GITHUB_OUTPUT -Append
+          $body | Out-File $env:GITHUB_OUTPUT -Append
+          "EOF" | Out-File $env:GITHUB_OUTPUT -Append
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body: |
+            ## What's Changed
+
+            ${{ steps.changelog-section.outputs.section }}
+
+            ## Full changelog
+
+            ${{ github.server_url }}/${{ github.repository }}/blob/main/CHANGELOG.md
           files: '*.vsix'
+
       # Publish to Open VSX (https://open-vsx.org) so VSCodium, Cursor,
       # Theia, and other non-Marketplace VS Code distributions can
-      # install + auto-update directly. Set OVSX_TOKEN in repo secrets
-      # to enable; absent token is treated as "skip" rather than a
-      # failure so forks and first-time setups don't break the release.
+      # install + auto-update directly. Set OVSX_TOKEN in repo secrets;
+      # absent token is treated as "skip" so first-time setups don't
+      # break the release.
       - name: Publish to Open VSX
         env:
           OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
