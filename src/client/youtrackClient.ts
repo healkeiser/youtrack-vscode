@@ -69,9 +69,15 @@ function inferType($type: string): CustomFieldType {
   // Order matters: DateTime must be checked before Date (the latter is
   // a substring of the former), and Integer/Float/Boolean before Simple
   // (YouTrack wraps numeric and bool fields as SimpleIssueCustomField).
+  // Owned/Build/Version single-select fields share the enum value
+  // shape (id + name + color), so we route them to 'enum' for both
+  // rendering and editing — different $type discriminator on writes
+  // is handled inside setCustomField.
   if ($type.includes('EnumIssueCustomField')) return 'enum';
   if ($type.includes('StateIssueCustomField')) return 'state';
   if ($type.includes('SingleUserIssueCustomField')) return 'user';
+  if ($type.includes('SingleOwnedIssueCustomField')) return 'enum';
+  if ($type.includes('SingleBuildIssueCustomField')) return 'enum';
   if ($type.includes('DateTimeIssueCustomField')) return 'datetime';
   if ($type.includes('DateIssueCustomField')) return 'date';
   if ($type.includes('PeriodIssueCustomField')) return 'period';
