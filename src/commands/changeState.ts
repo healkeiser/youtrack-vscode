@@ -3,7 +3,10 @@ import type { YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
 import { pickFieldValue } from '../ui/pickers';
 
-export async function changeState(client: YouTrackClient, cache: Cache, issueId: string): Promise<void> {
+// Returns true when a transition was actually applied. Callers that
+// chain follow-up actions (e.g. `youtrack.startWork` → branch) read this
+// to skip the follow-up when the user dismissed the state picker.
+export async function changeState(client: YouTrackClient, cache: Cache, issueId: string): Promise<boolean> {
   const issue = await client.fetchIssue(issueId);
   const current = issue.customFields.find((f) => f.name === 'State');
   const currentName = current?.value.kind === 'state' || current?.value.kind === 'enum' ? current.value.name : undefined;
@@ -11,8 +14,9 @@ export async function changeState(client: YouTrackClient, cache: Cache, issueId:
     title: `Change state of ${issueId}`,
     currentValue: currentName,
   });
-  if (!picked?.name) return;
+  if (!picked?.name) return false;
   await client.transitionState(issueId, picked.name);
   cache.invalidateIssue(issueId);
   vscode.window.showInformationMessage(`YouTrack: ${issueId} -> ${picked.name}`);
+  return true;
 }

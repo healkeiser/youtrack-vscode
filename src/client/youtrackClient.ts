@@ -17,6 +17,19 @@ const ISSUE_FIELDS = [
   'customFields(name,$type,value(id,name,login,fullName,avatarUrl,text,presentation,minutes,color(id,background,foreground)))',
 ].join(',');
 
+// Joins a YouTrack base URL with a server-supplied relative path,
+// collapsing any double slash that would otherwise appear if `baseUrl`
+// has a trailing `/` and the relative path leads with `/`. YouTrack's
+// SPA returns a 200 OK HTML shell for unknown paths like
+// `https://host//api/files/12-35`, which silently broke attachment
+// downloads — see v0.14.4 fix.
+export function joinUrl(baseUrl: string, rel: string): string {
+  if (/^https?:/i.test(rel)) return rel;
+  const left = baseUrl.replace(/\/+$/, '');
+  const right = rel.replace(/^\/+/, '');
+  return right ? `${left}/${right}` : left;
+}
+
 function mapUser(u: any, baseUrl?: string): User | null {
   if (!u) return null;
   let avatarUrl: string = u.avatarUrl ?? '';
@@ -239,11 +252,33 @@ export class YouTrackClient {
     await Promise.all(ids.map((id) => this.markNotificationRead(id).catch(() => undefined)));
   }
 
-  async downloadBytes(url: string): Promise<Uint8Array> {
-    const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
+  async downloadBytes(url: string, opts?: { expectContentType?: RegExp }): Promise<Uint8Array> {
+    const fetchImpl = this.fetchImpl ?? globalThis.fetch;
+    // First try with Bearer auth — works for /api/files/... and most
+    // other YouTrack URLs that need a logged-in user.
+    let res = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${this.token}` },
+      redirect: 'follow',
     });
+    // Some YouTrack endpoints (`/_persistent/...` signed URLs) reject
+    // requests that *also* carry an Authorization header. Retry without
+    // the header so the URL signature is the sole credential.
+    if (!res.ok && (res.status === 400 || res.status === 401 || res.status === 403)) {
+      res = await fetchImpl(url, { redirect: 'follow' });
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    // YouTrack sometimes returns HTTP 200 with an HTML login challenge
+    // for unauthenticated /_persistent/ requests. The bytes get written
+    // to disk and look like a "broken image" to the renderer because
+    // they're actually HTML. Validate the content-type if the caller
+    // told us what to expect.
+    if (opts?.expectContentType) {
+      const ct = res.headers.get('content-type') ?? '';
+      if (!opts.expectContentType.test(ct)) {
+        const head = await res.text();
+        throw new Error(`unexpected content-type "${ct}"; first ${Math.min(head.length, 200)} chars: ${head.slice(0, 200).replace(/\s+/g, ' ')}`);
+      }
+    }
     return new Uint8Array(await res.arrayBuffer());
   }
 
@@ -277,7 +312,7 @@ export class YouTrackClient {
       ? raw.attachments.map((a: any) => ({
           id: a.id,
           name: a.name,
-          url: a.url?.startsWith('http') ? a.url : `${this.baseUrl}${a.url ?? ''}`,
+          url: joinUrl(this.baseUrl, a.url ?? ''),
           size: a.size ?? 0,
           mimeType: a.mimeType ?? '',
         }))
@@ -402,7 +437,7 @@ export class YouTrackClient {
     body.set(bytes, headerBytes.length);
     body.set(footerBytes, headerBytes.length + bytes.length);
 
-    const url = `${this.baseUrl.replace(/\/$/, '')}/api/issues/${issueId}/comments/${commentId}/attachments`;
+    const url = joinUrl(this.baseUrl, `/api/issues/${issueId}/comments/${commentId}/attachments`);
     const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
       method: 'POST',
       headers: {
@@ -427,7 +462,7 @@ export class YouTrackClient {
     body.set(bytes, headerBytes.length);
     body.set(footerBytes, headerBytes.length + bytes.length);
 
-    const url = `${this.baseUrl.replace(/\/$/, '')}/api/issues/${issueId}/attachments`;
+    const url = joinUrl(this.baseUrl, `/api/issues/${issueId}/attachments`);
     const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
       method: 'POST',
       headers: {
@@ -447,7 +482,7 @@ export class YouTrackClient {
     return raw.map((r) => ({
       id: r.id,
       name: r.name,
-      url: r.url.startsWith('http') ? r.url : `${this.baseUrl}${r.url}`,
+      url: joinUrl(this.baseUrl, r.url),
       size: r.size,
       mimeType: r.mimeType,
     }));

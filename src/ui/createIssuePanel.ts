@@ -11,6 +11,27 @@ import { buildPickerItems } from './inlinePickerBroker';
 export interface CreateIssueInitial {
   summary?: string;
   description?: string;
+  /**
+   * Pre-filled hints from the AI drafter (or any other auto-fill flow).
+   * The panel surfaces these as suggestions — the user is still the one
+   * who picks Project/Type/Priority/Assignee/Tags before submitting.
+   */
+  ai?: {
+    suggestedProject?: string;
+    suggestedType?: string;
+    suggestedPriority?: string;
+    suggestedTags?: string[];
+    similarIssues?: Array<{ idReadable: string; summary: string; reason?: string }>;
+  };
+}
+
+// Optional dependencies the panel needs to call into AI features. Wired
+// in by extension.ts when the panel is opened; older call sites that
+// don't pass `ai` keep working — the "Draft with AI" button just stays
+// hidden.
+export interface CreateIssueAiDeps {
+  draft: (input: import('../ai/draftIssue').DraftIssueInput) => Promise<import('../ai/draftIssue').DraftIssueProposal | undefined>;
+  baseUrl: string;
 }
 
 interface CreateIssueDraft {
@@ -84,6 +105,7 @@ export class CreateIssuePanel {
     private context: vscode.ExtensionContext,
     private onCreated?: (idReadable: string) => void,
     initial?: CreateIssueInitial,
+    private aiDeps?: CreateIssueAiDeps,
   ) {
     this.initial = initial ?? {};
     this.panel = vscode.window.createWebviewPanel(
@@ -104,13 +126,14 @@ export class CreateIssuePanel {
     context: vscode.ExtensionContext,
     onCreated?: (id: string) => void,
     initial?: CreateIssueInitial,
+    aiDeps?: CreateIssueAiDeps,
   ): void {
     if (CreateIssuePanel.current) {
       CreateIssuePanel.current.panel.reveal();
       if (initial) CreateIssuePanel.current.applyInitial(initial);
       return;
     }
-    CreateIssuePanel.current = new CreateIssuePanel(extensionUri, client, context, onCreated, initial);
+    CreateIssuePanel.current = new CreateIssuePanel(extensionUri, client, context, onCreated, initial, aiDeps);
   }
 
   private applyInitial(initial: CreateIssueInitial): void {
@@ -151,6 +174,9 @@ export class CreateIssuePanel {
           initial: this.initial,
           templates,
           draft,
+          // The webview reveals the "Draft with AI" button and the
+          // "Similar issues" panel only when this is true.
+          aiEnabled: !!this.aiDeps,
         });
       } catch (e) {
         this.panel.webview.postMessage({ type: 'error', message: formatYouTrackError(e, 'load projects') });
@@ -173,6 +199,43 @@ export class CreateIssuePanel {
     }
     if (msg.type === 'discardDraft') {
       await this.context.globalState.update(DRAFT_KEY, undefined);
+      return;
+    }
+    if (msg.type === 'aiDraft') {
+      // The webview's "Draft with AI" button. We pass whatever the user
+      // already typed in the form (treating both as the free-form input
+      // for the agent) plus any prefill we still have around — that lets
+      // "re-draft" iterate on the user's edits, not blow them away.
+      if (!this.aiDeps) {
+        this.panel.webview.postMessage({ type: 'aiDraftError', message: 'AI is disabled. Enable youtrack.ai.enabled in settings.' });
+        return;
+      }
+      const freeText = [String(msg.summary ?? '').trim(), String(msg.description ?? '').trim()]
+        .filter(Boolean)
+        .join('\n\n');
+      const checkDuplicates = vscode.workspace.getConfiguration('youtrack.ai.draft').get<boolean>('checkDuplicates', true);
+      this.panel.webview.postMessage({ type: 'aiDraftStarted' });
+      try {
+        const proposal = await this.aiDeps.draft({
+          freeText,
+          knownProjectShortName: typeof msg.projectShortName === 'string' ? msg.projectShortName : undefined,
+          checkDuplicates,
+        });
+        if (proposal) {
+          this.panel.webview.postMessage({ type: 'aiDraftReady', proposal });
+        } else {
+          // User cancelled the progress notification.
+          this.panel.webview.postMessage({ type: 'aiDraftCancelled' });
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        this.panel.webview.postMessage({ type: 'aiDraftError', message });
+      }
+      return;
+    }
+    if (msg.type === 'openSimilarIssue') {
+      const id = String(msg.id ?? '');
+      if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
       return;
     }
     if (msg.type === 'createTagPromptForDraft') {
@@ -306,6 +369,30 @@ export class CreateIssuePanel {
         const tagIds: string[] = Array.isArray(msg.tagIds) ? msg.tagIds.map(String) : [];
         for (const tid of tagIds) {
           followUps.push(this.client.addTagToIssue(idReadable, tid).catch((e) => showYouTrackError(e, 'attach tag', 'warning')));
+        }
+        // Resolve AI-suggested tag names: match against existing tags
+        // case-insensitively; create any that don't exist. Done after
+        // the create call so a tag-resolution failure can't block issue
+        // creation.
+        const tagNames: string[] = Array.isArray(msg.tagNames) ? msg.tagNames.map((s: unknown) => String(s).trim()).filter(Boolean) : [];
+        if (tagNames.length) {
+          followUps.push((async () => {
+            try {
+              const existing = await this.client.listTags();
+              const byLower = new Map(existing.map((t) => [t.name.toLowerCase(), t]));
+              for (const name of tagNames) {
+                let tag = byLower.get(name.toLowerCase());
+                if (!tag) {
+                  try { tag = await this.client.createTag(name); }
+                  catch (e) { showYouTrackError(e, `create tag "${name}"`, 'warning'); continue; }
+                }
+                try { await this.client.addTagToIssue(idReadable, tag.id); }
+                catch (e) { showYouTrackError(e, `attach tag "${name}"`, 'warning'); }
+              }
+            } catch (e) {
+              showYouTrackError(e, 'resolve AI-suggested tags', 'warning');
+            }
+          })());
         }
         await Promise.all(followUps);
 

@@ -15,8 +15,14 @@
           <span class="id">New issue</span>
           <span class="sep">·</span>
           <span id="projectHint" class="project-hint"></span>
+          <span class="toolbar-gap" style="flex:1"></span>
+          <button type="button" id="aiDraftBtn" class="btn ai-btn" hidden title="Use Claude to draft summary + description from your input"><i class="codicon codicon-sparkle"></i><span class="ai-btn-label">Draft with AI</span></button>
         </div>
         <input id="summaryIn" name="summary" class="summary-input" type="text" placeholder="Enter a summary" required maxlength="250" autocomplete="off">
+        <div id="similarBanner" class="similar-banner" hidden>
+          <div class="similar-title"><i class="codicon codicon-warning"></i><span>Similar issues</span></div>
+          <ul id="similarList" class="similar-list"></ul>
+        </div>
       </div>
 
       <div class="section card-surface">

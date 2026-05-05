@@ -1,17 +1,19 @@
-# YouTrack for VS Code
+# YouTrack Companion
 
-[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/valentinbeaumont.youtrack-vscode?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-vscode)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/valentinbeaumont.youtrack-vscode)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-vscode)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/valentinbeaumont.youtrack-vscode)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-vscode&ssr=false#review-details)
-[![License](https://img.shields.io/github/license/healkeiser/youtrack-vscode)](./LICENSE)
+[![VS Marketplace Version](https://vsmarketplacebadges.dev/version-short/valentinbeaumont.youtrack-companion.svg?label=marketplace&style=flat)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-companion)
+[![VS Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/valentinbeaumont.youtrack-companion.svg?style=flat)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-companion)
+[![VS Marketplace Rating](https://vsmarketplacebadges.dev/rating-short/valentinbeaumont.youtrack-companion.svg?style=flat)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-companion&ssr=false#review-details)
+[![License](https://img.shields.io/github/license/healkeiser/youtrack-companion)](./LICENSE)
 
-A third-party YouTrack Cloud client for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
+> Formerly published as **YouTrack Integration** (`valentinbeaumont.youtrack-vscode`). Renamed and re-iconed in 0.9.0 to clearly differentiate from other YouTrack extensions on the Marketplace. Same author, same codebase, same keybindings.
+
+A third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
 
 Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with JetBrains.
 
 ## Quick start
 
-1. Install from the Marketplace or run `ext install valentinbeaumont.youtrack-vscode`.
+1. Install from the Marketplace or run `ext install valentinbeaumont.youtrack-companion`.
 2. `Ctrl+Shift+P` → **YouTrack: Sign In**.
 3. Enter your YouTrack Cloud base URL (e.g. `https://<org>.youtrack.cloud/`).
 4. Paste a permanent token. Generate one in YouTrack: **avatar → Profile → Account Security → New token**, scope it to **YouTrack** (not read-only).
@@ -140,7 +142,7 @@ npm test             # vitest unit suite
 npx vsce package     # → youtrack-vscode-<ver>.vsix
 ```
 
-Pull requests welcome at [healkeiser/youtrack-vscode](https://github.com/healkeiser/youtrack-vscode).
+Pull requests welcome at [healkeiser/youtrack-companion](https://github.com/healkeiser/youtrack-companion).
 
 ## License
 

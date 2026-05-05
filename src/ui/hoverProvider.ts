@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { YouTrackClient } from '../client/youtrackClient';
+import { joinUrl, type YouTrackClient } from '../client/youtrackClient';
 import type { Cache } from '../cache/cache';
 
 const ISSUE_KEY_REGEX = /\b[A-Z][A-Z0-9_]+-\d+\b/g;
@@ -26,7 +26,7 @@ export class IssueHoverProvider implements vscode.HoverProvider {
     const state = issue.customFields.find((f) => f.name === 'State');
     const stateName = state?.value.kind === 'state' || state?.value.kind === 'enum' ? state.value.name : '';
     const assignee = issue.assignee?.fullName ?? issue.assignee?.login ?? 'Unassigned';
-    const webUrl = `${this.baseUrl.replace(/\/$/, '')}/issue/${id}`;
+    const webUrl = joinUrl(this.baseUrl, `/issue/${id}`);
 
     const md = new vscode.MarkdownString();
     md.isTrusted = true;

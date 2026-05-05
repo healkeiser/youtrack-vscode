@@ -26,10 +26,37 @@ window.addEventListener('message', (evt) => {
     applyPrefill(msg.initial);
     if (msg.draft) applyDraft(msg.draft);
     wireDraftAutosave();
+    if (msg.aiEnabled) {
+      const aiBtn = document.getElementById('aiDraftBtn');
+      if (aiBtn) {
+        aiBtn.hidden = false;
+        aiBtn.addEventListener('click', onAiDraftClick);
+      }
+    }
+    if (msg.initial && msg.initial.ai) applyAiSuggestions(msg.initial.ai);
     const summaryEl = document.getElementById('summaryIn');
     const descEl = document.getElementById('descIn');
     if (summaryEl && !summaryEl.value) summaryEl.focus();
     else if (descEl) descEl.focus();
+  }
+  if (msg.type === 'aiDraftStarted') {
+    const btn = document.getElementById('aiDraftBtn');
+    if (btn) { btn.disabled = true; btn.classList.add('busy'); btn.querySelector('.ai-btn-label').textContent = 'Drafting'; }
+  }
+  if (msg.type === 'aiDraftReady' && msg.proposal) {
+    const btn = document.getElementById('aiDraftBtn');
+    if (btn) { btn.disabled = false; btn.classList.remove('busy'); btn.querySelector('.ai-btn-label').textContent = 'Re-draft with AI'; }
+    applyAiProposal(msg.proposal);
+    scheduleDraftSave();
+  }
+  if (msg.type === 'aiDraftCancelled') {
+    const btn = document.getElementById('aiDraftBtn');
+    if (btn) { btn.disabled = false; btn.classList.remove('busy'); btn.querySelector('.ai-btn-label').textContent = 'Draft with AI'; }
+  }
+  if (msg.type === 'aiDraftError') {
+    const btn = document.getElementById('aiDraftBtn');
+    if (btn) { btn.disabled = false; btn.classList.remove('busy'); btn.querySelector('.ai-btn-label').textContent = 'Draft with AI'; }
+    setStatus(msg.message || 'AI draft failed', true);
   }
   if (msg.type === 'prefill') applyPrefill(msg.initial);
   if (msg.type === 'tagsPicked' && Array.isArray(msg.tags)) {
@@ -267,7 +294,11 @@ function setupForm() {
       issueType,
       priority,
       assignee: assignee?.login ?? '',
-      tagIds: selectedTags.map((t) => t.id),
+      tagIds: selectedTags.filter((t) => t.id).map((t) => t.id),
+      // AI-suggested tags arrive without an id (we don't know whether
+      // they exist yet). The host resolves them: existing tag → attach;
+      // missing → create + attach.
+      tagNames: selectedTags.filter((t) => !t.id).map((t) => t.name),
     });
   });
 
@@ -380,6 +411,75 @@ function renderTagsPill() {
     const fg = t.color?.foreground || 'var(--vscode-foreground)';
     return `<span class="tag-pill" style="background:${escape(bg)};color:${escape(fg)}">${escape(t.name)}</span>`;
   }).join('');
+}
+
+function onAiDraftClick() {
+  const summary = (document.getElementById('summaryIn')?.value || '').trim();
+  const description = (document.getElementById('descIn')?.value || '').trim();
+  vscode.postMessage({
+    type: 'aiDraft',
+    summary,
+    description,
+    projectShortName: project?.shortName || defaultShortName || '',
+  });
+}
+
+function applyAiProposal(proposal) {
+  const summaryEl = document.getElementById('summaryIn');
+  const descEl = document.getElementById('descIn');
+  if (summaryEl && typeof proposal.summary === 'string') summaryEl.value = proposal.summary;
+  if (descEl && typeof proposal.description === 'string') descEl.value = proposal.description;
+  applyAiSuggestions(proposal);
+}
+
+// Soft-applies suggestion fields. Project: only if the user hasn't
+// already picked one. Type/Priority: same. Tags: union, not replace.
+function applyAiSuggestions(s) {
+  if (!s) return;
+  if (typeof s.suggestedProject === 'string' && (!project || !project.shortName) && projects.length) {
+    const hit = projects.find((p) => p.shortName === s.suggestedProject || p.name === s.suggestedProject);
+    if (hit) setProject(hit);
+  }
+  if (typeof s.suggestedType === 'string' && !issueType) {
+    issueType = s.suggestedType;
+    renderEnumPill('typeValue', issueType, '(default)');
+    document.getElementById('typeNameIn').value = issueType;
+  }
+  if (typeof s.suggestedPriority === 'string' && !priority) {
+    priority = s.suggestedPriority;
+    renderEnumPill('priorityValue', priority, '(default)');
+    document.getElementById('priorityNameIn').value = priority;
+  }
+  if (Array.isArray(s.suggestedTags) && s.suggestedTags.length) {
+    const existingNames = new Set(selectedTags.map((t) => t.name.toLowerCase()));
+    for (const name of s.suggestedTags) {
+      if (typeof name !== 'string' || !name.trim()) continue;
+      if (existingNames.has(name.toLowerCase())) continue;
+      // We don't know the tag id yet (tags come from server). Mark as
+      // pending — the form's submit path resolves names → ids.
+      selectedTags.push({ id: '', name: name.trim() });
+      existingNames.add(name.toLowerCase());
+    }
+    renderTagsPill();
+  }
+  renderSimilarIssues(Array.isArray(s.similarIssues) ? s.similarIssues : []);
+}
+
+function renderSimilarIssues(list) {
+  const banner = document.getElementById('similarBanner');
+  const ul = document.getElementById('similarList');
+  if (!banner || !ul) return;
+  if (!list.length) { banner.hidden = true; ul.innerHTML = ''; return; }
+  ul.innerHTML = list.map((s) => {
+    const reason = s.reason ? ` <span class="similar-reason">— ${escape(s.reason)}</span>` : '';
+    return `<li><a data-similar-id="${escape(s.idReadable)}">${escape(s.idReadable)}</a> ${escape(s.summary || '')}${reason}</li>`;
+  }).join('');
+  ul.querySelectorAll('a[data-similar-id]').forEach((a) => {
+    a.addEventListener('click', () => {
+      vscode.postMessage({ type: 'openSimilarIssue', id: a.getAttribute('data-similar-id') });
+    });
+  });
+  banner.hidden = false;
 }
 
 setupForm();

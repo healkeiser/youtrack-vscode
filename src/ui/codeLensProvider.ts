@@ -22,12 +22,25 @@ export class IssueCodeLensProvider implements vscode.CodeLensProvider {
     _token: vscode.CancellationToken,
   ): Promise<vscode.CodeLens[]> {
     const text = doc.getText();
+    const aiEnabled = vscode.workspace.getConfiguration('youtrack.ai').get<boolean>('enabled', false);
     const lenses: vscode.CodeLens[] = [];
     for (const m of text.matchAll(LENS_LINE_RE)) {
       const id = m[1];
       const start = m.index! + m[0].indexOf(id);
       const range = new vscode.Range(doc.positionAt(start), doc.positionAt(start + id.length));
+      // The first lens is the resolved "open in panel" entry; we leave it
+      // with the spinner placeholder so resolveCodeLens() can fetch the
+      // issue lazily. The AI lens needs no async resolution, so we wire
+      // it up directly here.
       lenses.push(new vscode.CodeLens(range, { title: `$(loading~spin) ${id}`, command: '' }));
+      if (aiEnabled) {
+        lenses.push(new vscode.CodeLens(range, {
+          title: '$(sparkle) Ask Claude',
+          command: 'youtrack.ai.discussInTerminal',
+          arguments: [id],
+          tooltip: `Discuss ${id} in a Claude Code terminal`,
+        }));
+      }
     }
     return lenses;
   }

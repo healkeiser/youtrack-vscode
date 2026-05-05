@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
+import type { Cache } from '../cache/cache';
 import type { BoardView } from '../client/types';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError } from '../client/errors';
@@ -20,9 +21,12 @@ export class AgileBoardPanel {
   private state: BoardView = { columns: [], issuesByColumn: {} };
   private key: string;
 
+  private cacheSub: { dispose(): void } | undefined;
+
   private constructor(
     private extensionUri: vscode.Uri,
     private client: YouTrackClient,
+    private cache: Cache,
     private boardId: string,
     private sprintId: string,
     private boardTitle: string,
@@ -35,13 +39,23 @@ export class AgileBoardPanel {
     );
     this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'youtrack.png');
     this.panel.webview.html = this.shellHtml();
-    this.panel.onDidDispose(() => { AgileBoardPanel.panels.delete(this.key); });
+    this.panel.onDidDispose(() => {
+      AgileBoardPanel.panels.delete(this.key);
+      this.cacheSub?.dispose();
+    });
     this.panel.webview.onDidReceiveMessage((m) => this.onMessage(m));
+    // Auto-reload when any issue changes: another tool (sidebar action,
+    // detail panel, etc.) may have edited a card we're showing. We only
+    // act when the panel is visible to avoid waking it up in the background.
+    this.cacheSub = this.cache.onChange(() => {
+      if (this.panel.visible) void this.reload();
+    });
   }
 
   static show(
     extensionUri: vscode.Uri,
     client: YouTrackClient,
+    cache: Cache,
     boardId: string,
     sprintId: string,
     boardTitle: string,
@@ -50,7 +64,7 @@ export class AgileBoardPanel {
     const key = `${boardId}:${sprintId}`;
     const existing = AgileBoardPanel.panels.get(key);
     if (existing) { existing.panel.reveal(); return; }
-    const p = new AgileBoardPanel(extensionUri, client, boardId, sprintId, boardTitle, context);
+    const p = new AgileBoardPanel(extensionUri, client, cache, boardId, sprintId, boardTitle, context);
     AgileBoardPanel.panels.set(key, p);
   }
 
@@ -148,6 +162,9 @@ export class AgileBoardPanel {
       }
       try {
         await this.client.transitionState(msg.issueId, state);
+        // Notifies the sidebar trees so they show the new state
+        // immediately, and refreshes any cached copy of this issue.
+        this.cache.invalidateIssue(String(msg.issueId));
       } catch (e) {
         showYouTrackError(e, 'move card');
         this.panel.webview.postMessage({ type: 'rollback', issueId: msg.issueId, fromColumnId: msg.fromColumnId });

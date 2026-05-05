@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
+import type { Cache } from '../cache/cache';
 import { AgileBoardPanel } from '../ui/agileBoardPanel';
 
 export async function openBoard(
   extensionUri: vscode.Uri,
   client: YouTrackClient,
+  cache: Cache,
   context: vscode.ExtensionContext,
   preferredBoardId?: string,
 ): Promise<void> {
@@ -53,5 +55,5 @@ export async function openBoard(
   }
 
   const title = sprintName ? `${boardFull.name} · ${sprintName}` : boardFull.name;
-  AgileBoardPanel.show(extensionUri, client, boardFull.id, sprintId, title, context);
+  AgileBoardPanel.show(extensionUri, client, cache, boardFull.id, sprintId, title, context);
 }

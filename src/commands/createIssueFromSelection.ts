@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { YouTrackClient } from '../client/youtrackClient';
-import { CreateIssuePanel } from '../ui/createIssuePanel';
+import { CreateIssuePanel, type CreateIssueAiDeps } from '../ui/createIssuePanel';
 
 // Right-click in an editor, pick "YouTrack: Create Issue from Selection".
 // Opens the Create Issue panel with:
@@ -14,6 +14,7 @@ export function createIssueFromSelection(
   client: YouTrackClient,
   context: vscode.ExtensionContext,
   onCreated?: (id: string) => void,
+  aiDeps?: CreateIssueAiDeps,
 ): void {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -50,5 +51,5 @@ export function createIssueFromSelection(
     '```',
   ].join('\n');
 
-  CreateIssuePanel.show(extensionUri, client, context, onCreated, { summary, description });
+  CreateIssuePanel.show(extensionUri, client, context, onCreated, { summary, description }, aiDeps);
 }

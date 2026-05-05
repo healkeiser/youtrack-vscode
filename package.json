@@ -1,8 +1,8 @@
 {
-  "name": "youtrack-vscode",
-  "displayName": "YouTrack Integration",
-  "description": "YouTrack Cloud integration: sidebar, issue detail, time tracking, agile board, branch-from-issue.",
-  "version": "0.8.0",
+  "name": "youtrack-companion",
+  "displayName": "YouTrack Companion",
+  "description": "Third-party YouTrack Cloud companion: sidebar, full-fidelity issue detail, agile board, time tracker, branch-from-issue.",
+  "version": "0.14.6",
   "publisher": "valentinbeaumont",
   "author": {
     "name": "Valentin Beaumont",
@@ -25,13 +25,13 @@
     "jetbrains"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/healkeiser/youtrack-vscode#readme",
+  "homepage": "https://github.com/healkeiser/youtrack-companion#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/healkeiser/youtrack-vscode.git"
+    "url": "https://github.com/healkeiser/youtrack-companion.git"
   },
   "bugs": {
-    "url": "https://github.com/healkeiser/youtrack-vscode/issues"
+    "url": "https://github.com/healkeiser/youtrack-companion/issues"
   },
   "icon": "media/youtrack.png",
   "main": "./dist/extension.js",
@@ -313,6 +313,31 @@
       {
         "command": "youtrack.timerClick",
         "title": "YouTrack: Timer Menu"
+      },
+      {
+        "command": "youtrack.ai.summarizeIssue",
+        "title": "YouTrack: Summarize Issue with AI",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "youtrack.ai.discussInTerminal",
+        "title": "YouTrack: Discuss Issue in Claude Code Terminal",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "youtrack.ai.createIssue",
+        "title": "YouTrack: Create Issue with AI…",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "youtrack.ai.createIssueFromTodo",
+        "title": "YouTrack: Create Issue from TODO…",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "youtrack.showLogs",
+        "title": "YouTrack: Show Logs",
+        "icon": "$(output)"
       }
     ],
     "configuration": {
@@ -380,7 +405,11 @@
         },
         "youtrack.commit.autoFill": {
           "type": "string",
-          "enum": ["off", "empty-only", "always"],
+          "enum": [
+            "off",
+            "empty-only",
+            "always"
+          ],
           "enumDescriptions": [
             "Never auto-fill. Use the 'Insert Issue Key in Commit Message' command manually.",
             "Auto-fill once when the SCM commit box is empty on branch change or panel open.",
@@ -397,6 +426,55 @@
           ],
           "default": "project",
           "description": "How to group issues within each saved search in the sidebar."
+        },
+        "youtrack.ai.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Enable AI-assisted features. Uses the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agent-sdk), which inherits authentication from the local Claude Code installation (Max/Team plan, API key, Bedrock, or Vertex). Claude Code must be installed and signed in: <https://claude.com/claude-code>."
+        },
+        "youtrack.ai.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-6",
+          "markdownDescription": "Model used for AI features. Examples: `claude-sonnet-4-6`, `claude-opus-4-7`."
+        },
+        "youtrack.ai.permissionMode": {
+          "type": "string",
+          "enum": [
+            "default",
+            "acceptEdits",
+            "bypassPermissions",
+            "plan"
+          ],
+          "enumDescriptions": [
+            "Prompt before each tool use (safest).",
+            "Auto-approve file/edit tools but prompt for shell.",
+            "Skip all permission prompts (use only in trusted projects).",
+            "Plan mode — model proposes a plan before acting."
+          ],
+          "default": "default",
+          "description": "How the agent handles tool-use permission prompts. The agent has access to the YouTrack MCP server, so write tools (post comment, transition state, etc.) flow through this gate."
+        },
+        "youtrack.ai.maxTurns": {
+          "type": "number",
+          "default": 12,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Maximum number of agent turns (model + tool-call loops) per request before stopping."
+        },
+        "youtrack.ai.draft.checkDuplicates": {
+          "type": "boolean",
+          "default": true,
+          "description": "When drafting a new issue with AI, ask the agent to search YouTrack for similar existing issues and surface them as a soft warning under the summary field. Adds ~1 extra MCP search call per draft."
+        },
+        "youtrack.ai.codeActions.replaceTodoWithIssueId": {
+          "type": "boolean",
+          "default": true,
+          "description": "After filing an issue from a TODO/FIXME/XXX/HACK/NOTE comment via the Quick Fix, replace the bare marker on that line with one that includes the new issue id (e.g. \"# TODO\" → \"# TODO ABC-123\"). Skipped if the line already contains an issue id."
+        },
+        "youtrack.ai.codeActions.todoIdFormat": {
+          "type": "string",
+          "default": "{marker} {id}",
+          "markdownDescription": "Format applied when stamping the new issue id onto a TODO comment. `{marker}` is the original marker (e.g. `TODO`); `{id}` is the new issue id (e.g. `ABC-123`). Examples:\n\n- `\"{marker} {id}\"` → `TODO ABC-123` (default)\n- `\"{marker}({id})\"` → `TODO(ABC-123)`\n- `\"{marker}: {id}\"` → `TODO: ABC-123`"
         }
       }
     },
@@ -410,28 +488,43 @@
             "id": "youtrack.signIn",
             "title": "Sign in to YouTrack",
             "description": "Provide your YouTrack Cloud URL and a permanent token.\n[Sign In](command:youtrack.signIn)",
-            "media": { "markdown": "media/walkthrough/signin.md" },
-            "completionEvents": ["onCommand:youtrack.signIn"]
+            "media": {
+              "markdown": "media/walkthrough/signin.md"
+            },
+            "completionEvents": [
+              "onCommand:youtrack.signIn"
+            ]
           },
           {
             "id": "youtrack.openIssue",
             "title": "Open your first issue",
             "description": "Open an issue from the sidebar or jump to one by ID.\n[Go to Issue](command:youtrack.goToIssue)",
-            "media": { "markdown": "media/walkthrough/open.md" },
-            "completionEvents": ["onCommand:youtrack.goToIssue", "onCommand:youtrack.openIssue"]
+            "media": {
+              "markdown": "media/walkthrough/open.md"
+            },
+            "completionEvents": [
+              "onCommand:youtrack.goToIssue",
+              "onCommand:youtrack.openIssue"
+            ]
           },
           {
             "id": "youtrack.createBranch",
             "title": "Branch from an issue",
             "description": "Right-click an issue → Create Branch. Commit messages then auto-prefix with the issue key.",
-            "media": { "markdown": "media/walkthrough/branch.md" },
-            "completionEvents": ["onCommand:youtrack.createBranch"]
+            "media": {
+              "markdown": "media/walkthrough/branch.md"
+            },
+            "completionEvents": [
+              "onCommand:youtrack.createBranch"
+            ]
           },
           {
             "id": "youtrack.customize",
             "title": "Customize",
             "description": "Review the settings and keybindings that make this extension your own.\n[Open Settings](command:workbench.action.openSettings?%22youtrack%22)",
-            "media": { "markdown": "media/walkthrough/customize.md" }
+            "media": {
+              "markdown": "media/walkthrough/customize.md"
+            }
           }
         ]
       }
@@ -470,6 +563,24 @@
       ]
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "youtrack.ai.summarizeIssue",
+          "when": "youtrack.signedIn && config.youtrack.ai.enabled"
+        },
+        {
+          "command": "youtrack.ai.discussInTerminal",
+          "when": "youtrack.signedIn && config.youtrack.ai.enabled"
+        },
+        {
+          "command": "youtrack.ai.createIssue",
+          "when": "youtrack.signedIn && config.youtrack.ai.enabled"
+        },
+        {
+          "command": "youtrack.ai.createIssueFromTodo",
+          "when": "false"
+        }
+      ],
       "editor/context": [
         {
           "command": "youtrack.createIssueFromSelection",
@@ -481,6 +592,11 @@
         {
           "command": "youtrack.createIssue",
           "when": "view =~ /^youtrack\\.(assignedToMe|issues|boards)$/",
+          "group": "navigation@0"
+        },
+        {
+          "command": "youtrack.ai.createIssue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues|boards)$/ && config.youtrack.ai.enabled",
           "group": "navigation@0"
         },
         {
@@ -666,6 +782,16 @@
           "group": "2_branch@1"
         },
         {
+          "command": "youtrack.ai.summarizeIssue",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues|recents)$/ && viewItem == issue && config.youtrack.ai.enabled",
+          "group": "1_work@5"
+        },
+        {
+          "command": "youtrack.ai.discussInTerminal",
+          "when": "view =~ /^youtrack\\.(assignedToMe|issues|recents)$/ && viewItem == issue && config.youtrack.ai.enabled",
+          "group": "1_work@6"
+        },
+        {
           "command": "youtrack.copyId",
           "when": "view =~ /^youtrack\\.(assignedToMe|issues)$/ && viewItem == issue",
           "group": "3_copy@1"
@@ -784,6 +910,7 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.128",
     "@vscode/codicons": "^0.0.45",
     "marked": "^18.0.2",
     "node-fetch": "^3.3.0",

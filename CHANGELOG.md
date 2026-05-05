@@ -3,6 +3,15 @@
 All notable changes to this extension are documented here.
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.0] — 2026-04-28
+
+### Changed
+- **Rebranded to "YouTrack Companion"** to differentiate from other YouTrack extensions on the VS Marketplace. New `displayName`, new package `name` (`youtrack-companion`), new extension identifier (`valentinbeaumont.youtrack-companion`).
+- **New icon** — replaced the JetBrains-style YouTrack mark with a distinct compass-rose monogram. Both Marketplace tile (`media/youtrack-companion.png`) and activity-bar glyph (`media/youtrack-companion_outline.svg`) updated.
+
+### Notes
+- The previous identifier `valentinbeaumont.youtrack-vscode` is unpublished. Existing users should install `valentinbeaumont.youtrack-companion` and uninstall the old one. All settings under the `youtrack.*` namespace are preserved.
+
 ## [0.8.0] — 2026-04-22
 
 ### Added

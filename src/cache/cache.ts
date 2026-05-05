@@ -19,10 +19,21 @@ interface SavedQueriesEntry {
   fetchedAt: number;
 }
 
+export type IssueChangeKind = 'created' | 'updated';
+
+export interface IssueChangeEvent {
+  kind: IssueChangeKind;
+  /** Readable id (e.g. ABC-123) when known. Absent for bulk/unknown changes. */
+  id?: string;
+}
+
+export type IssueChangeListener = (e: IssueChangeEvent) => void;
+
 export class Cache {
   private now: () => number;
   private issues = new Map<string, IssueEntry>();
   private savedQueriesEntry: SavedQueriesEntry | null = null;
+  private changeListeners = new Set<IssueChangeListener>();
 
   constructor(private opts: CacheOptions) {
     this.now = opts.now ?? Date.now;
@@ -48,6 +59,25 @@ export class Cache {
 
   invalidateIssue(id: string): void {
     this.issues.delete(id);
+    this.fireChange({ kind: 'updated', id });
+  }
+
+  // Mutation sites that aren't tied to an existing cache entry — e.g.
+  // creating a brand new issue — call this so the same subscribers that
+  // react to invalidateIssue() also pick up the new arrival.
+  notifyCreated(id?: string): void {
+    this.fireChange({ kind: 'created', id });
+  }
+
+  onChange(listener: IssueChangeListener): { dispose(): void } {
+    this.changeListeners.add(listener);
+    return { dispose: () => { this.changeListeners.delete(listener); } };
+  }
+
+  private fireChange(e: IssueChangeEvent): void {
+    for (const l of this.changeListeners) {
+      try { l(e); } catch { /* listener errors must not break callers */ }
+    }
   }
 
   private evictLru(): void {

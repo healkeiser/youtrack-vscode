@@ -8,6 +8,7 @@ import { parseDuration } from '../domain/timeTracker';
 import { renderPanelHtml } from './webviewSecurity';
 import { showYouTrackError } from '../client/errors';
 import { primeUserAvatars, userAvatarUri } from './userAvatar';
+import { cachedAttachmentUri, primeAttachmentImages } from './attachmentImageCache';
 import { escapeHtml, formatPeriod, formatBytes } from '../util/format';
 import { buildPickerItems } from './inlinePickerBroker';
 import { stateVisuals } from '../util/stateVisuals';
@@ -53,9 +54,16 @@ function resolveMentions(raw: string, userLookup: Map<string, User>): string {
 // reference and fail to load anything. Resolve each to the real signed
 // URL by looking it up in the issue's attachments list. Tolerates URL-
 // encoded spaces and percent-encoded names.
-function buildAttachmentByName(attachments: Attachment[]): Map<string, string> {
+function buildAttachmentByName(attachments: Attachment[], webview?: vscode.Webview): Map<string, string> {
   const byName = new Map<string, string>();
-  for (const a of attachments) byName.set(a.name.toLowerCase(), a.url);
+  // Prefer the locally-cached file URI when one is available so inline
+  // markdown like `![](image.png)` resolves to a webview-loadable URL,
+  // not the auth-gated YouTrack URL.
+  for (const a of attachments) {
+    const localUri = webview ? cachedAttachmentUri(a.url) : undefined;
+    const url = localUri ? webview!.asWebviewUri(localUri).toString() : a.url;
+    byName.set(a.name.toLowerCase(), url);
+  }
   return byName;
 }
 
@@ -192,16 +200,19 @@ function renderReactionChips(
   return `<div class="reactions-row">${chips}</div>`;
 }
 
-function renderAttachmentTile(a: Attachment): string {
+function renderAttachmentTile(a: Attachment, webview?: vscode.Webview): string {
   const isImage = (a.mimeType ?? '').toLowerCase().startsWith('image/')
     || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
   const size = formatBytes(a.size);
   if (isImage) {
-    // No href: images open in the in-panel lightbox on pointerdown. The
-    // URL is carried in data-href so it's still copyable via JS if we
-    // want to add "copy link" later.
+    // YouTrack image URLs require an auth header that the webview
+    // can't pass; we point <img> at a locally-cached copy fetched by
+    // the extension. The original YouTrack URL stays in data-href so
+    // the lightbox can open the full-resolution version on click.
+    const localUri = webview ? cachedAttachmentUri(a.url) : undefined;
+    const src = localUri ? webview!.asWebviewUri(localUri).toString() : a.url;
     return `<div class="attachment-tile image" data-href="${escapeHtml(a.url)}" data-lightbox="1" title="${escapeHtml(a.name)} — ${size}">
-        <img src="${escapeHtml(a.url)}" alt="${escapeHtml(a.name)}">
+        <img src="${escapeHtml(src)}" alt="${escapeHtml(a.name)}">
         <span class="attachment-meta"><span class="name">${escapeHtml(a.name)}</span><span class="size">${size}</span></span>
       </div>`;
   }
@@ -553,6 +564,13 @@ export class IssueDetailPanel {
     for (const u of users) this.userLookup.set(u.login, u);
     if (me && me.login) this.currentUserLogin = me.login;
 
+    // YouTrack attachment URLs require the Bearer token, which the
+    // webview can't pass on <img> requests. Download bytes locally
+    // (using the auth header) and rewrite <img src> to the cached file
+    // URI. Done in parallel with the upcoming render — by the time
+    // renderHtml runs, the cache lookup hits.
+    await primeAttachmentImages(this.collectImageUrls(attachments, comments));
+
     this.panel.webview.postMessage({ type: 'render', html: this.renderHtml(issue, comments, attachments, workItems, activities) });
     // Ship the user directory to the webview so inline @-autocomplete
     // can run against it without round-tripping to the extension.
@@ -560,6 +578,25 @@ export class IssueDetailPanel {
       login: u.login, fullName: u.fullName || u.login, avatarUrl: u.avatarUrl || '',
     }));
     this.panel.webview.postMessage({ type: 'userRoster', users: userRoster });
+  }
+
+  // Walks issue-level + comment-level attachments, returning the URLs
+  // of the image-shaped ones so primeAttachmentImages() can pre-fetch
+  // them with auth before the panel renders. Non-image attachments
+  // stay as direct YouTrack <a href> links — VS Code handles those by
+  // opening the user's browser, which has the right session cookies.
+  private collectImageUrls(attachments: Attachment[], comments: Comment[]): string[] {
+    const out: string[] = [];
+    const isImage = (a: Attachment): boolean =>
+      (a.mimeType ?? '').toLowerCase().startsWith('image/')
+      || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.name);
+    for (const a of attachments) if (isImage(a) && a.url) out.push(a.url);
+    for (const c of comments) {
+      for (const a of c.attachments ?? []) {
+        if (isImage(a) && a.url) out.push(a.url);
+      }
+    }
+    return out;
   }
 
   private renderHtml(
@@ -570,9 +607,10 @@ export class IssueDetailPanel {
     activities: Array<{ id: string; timestamp: number; category: string; field?: string; added: string[]; removed: string[]; author: User }> = [],
   ): string {
     const spentSeconds = workItems.reduce((sum, w) => sum + (w.duration || 0), 0);
+    const aiEnabled = vscode.workspace.getConfiguration('youtrack.ai').get<boolean>('enabled', false);
     // Issue-level attachment lookup, built once and reused for every
     // renderBody call below (description, comments, work items).
-    const issueByName = buildAttachmentByName(attachments);
+    const issueByName = buildAttachmentByName(attachments, this.panel.webview);
     const sideFields = issue.customFields.map((f) => renderSideField(f, { spentSeconds })).join('');
     const projectRow = `<div class="side-field"><span class="label">Project</span><span class="value">${escapeHtml(issue.project.shortName)}</span></div>`;
     const reporterRow = issue.reporter
@@ -593,7 +631,7 @@ export class IssueDetailPanel {
     ));
     const linksRows = `${linkRowsHtml}<div class="side-field editable-pill" data-pill="manageLinks" data-inline-kind="links" data-existing-links='${escapeHtml(existingLinksJson)}' title="Click to add or remove links"><span class="label">Links</span><span class="value"><span class="muted icon-label"><i class="codicon codicon-link"></i>Manage…</span></span></div>`;
 
-    const attachHtml = attachments.map((a) => renderAttachmentTile(a)).join('');
+    const attachHtml = attachments.map((a) => renderAttachmentTile(a, this.panel.webview)).join('');
 
     // Subtasks — children linked via the "subtask of" / "parent for"
     // relationship. YouTrack's link direction is OUTWARD from this
@@ -647,7 +685,11 @@ export class IssueDetailPanel {
       // comment's own attachments (comment-bound ones win if there's
       // a name collision).
       const commentByName = new Map(issueByName);
-      for (const a of c.attachments) commentByName.set(a.name.toLowerCase(), a.url);
+      for (const a of c.attachments) {
+        const localUri = cachedAttachmentUri(a.url);
+        const url = localUri ? this.panel.webview.asWebviewUri(localUri).toString() : a.url;
+        commentByName.set(a.name.toLowerCase(), url);
+      }
       const refNames = new Set<string>();
       const refRe = /!?\[[^\]]*\]\(([^)\s]+)\)/g;
       let match: RegExpExecArray | null;
@@ -658,7 +700,7 @@ export class IssueDetailPanel {
       }
       const unreferenced = c.attachments.filter((a) => !refNames.has(a.name.toLowerCase()));
       const tilesHtml = unreferenced.length
-        ? `<div class="attachment-grid comment-attachments">${unreferenced.map((a) => renderAttachmentTile(a)).join('')}</div>`
+        ? `<div class="attachment-grid comment-attachments">${unreferenced.map((a) => renderAttachmentTile(a, this.panel.webview)).join('')}</div>`
         : '';
       const fullWhen = escapeHtml(new Date(c.created).toLocaleString());
       const relWhen = escapeHtml(formatRelative(c.created));
@@ -763,6 +805,10 @@ export class IssueDetailPanel {
               <button class="btn primary" data-cmd="startWork" title="Transition state and create a branch"><i class="codicon codicon-play"></i>Start Work</button>
               <button class="btn" data-cmd="startTimer" title="Start a timer on this issue"><i class="codicon codicon-clock"></i>Timer</button>
               <button class="btn" data-cmd="createBranch" title="Create git branch from issue"><i class="codicon codicon-git-branch"></i>Branch</button>
+              ${aiEnabled ? `
+              <button class="btn" data-cmd="summarize" title="Summarize this issue with Claude"><i class="codicon codicon-sparkle"></i>Summarize</button>
+              <button class="btn" data-cmd="discuss" title="Discuss this issue in a Claude Code terminal"><i class="codicon codicon-comment-discussion"></i>Discuss</button>
+              ` : ''}
               <span class="toolbar-gap"></span>
               <button class="btn icon" data-cmd="refresh" title="Refresh this issue"><i class="codicon codicon-refresh"></i></button>
               <button class="btn icon" data-cmd="copyLink" title="Copy issue link"><i class="codicon codicon-link"></i></button>
@@ -1162,6 +1208,8 @@ export class IssueDetailPanel {
         createBranch: 'youtrack.createBranch',
         copyLink: 'youtrack.copyLink',
         openInBrowser: 'youtrack.openInBrowser',
+        summarize: 'youtrack.ai.summarizeIssue',
+        discuss: 'youtrack.ai.discussInTerminal',
       };
       const cmd = map[msg.id];
       if (!cmd) return;

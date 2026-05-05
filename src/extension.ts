@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { YouTrackClient } from './client/youtrackClient';
+import { YouTrackClient, joinUrl } from './client/youtrackClient';
 import { Cache } from './cache/cache';
 import { AuthStore } from './auth/authStore';
 import { SidebarState, type GroupMode, type SortMode } from './ui/sidebarState';
@@ -36,6 +36,12 @@ import { CommitTemplateService } from './ui/commitTemplate';
 import { resolveIssueId } from './commands/resolveIssueId';
 import { initColorDots } from './ui/colorDot';
 import { initUserAvatars } from './ui/userAvatar';
+import { initAttachmentImageCache, showAttachmentLog } from './ui/attachmentImageCache';
+import { summarizeIssue } from './ai/summarizeIssue';
+import { discussInTerminal } from './ai/discussInTerminal';
+import { draftWithProgress, type DraftIssueInput } from './ai/draftIssue';
+import { TodoCodeActionProvider, type TodoCommandPayload } from './ui/todoCodeActionProvider';
+import { createIssueFromTodo } from './ai/createIssueFromTodo';
 
 interface SectionDef {
   viewId: string;
@@ -79,6 +85,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const client = new YouTrackClient(creds.baseUrl, creds.token);
   initUserAvatars(context, client);
+  initAttachmentImageCache(context, client);
   const cfg = vscode.workspace.getConfiguration('youtrack');
 
   const cache = new Cache({
@@ -119,6 +126,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const refreshAll = () => { assignedProvider.refresh(); issuesProvider.refresh(); };
 
+  // Auto-refresh the sidebar trees whenever any mutation flows through
+  // the cache: invalidateIssue() (state change, assignee, tag, link, …)
+  // and notifyCreated() (Create Issue panel, board "+" button, …).
+  context.subscriptions.push(
+    cache.onChange(() => refreshAll()),
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand('youtrack.refresh', () => refreshAll()),
     vscode.commands.registerCommand('youtrack.openIssue', async (id: string) => {
@@ -157,18 +171,103 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (id) vscode.commands.executeCommand('youtrack.openIssue', id);
     }),
     vscode.commands.registerCommand('youtrack.createIssueFromSelection', () => {
-      createIssueFromSelection(context.extensionUri, client, context);
+      createIssueFromSelection(context.extensionUri, client, context, (id) => cache.notifyCreated(id), buildAiDeps());
     }),
     vscode.commands.registerCommand('youtrack.createIssue', () => {
-      CreateIssuePanel.show(context.extensionUri, client, context);
+      CreateIssuePanel.show(context.extensionUri, client, context, (id) => cache.notifyCreated(id), undefined, buildAiDeps());
     }),
     vscode.commands.registerCommand('youtrack.createIssueWithState', (stateName: unknown) => {
       const target = typeof stateName === 'string' && stateName ? stateName : '';
       CreateIssuePanel.show(context.extensionUri, client, context, async (createdId) => {
-        if (!target) return;
-        try { await client.transitionState(createdId, target); }
-        catch (e) { showYouTrackError(e, `set state ${target}`, 'warning'); }
+        if (target) {
+          try { await client.transitionState(createdId, target); }
+          catch (e) { showYouTrackError(e, `set state ${target}`, 'warning'); }
+        }
+        cache.notifyCreated(createdId);
+      }, undefined, buildAiDeps());
+    }),
+    vscode.commands.registerCommand('youtrack.ai.createIssue', async () => {
+      if (!(await ensureAiEnabled())) return;
+      // Quick-pick of starting points. The panel always opens after —
+      // the agent never files the ticket itself, the user reviews and
+      // submits.
+      type Start = vscode.QuickPickItem & { startKind: 'free' | 'selection' | 'clipboard' };
+      const choices: Start[] = [
+        { label: '$(edit) From a free-form description', startKind: 'free' },
+        { label: '$(selection) From the current editor selection', startKind: 'selection' },
+        { label: '$(clippy) From clipboard contents', startKind: 'clipboard' },
+      ];
+      const pick = await vscode.window.showQuickPick<Start>(choices, {
+        title: 'Draft a YouTrack issue with Claude',
+        placeHolder: 'Pick a starting point',
       });
+      if (!pick) return;
+
+      const input: DraftIssueInput = {
+        knownProjectShortName: vscode.workspace.getConfiguration('youtrack').get<string>('defaultProject') || undefined,
+      };
+
+      if (pick.startKind === 'free') {
+        const text = await vscode.window.showInputBox({
+          title: 'Describe the issue',
+          prompt: 'Plain language is fine. Claude will draft a clean summary + description.',
+          ignoreFocusOut: true,
+        });
+        if (!text || !text.trim()) return;
+        input.freeText = text.trim();
+      } else if (pick.startKind === 'selection') {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.selection.isEmpty) {
+          vscode.window.showWarningMessage('YouTrack AI: select some code first.');
+          return;
+        }
+        const sel = editor.selection;
+        const doc = editor.document;
+        input.selection = {
+          snippet: doc.getText(sel),
+          languageId: doc.languageId || '',
+          relPath: vscode.workspace.asRelativePath(doc.uri, false),
+          startLine: sel.start.line + 1,
+          endLine: sel.end.line + 1,
+        };
+        const extra = await vscode.window.showInputBox({
+          title: 'Anything to add?',
+          prompt: 'Optional: extra context about the snippet (or leave blank).',
+          ignoreFocusOut: true,
+        });
+        if (extra && extra.trim()) input.freeText = extra.trim();
+      } else if (pick.startKind === 'clipboard') {
+        const clip = await vscode.env.clipboard.readText();
+        if (!clip.trim()) {
+          vscode.window.showWarningMessage('YouTrack AI: clipboard is empty.');
+          return;
+        }
+        input.freeText = clip.trim();
+      }
+
+      const proposal = await draftWithProgress(
+        { client, cache, baseUrl: creds!.baseUrl, token: creds!.token },
+        input,
+        'Drafting issue with Claude…',
+      );
+      if (!proposal) return;
+
+      CreateIssuePanel.show(
+        context.extensionUri, client, context,
+        (id) => cache.notifyCreated(id),
+        {
+          summary: proposal.summary,
+          description: proposal.description,
+          ai: {
+            suggestedProject: proposal.suggestedProject,
+            suggestedType: proposal.suggestedType,
+            suggestedPriority: proposal.suggestedPriority,
+            suggestedTags: proposal.suggestedTags,
+            similarIssues: proposal.similarIssues,
+          },
+        },
+        buildAiDeps(),
+      );
     }),
     vscode.commands.registerCommand('youtrack.assignToMe', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
@@ -228,21 +327,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.copyLink', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
       if (!issueId) return;
-      const url = `${creds!.baseUrl.replace(/\/$/, '')}/issue/${issueId}`;
+      const url = joinUrl(creds!.baseUrl, `/issue/${issueId}`);
       await vscode.env.clipboard.writeText(url);
       vscode.window.showInformationMessage(`YouTrack: copied ${url}`);
     }),
     vscode.commands.registerCommand('youtrack.openInBrowser', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
       if (!issueId) return;
-      const url = `${creds!.baseUrl.replace(/\/$/, '')}/issue/${issueId}`;
+      const url = joinUrl(creds!.baseUrl, `/issue/${issueId}`);
       await vscode.env.openExternal(vscode.Uri.parse(url));
     }),
     vscode.commands.registerCommand('youtrack.openBoardInBrowser', async (arg?: unknown) => {
       // Works whether invoked from a sidebar tree item (which passes an
       // AgileBoard / object with `id`) or from a panel-internal message
       // that passes { boardId, sprintId? }.
-      const base = creds!.baseUrl.replace(/\/$/, '');
       let boardId: string | undefined;
       let sprintId: string | undefined;
       if (typeof arg === 'string') {
@@ -253,20 +351,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         sprintId = o.sprintId;
       }
       if (!boardId) return;
-      const url = sprintId
-        ? `${base}/agiles/${boardId}/${sprintId}`
-        : `${base}/agiles/${boardId}/current`;
+      const url = joinUrl(creds!.baseUrl, sprintId
+        ? `/agiles/${boardId}/${sprintId}`
+        : `/agiles/${boardId}/current`);
       await vscode.env.openExternal(vscode.Uri.parse(url));
     }),
     vscode.commands.registerCommand('youtrack.startWork', async (arg?: unknown) => {
       const issueId = await resolveIssueId(arg);
       if (!issueId) return;
-      await changeState(client, cache, issueId);
+      // If the user dismisses the state picker, treat the whole action as
+      // cancelled — don't create a branch for an issue they didn't commit
+      // to starting.
+      const transitioned = await changeState(client, cache, issueId);
+      if (!transitioned) return;
       await createBranch(client, cache, issueId);
     }),
     vscode.commands.registerCommand('youtrack.openBoard', (boardId?: string) =>
-      openBoard(context.extensionUri, client, context, typeof boardId === 'string' ? boardId : undefined),
+      openBoard(context.extensionUri, client, cache, context, typeof boardId === 'string' ? boardId : undefined),
     ),
+    vscode.commands.registerCommand('youtrack.ai.summarizeIssue', async (arg?: unknown) => {
+      if (!(await ensureAiEnabled())) return;
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await summarizeIssue(
+        { client, cache, baseUrl: creds!.baseUrl, token: creds!.token },
+        issueId,
+      );
+    }),
+    vscode.commands.registerCommand('youtrack.ai.discussInTerminal', async (arg?: unknown) => {
+      if (!(await ensureAiEnabled())) return;
+      const issueId = await resolveIssueId(arg);
+      if (!issueId) return;
+      await discussInTerminal(
+        { client, cache, baseUrl: creds!.baseUrl },
+        issueId,
+      );
+    }),
   );
 
   const boardTree = new BoardTreeProvider(client);
@@ -328,6 +448,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       { scheme: 'file' },
       new IssueCodeLensProvider(client, cache),
     ),
+    vscode.languages.registerCodeActionsProvider(
+      { scheme: 'file' },
+      new TodoCodeActionProvider(),
+      { providedCodeActionKinds: TodoCodeActionProvider.providedCodeActionKinds },
+    ),
+    vscode.commands.registerCommand('youtrack.ai.createIssueFromTodo', async (payload: TodoCommandPayload) => {
+      if (!(await ensureAiEnabled())) return;
+      if (!payload || !payload.uri) return;
+      // The CodeAction serializes the URI; rebuild a real one if needed.
+      const uri = payload.uri instanceof vscode.Uri ? payload.uri : vscode.Uri.parse(String(payload.uri));
+      await createIssueFromTodo(
+        {
+          client, cache,
+          baseUrl: creds!.baseUrl, token: creds!.token,
+          extensionUri: context.extensionUri, context,
+          buildAiDeps,
+        },
+        { ...payload, uri },
+      );
+    }),
   );
 
   const pollMs = cfg.get<number>('cache.pollInterval', 60) * 1000;
@@ -345,11 +485,43 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', false);
       vscode.window.showInformationMessage('YouTrack: signed out. Reload window to re-authenticate.');
     }),
+    vscode.commands.registerCommand('youtrack.showLogs', () => showAttachmentLog()),
   );
+
+  // Returns AI deps for the CreateIssuePanel — the panel uses these to
+  // power its "Draft with AI" button. Captures `creds`, `client`, and
+  // `cache` from this activate() closure so the panel doesn't need to
+  // know about them. Returns undefined when AI is off so the button
+  // stays hidden in the panel.
+  function buildAiDeps(): import('./ui/createIssuePanel').CreateIssueAiDeps | undefined {
+    const enabled = vscode.workspace.getConfiguration('youtrack.ai').get<boolean>('enabled', false);
+    if (!enabled) return undefined;
+    return {
+      baseUrl: creds!.baseUrl,
+      draft: (input) => draftWithProgress(
+        { client, cache, baseUrl: creds!.baseUrl, token: creds!.token },
+        input,
+        'Drafting with Claude…',
+      ),
+    };
+  }
 }
 
 export function deactivate(): void {
   // subscriptions handle cleanup
+}
+
+async function ensureAiEnabled(): Promise<boolean> {
+  const aiCfg = vscode.workspace.getConfiguration('youtrack.ai');
+  if (aiCfg.get<boolean>('enabled', false)) return true;
+  const pick = await vscode.window.showInformationMessage(
+    'YouTrack AI features are disabled. Enable them in settings (youtrack.ai.enabled). Requires Claude Code on the local machine.',
+    'Open Settings',
+  );
+  if (pick === 'Open Settings') {
+    vscode.commands.executeCommand('workbench.action.openSettings', 'youtrack.ai');
+  }
+  return false;
 }
 
 async function registerScopedCommands(
