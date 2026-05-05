@@ -69,13 +69,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('youtrack.signIn', async () => {
       const signed = await auth.promptAndValidate();
       if (!signed) return;
-      const pick = await vscode.window.showInformationMessage(
-        'YouTrack: signed in. Reload the window to finish activation.',
-        'Reload Window',
-      );
-      if (pick === 'Reload Window') {
-        vscode.commands.executeCommand('workbench.action.reloadWindow');
-      }
+      // Account-specific state (recents, drafts, active timer, board
+      // prefs) belongs to the previous account — wipe it before
+      // reloading so the new account starts clean. Then force a
+      // reload because the running extension's client, cache, and
+      // tree providers were captured against the old credentials in
+      // this activate() closure and won't pick up the new ones until
+      // the window restarts. Reload is non-negotiable; if the user
+      // had unsaved work, VS Code's hot-exit preserves it.
+      await wipePerAccountState(context);
+      vscode.window.showInformationMessage('YouTrack: signed in. Reloading window…');
+      await new Promise((r) => setTimeout(r, 600));
+      vscode.commands.executeCommand('workbench.action.reloadWindow');
     }),
   );
 
@@ -482,8 +487,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerUriHandler(new UriHandler()),
     vscode.commands.registerCommand('youtrack.signOut', async () => {
       await auth.signOut();
+      await wipePerAccountState(context);
       await vscode.commands.executeCommand('setContext', 'youtrack.signedIn', false);
-      vscode.window.showInformationMessage('YouTrack: signed out. Reload window to re-authenticate.');
+      vscode.window.showInformationMessage('YouTrack: signed out. Reloading window…');
+      await new Promise((r) => setTimeout(r, 600));
+      vscode.commands.executeCommand('workbench.action.reloadWindow');
     }),
     vscode.commands.registerCommand('youtrack.showLogs', () => showAttachmentLog()),
   );
@@ -509,6 +517,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   // subscriptions handle cleanup
+}
+
+// Clears every globalState key that's tied to a specific YouTrack
+// account. Called on sign-in (so the new account doesn't inherit the
+// previous one's recents / drafts / timer / board prefs) and on
+// sign-out (so the next sign-in starts clean regardless of what
+// account it is). Preference-style keys that aren't account-specific
+// (e.g. `youtrack.activitySort`) are deliberately left alone.
+async function wipePerAccountState(context: vscode.ExtensionContext): Promise<void> {
+  const keys = context.globalState.keys();
+  const accountSpecificPrefixes = ['youtrack.draft.', 'youtrack.boardPrefs.'];
+  const accountSpecificExact = new Set([
+    'youtrack.recentIssues',
+    'youtrack.createIssueDraft',
+    'youtrack.activeTimer',
+  ]);
+  for (const key of keys) {
+    if (accountSpecificExact.has(key) || accountSpecificPrefixes.some((p) => key.startsWith(p))) {
+      await context.globalState.update(key, undefined);
+    }
+  }
 }
 
 async function ensureAiEnabled(): Promise<boolean> {

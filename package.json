@@ -2,7 +2,7 @@
   "name": "youtrack-companion",
   "displayName": "YouTrack Companion",
   "description": "Third-party YouTrack Cloud companion: sidebar, full-fidelity issue detail, agile board, time tracker, branch-from-issue.",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "publisher": "healkeiser",
   "author": {
     "name": "Valentin Beaumont",
