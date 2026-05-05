@@ -20,3 +20,21 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: '*.vsix'
+      # Publish to Open VSX (https://open-vsx.org) so VSCodium, Cursor,
+      # Theia, and other non-Marketplace VS Code distributions can
+      # install + auto-update directly. Set OVSX_TOKEN in repo secrets
+      # to enable; absent token is treated as "skip" rather than a
+      # failure so forks and first-time setups don't break the release.
+      - name: Publish to Open VSX
+        env:
+          OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
+        shell: pwsh
+        run: |
+          if (-not $env:OVSX_TOKEN) {
+            Write-Host "OVSX_TOKEN not set in repo secrets; skipping Open VSX publish."
+            exit 0
+          }
+          $vsix = Get-ChildItem -Filter '*.vsix' | Select-Object -First 1
+          if (-not $vsix) { throw "No .vsix found in working directory." }
+          Write-Host "Publishing $($vsix.Name) to Open VSX…"
+          npx --yes ovsx publish $vsix.FullName -p $env:OVSX_TOKEN

@@ -1,19 +1,48 @@
 # YouTrack Companion
 
-[![VS Marketplace Version](https://vsmarketplacebadges.dev/version-short/valentinbeaumont.youtrack-companion.svg?label=marketplace&style=flat)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-companion)
-[![VS Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/valentinbeaumont.youtrack-companion.svg?style=flat)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-companion)
-[![VS Marketplace Rating](https://vsmarketplacebadges.dev/rating-short/valentinbeaumont.youtrack-companion.svg?style=flat)](https://marketplace.visualstudio.com/items?itemName=valentinbeaumont.youtrack-companion&ssr=false#review-details)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/valentinbeaumont/youtrack-companion?label=open-vsx)](https://open-vsx.org/extension/valentinbeaumont/youtrack-companion)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/valentinbeaumont/youtrack-companion?label=installs)](https://open-vsx.org/extension/valentinbeaumont/youtrack-companion)
+[![GitHub release](https://img.shields.io/github/v/release/healkeiser/youtrack-companion?label=github%20release)](https://github.com/healkeiser/youtrack-companion/releases/latest)
 [![License](https://img.shields.io/github/license/healkeiser/youtrack-companion)](./LICENSE)
 
-> Formerly published as **YouTrack Integration** (`valentinbeaumont.youtrack-vscode`). Renamed and re-iconed in 0.9.0 to clearly differentiate from other YouTrack extensions on the Marketplace. Same author, same codebase, same keybindings.
+> Distributed via **[Open VSX](https://open-vsx.org/extension/valentinbeaumont/youtrack-companion)** and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**. Not currently on the VS Code Marketplace.
 
 A third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
 
 Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with JetBrains.
 
+## Install
+
+The extension lives on **Open VSX** (works in VSCodium, Cursor, Eclipse Theia, Gitpod, and other non-Microsoft VS Code distributions) and as a versioned `.vsix` on **GitHub Releases**. Pick one path:
+
+### VSCodium / Cursor / Theia / Gitpod
+Search **YouTrack Companion** in the Extensions sidebar — those editors talk to Open VSX out of the box.
+
+### Stock VS Code (or air-gapped / corporate setups)
+Stock VS Code only browses the Microsoft Marketplace, so install from the `.vsix`:
+
+```powershell
+# Latest release, one liner. Uses the GitHub redirect so it always
+# resolves to the newest tag.
+$vsix = (Invoke-RestMethod https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest).assets `
+  | Where-Object name -like '*.vsix' | Select-Object -First 1 -ExpandProperty browser_download_url
+Invoke-WebRequest $vsix -OutFile youtrack-companion.vsix
+code --install-extension youtrack-companion.vsix
+```
+
+```bash
+# bash / zsh equivalent
+curl -L -o youtrack-companion.vsix \
+  $(curl -s https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest \
+    | grep browser_download_url | grep '\.vsix' | head -1 | cut -d '"' -f 4)
+code --install-extension youtrack-companion.vsix
+```
+
+Or just download the `.vsix` from the [latest release page](https://github.com/healkeiser/youtrack-companion/releases/latest) and drag-and-drop it into the Extensions sidebar.
+
 ## Quick start
 
-1. Install from the Marketplace or run `ext install valentinbeaumont.youtrack-companion`.
+1. Install via one of the methods above.
 2. `Ctrl+Shift+P` → **YouTrack: Sign In**.
 3. Enter your YouTrack Cloud base URL (e.g. `https://<org>.youtrack.cloud/`).
 4. Paste a permanent token. Generate one in YouTrack: **avatar → Profile → Account Security → New token**, scope it to **YouTrack** (not read-only).
