@@ -1,14 +1,27 @@
 .vscode/**
 .vscode-test/**
+.github/**
+.scripts/**
 src/**
 test/**
 docs/**
+node_modules/**
 **/*.ts
 **/*.map
-node_modules/**
+.gitignore
+.gitattributes
+.editorconfig
+.eslintrc*
+.prettierrc*
 tsconfig.json
 tsconfig.test.json
 esbuild.config.mjs
 vitest.config.ts
-.github/**
+# Stray top-level markdown that isn't the canonical README / CHANGELOG /
+# LICENSE the Marketplace expects. Anything else is internal scratch.
+REINSTATEMENT_REPLY.md
 !media/**
+# media/youtrack.svg is an unreferenced legacy asset from an earlier
+# rebrand. Marketplace tile uses youtrack.png; activity-bar uses
+# youtrack_outline.svg. Excluded from the .vsix; kept in the repo.
+media/youtrack.svg
