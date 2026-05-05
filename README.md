@@ -1,11 +1,11 @@
 # YouTrack Companion
 
+[![VS Marketplace Version](https://vsmarketplacebadges.dev/version-short/healkeiser.youtrack-companion.svg?label=marketplace&style=flat)](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion)
 [![Open VSX Version](https://img.shields.io/open-vsx/v/healkeiser/youtrack-companion?label=open-vsx)](https://open-vsx.org/extension/healkeiser/youtrack-companion)
-[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/healkeiser/youtrack-companion?label=installs)](https://open-vsx.org/extension/healkeiser/youtrack-companion)
 [![GitHub release](https://img.shields.io/github/v/release/healkeiser/youtrack-companion?label=github%20release)](https://github.com/healkeiser/youtrack-companion/releases/latest)
 [![License](https://img.shields.io/github/license/healkeiser/youtrack-companion)](./LICENSE)
 
-> Distributed via **[Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion)** and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**. Not currently on the VS Code Marketplace.
+> Distributed via the **[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion)**, **[Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion)** (for VSCodium / Cursor / Theia), and direct **[GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases)**.
 
 A third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail, agile board, time tracking, and a pile of editor-native workflows that turn the extension into a **"create a ticket and keep coding"** loop rather than a **"read tickets while coding"** loop.
 
@@ -13,13 +13,15 @@ Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with
 
 ## Install
 
-The extension lives on **Open VSX** (works in VSCodium, Cursor, Eclipse Theia, Gitpod, and other non-Microsoft VS Code distributions) and as a versioned `.vsix` on **GitHub Releases**. Pick one path:
+### VS Code (Microsoft Marketplace)
+`Ctrl+Shift+P` → **Extensions: Install Extensions** → search **YouTrack Companion** by `healkeiser`.
+Or from the command line: `code --install-extension healkeiser.youtrack-companion`.
 
-### VSCodium / Cursor / Theia / Gitpod
+### VSCodium / Cursor / Theia / Gitpod (Open VSX)
 Search **YouTrack Companion** in the Extensions sidebar — those editors talk to Open VSX out of the box.
 
-### Stock VS Code (or air-gapped / corporate setups)
-Stock VS Code only browses the Microsoft Marketplace, so install from the `.vsix`:
+### Manual / air-gapped / corporate setups
+Install from the latest `.vsix` published as a GitHub Release:
 
 ```powershell
 # Latest release, one liner. Uses the GitHub redirect so it always

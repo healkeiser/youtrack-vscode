@@ -158,3 +158,23 @@ jobs:
           if (-not $vsix) { throw "No .vsix found in working directory." }
           Write-Host "Publishing $($vsix.Name) to Open VSX…"
           npx --yes ovsx publish $vsix.FullName -p $env:OVSX_TOKEN
+
+      # Publish to the VS Code Marketplace. Requires a Personal Access
+      # Token with `Marketplace > Manage` scope from
+      # https://dev.azure.com/<account>/_usersSettings/tokens stored
+      # as VSCE_PAT in repo secrets. Same skip-on-missing-token policy
+      # as the Open VSX step so a partial setup doesn't break the
+      # release.
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        shell: pwsh
+        run: |
+          if (-not $env:VSCE_PAT) {
+            Write-Host "VSCE_PAT not set in repo secrets; skipping Marketplace publish."
+            exit 0
+          }
+          $vsix = Get-ChildItem -Filter '*.vsix' | Select-Object -First 1
+          if (-not $vsix) { throw "No .vsix found in working directory." }
+          Write-Host "Publishing $($vsix.Name) to VS Code Marketplace…"
+          npx --yes @vscode/vsce publish --packagePath $vsix.FullName --pat $env:VSCE_PAT
