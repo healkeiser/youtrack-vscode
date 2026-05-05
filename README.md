@@ -7,8 +7,6 @@
   <p align="center">
     Third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail panel, agile board, time tracking, AI assist via Claude Code, and a pile of editor-native workflows.
     <br/><br/>
-    <a href="https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion"><strong>Marketplace</strong></a>
-    &nbsp;·&nbsp;
     <a href="https://open-vsx.org/extension/healkeiser/youtrack-companion"><strong>Open VSX</strong></a>
     &nbsp;·&nbsp;
     <a href="https://github.com/healkeiser/youtrack-companion/releases"><strong>Releases</strong></a>
@@ -23,12 +21,10 @@
     <img src="https://img.shields.io/badge/license-MIT-blue?&label=License"/> &nbsp;&nbsp;
     <!-- GitHub build workflow -->
     <img src="https://img.shields.io/github/actions/workflow/status/healkeiser/youtrack-companion/release.yml?&label=Build&logo=github-actions&logoColor=white" alt="Build"> &nbsp;&nbsp;
-    <!-- VS Marketplace version -->
-    <a href="https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion"><img src="https://img.shields.io/visual-studio-marketplace/v/healkeiser.youtrack-companion?&logo=visualstudiocode&logoColor=white&label=Marketplace" alt="VS Marketplace Version"/></a> &nbsp;&nbsp;
-    <!-- VS Marketplace installs -->
-    <a href="https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion"><img src="https://img.shields.io/visual-studio-marketplace/i/healkeiser.youtrack-companion?&logo=visualstudiocode&logoColor=white&label=Installs" alt="VS Marketplace Installs"/></a> &nbsp;&nbsp;
     <!-- Open VSX version -->
     <a href="https://open-vsx.org/extension/healkeiser/youtrack-companion"><img src="https://img.shields.io/open-vsx/v/healkeiser/youtrack-companion?&label=Open%20VSX" alt="Open VSX Version"/></a> &nbsp;&nbsp;
+    <!-- Open VSX downloads -->
+    <a href="https://open-vsx.org/extension/healkeiser/youtrack-companion"><img src="https://img.shields.io/open-vsx/dt/healkeiser/youtrack-companion?&label=Downloads" alt="Open VSX Downloads"/></a> &nbsp;&nbsp;
     <!-- Last Commit -->
     <img src="https://img.shields.io/github/last-commit/healkeiser/youtrack-companion?logo=github&label=Last%20Commit" alt="Last Commit"> &nbsp;&nbsp;
     <!-- Commit Activity -->
@@ -40,7 +36,7 @@
 </div>
 
 > [!NOTE]
-> Distributed via the VS Code Marketplace, Open VSX (for VSCodium / Cursor / Theia / Gitpod), and direct GitHub Releases.
+> Distributed via [Open VSX](https://open-vsx.org/extension/healkeiser/youtrack-companion) (used natively by VSCodium / Cursor / Theia / Gitpod) and direct [GitHub Releases](https://github.com/healkeiser/youtrack-companion/releases). The extension is not currently published on the VS Code Marketplace — stock VS Code users install from the `.vsix` (see below).
 >
 > If you previously installed it as `valentinbeaumont.youtrack-vscode` or `valentinbeaumont.youtrack-companion`, those identifiers are retired. Uninstall the old extension and install `healkeiser.youtrack-companion`. Settings under the `youtrack.*` namespace are preserved across the switch — no reconfiguration needed.
 
@@ -67,23 +63,13 @@ Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with
 
 ## Installation
 
-### VS Code (Microsoft Marketplace)
-
-`Ctrl+Shift+P` → **Extensions: Install Extensions** → search **YouTrack Companion** by `healkeiser`.
-
-Or from the command line:
-
-```
-code --install-extension healkeiser.youtrack-companion
-```
-
 ### VSCodium / Cursor / Theia / Gitpod (Open VSX)
 
 Search **YouTrack Companion** in the Extensions sidebar — those editors talk to Open VSX out of the box.
 
-### Manual / air-gapped / corporate setups
+### Stock VS Code, manual, air-gapped, or corporate setups
 
-A single universal `.vsix` ships per release — same artifact across Windows, macOS, and Linux because the AI features spawn the user's own `claude` CLI rather than bundling per-platform binaries.
+Stock VS Code only browses the Microsoft Marketplace, where the extension is not currently published. Install from the latest `.vsix` on GitHub Releases instead — a single universal artifact ships per release (same across Windows, macOS, and Linux, since the AI features spawn the user's own `claude` CLI rather than bundling per-platform binaries).
 
 ```powershell
 # Windows / PowerShell
