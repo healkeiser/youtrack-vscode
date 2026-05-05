@@ -574,7 +574,9 @@ async function registerScopedCommands(
   await setCtx(`${base}.filterActive`, false);
   await setCtx(`${base}.stateFilterActive`, false);
   await setCtx(`${base}.tagFilterActive`, false);
-  await setCtx(`${base}.sortNonDefault`, false);
+  await setCtx(`${base}.sortNonDefault`, state.sortMode !== 'id');
+  await setCtx(`${base}.sortAscending`, state.sortDir === 'asc');
+  await setCtx(`${base}.sortHasDirection`, state.sortMode !== 'default');
   await setCtx(`${base}.groupedByProject`, state.groupMode === 'project');
   await setCtx(`${base}.unresolvedOnly`, state.unresolvedOnly);
 
@@ -651,19 +653,28 @@ async function registerScopedCommands(
     }),
     vscode.commands.registerCommand(`${base}.sortBy`, async () => {
       const labels: Record<SortMode, string> = {
-        default: 'Default (saved search order)',
+        id: 'Issue ID (newest first)',
         updated: 'Recently updated',
         created: 'Recently created',
-        id: 'Issue ID',
+        default: 'Saved-search order',
       };
       const current = state.sortMode;
-      const picks = (['default', 'updated', 'created', 'id'] as SortMode[]).map((m) => ({
+      const picks = (['id', 'updated', 'created', 'default'] as SortMode[]).map((m) => ({
         label: labels[m], mode: m, description: m === current ? '(current)' : '',
       }));
       const picked = await vscode.window.showQuickPick(picks, { placeHolder: 'Sort issues by…', ignoreFocusOut: true });
       if (!picked) return;
       state.setSortMode(picked.mode);
-      await setCtx(`${base}.sortNonDefault`, picked.mode !== 'default');
+      await setCtx(`${base}.sortNonDefault`, picked.mode !== 'id');
+      await setCtx(`${base}.sortHasDirection`, picked.mode !== 'default');
+    }),
+    vscode.commands.registerCommand(`${base}.sortAscending`, async () => {
+      state.setSortDir('asc');
+      await setCtx(`${base}.sortAscending`, true);
+    }),
+    vscode.commands.registerCommand(`${base}.sortDescending`, async () => {
+      state.setSortDir('desc');
+      await setCtx(`${base}.sortAscending`, false);
     }),
     vscode.commands.registerCommand(`${base}.refresh`, () => refresh()),
     vscode.commands.registerCommand(`${base}.hideResolved`, async () => {

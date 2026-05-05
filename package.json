@@ -166,6 +166,16 @@
         "icon": "$(sort-precedence)"
       },
       {
+        "command": "youtrack.assignedToMe.sortAscending",
+        "title": "YouTrack: Assigned-to-me — Sort ascending",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "youtrack.assignedToMe.sortDescending",
+        "title": "YouTrack: Assigned-to-me — Sort descending",
+        "icon": "$(arrow-up)"
+      },
+      {
         "command": "youtrack.assignedToMe.groupByProject",
         "title": "YouTrack: Assigned-to-me — Group by Project",
         "icon": "$(list-tree)"
@@ -229,6 +239,16 @@
         "command": "youtrack.issues.sortBy",
         "title": "YouTrack: Issues — Sort…",
         "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "youtrack.issues.sortAscending",
+        "title": "YouTrack: Issues — Sort ascending",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "youtrack.issues.sortDescending",
+        "title": "YouTrack: Issues — Sort descending",
+        "icon": "$(arrow-up)"
       },
       {
         "command": "youtrack.issues.groupByProject",
@@ -665,19 +685,29 @@
           "group": "navigation@5"
         },
         {
+          "command": "youtrack.assignedToMe.sortAscending",
+          "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.sortHasDirection && !youtrack.assignedToMe.sortAscending",
+          "group": "navigation@6"
+        },
+        {
+          "command": "youtrack.assignedToMe.sortDescending",
+          "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.sortHasDirection && youtrack.assignedToMe.sortAscending",
+          "group": "navigation@6"
+        },
+        {
           "command": "youtrack.assignedToMe.groupFlat",
           "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.groupedByProject",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "youtrack.assignedToMe.groupByProject",
           "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.groupedByProject",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "youtrack.assignedToMe.refresh",
           "when": "view == youtrack.assignedToMe",
-          "group": "navigation@7"
+          "group": "navigation@8"
         },
         {
           "command": "youtrack.issues.filter",
@@ -730,19 +760,29 @@
           "group": "navigation@5"
         },
         {
+          "command": "youtrack.issues.sortAscending",
+          "when": "view == youtrack.issues && youtrack.issues.sortHasDirection && !youtrack.issues.sortAscending",
+          "group": "navigation@6"
+        },
+        {
+          "command": "youtrack.issues.sortDescending",
+          "when": "view == youtrack.issues && youtrack.issues.sortHasDirection && youtrack.issues.sortAscending",
+          "group": "navigation@6"
+        },
+        {
           "command": "youtrack.issues.groupFlat",
           "when": "view == youtrack.issues && youtrack.issues.groupedByProject",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "youtrack.issues.groupByProject",
           "when": "view == youtrack.issues && !youtrack.issues.groupedByProject",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "youtrack.issues.refresh",
           "when": "view == youtrack.issues",
-          "group": "navigation@7"
+          "group": "navigation@8"
         },
         {
           "command": "youtrack.refreshBoards",

@@ -81,7 +81,8 @@ export class QueryTreeProvider implements vscode.TreeDataProvider<Node> {
     const sorted = [...issues];
     if (mode === 'updated') sorted.sort((a, b) => (b.updated || 0) - (a.updated || 0));
     else if (mode === 'created') sorted.sort((a, b) => (b.created || 0) - (a.created || 0));
-    else if (mode === 'id') sorted.sort((a, b) => a.idReadable.localeCompare(b.idReadable, undefined, { numeric: true }));
+    else if (mode === 'id') sorted.sort((a, b) => b.idReadable.localeCompare(a.idReadable, undefined, { numeric: true }));
+    if (this.state.sortDir === 'asc') sorted.reverse();
     return sorted;
   }
 
