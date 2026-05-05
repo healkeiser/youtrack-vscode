@@ -62,7 +62,7 @@ jobs:
           newVersion=$(npm version ${{ inputs.bump }} --no-git-tag-version | sed 's/^v//')
           echo "Bumped to $newVersion"
 
-          npx --yes auto-changelog --commit-limit false --hide-credit --next-version "v$newVersion"
+          npx --yes auto-changelog --commit-limit false --hide-credit --latest-version "v$newVersion"
 
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "[BUILD] Bump version to $newVersion" -m "[skip ci]"
