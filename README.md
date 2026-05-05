@@ -71,8 +71,22 @@ Built by [Valentin Beaumont](https://github.com/healkeiser). Not affiliated with
 
 ### Editor-surface affordances
 - **Hover** any `ABC-123`-shaped token in any file → summary, state, assignee, quick-open link.
-- **CodeLens** above any `TODO` / `FIXME` / `XXX` / `HACK` / `NOTE` comment referencing an issue key → `ABC-123 · In Progress · <summary>`; click opens the panel.
+- **CodeLens** above any `TODO` / `FIXME` / `XXX` / `HACK` / `NOTE` comment referencing an issue key → `ABC-123 · In Progress · <summary>`; click opens the panel. With AI enabled, a second `$(sparkle) Ask Claude` lens opens the same TODO in your Claude Code terminal pre-loaded with the issue context.
+- **Quick Fix** on bare TODO/FIXME/XXX/HACK/NOTE comments (no issue id yet) — `Ctrl+.` → **Create YouTrack issue from this TODO**. AI drafts the ticket from surrounding code, you review in the Create Issue panel, and the line is rewritten to include the new id on submit.
 - **URI handler**: `vscode://valentinbeaumont.youtrack-vscode/ABC-123` opens the issue.
+
+### AI assist (Claude integration)
+
+> Optional. Off by default — enable with `youtrack.ai.enabled = true`. Requires [Claude Code](https://claude.com/claude-code) on the local machine; auth is inherited from whatever Claude Code is signed into (personal Max plan, Team plan, API key, Bedrock, Vertex).
+
+- Powered by the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agent-sdk) and the YouTrack MCP server (`<host>/mcp`). No API key in extension settings.
+- **Summarize Issue** — sidebar context menu, panel toolbar, or `youtrack.ai.summarizeIssue`. Streams a structured TL;DR / Context / Open questions / Next steps into a markdown doc beside your editor.
+- **Discuss in Claude Code Terminal** — pipes issue context + your branch/commit conventions into an existing `claude` terminal session (or spawns a new one). Bracketed-paste so the prompt arrives as a single block, not character-by-character.
+- **Create Issue with AI** — `youtrack.ai.createIssue` quick-picks _free-form_ / _from editor selection_ / _from clipboard_. The agent drafts summary + description + project / type / priority / tag suggestions, optionally surfaces near-duplicates via the YouTrack MCP, and opens the existing Create Issue panel pre-filled. You always review and submit — the agent never files tickets directly.
+- **Quick Fix on bare TODOs** — see _Editor-surface affordances_ above. The Code Action drafts an issue from the surrounding code, opens the Create Issue panel, and on submit rewrites the original line with the new id (configurable format, defaults to `# TODO ABC-123`).
+- **Conventions baked in** — every prompt and terminal handoff includes your `youtrack.branch.template` / `youtrack.commit.template` settings, so drafted branch names and commit messages match exactly what _Create Branch_ and _Insert Issue Key_ would produce locally.
+- **Sidebar auto-refresh** — when the agent calls a YouTrack MCP write tool (`update_issue`, `add_comment`, `transition_state`, …), a PostToolUse hook invalidates the cache and the sidebar trees / any open detail or board panels reflect the change without a manual refresh. Same plumbing reacts to manual mutations from the sidebar context menu or detail panel.
+- **Logs** — `YouTrack: Show Logs` opens the diagnostics output channel.
 
 ### Notifications
 - Unread notifications render with a `bell-dot` icon; inline `✓` to mark one read or a **Mark All as Read** action in the view toolbar.
@@ -116,6 +130,13 @@ Highlights (full list under **Settings → Extensions → YouTrack**):
 | `youtrack.commit.template` | `{id}: ` | SCM input prefix. Put `{id}` anywhere. |
 | `youtrack.commit.autoFill` | `empty-only` | `off` / `empty-only` / `always`. |
 | `youtrack.cache.pollInterval` | `60` | Background refresh cadence (seconds). |
+| `youtrack.ai.enabled` | `false` | Master switch for AI features. Requires Claude Code installed locally. |
+| `youtrack.ai.model` | `claude-sonnet-4-6` | Model used for AI features. |
+| `youtrack.ai.permissionMode` | `default` | How tool-use permissions are handled (`default` prompts, `acceptEdits`, `bypassPermissions`, `plan`). |
+| `youtrack.ai.maxTurns` | `12` | Max agent turns per request. |
+| `youtrack.ai.draft.checkDuplicates` | `true` | When drafting a new issue, search YouTrack for near-duplicates and surface them as a soft warning. |
+| `youtrack.ai.codeActions.replaceTodoWithIssueId` | `true` | After filing from a TODO Quick Fix, rewrite the original line to include the new issue id. |
+| `youtrack.ai.codeActions.todoIdFormat` | `{marker} {id}` | Format applied when stamping the issue id onto a TODO comment. |
 
 ## Security
 
