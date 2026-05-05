@@ -148,7 +148,7 @@
       {
         "command": "youtrack.assignedToMe.clearStateFilter",
         "title": "YouTrack: Assigned-to-me — Clear state filter",
-        "icon": "$(symbol-enum)"
+        "icon": "$(filter-filled)"
       },
       {
         "command": "youtrack.assignedToMe.filterByTag",
@@ -158,7 +158,7 @@
       {
         "command": "youtrack.assignedToMe.clearTagFilter",
         "title": "YouTrack: Assigned-to-me — Clear tag filter",
-        "icon": "$(tag)"
+        "icon": "$(filter-filled)"
       },
       {
         "command": "youtrack.assignedToMe.sortBy",
@@ -191,6 +191,11 @@
         "icon": "$(pass-filled)"
       },
       {
+        "command": "youtrack.assignedToMe.clearAllFilters",
+        "title": "YouTrack: Assigned-to-me — Clear all filters",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "youtrack.issues.filter",
         "title": "YouTrack: Filter Issues…",
         "icon": "$(filter)"
@@ -208,7 +213,7 @@
       {
         "command": "youtrack.issues.clearStateFilter",
         "title": "YouTrack: Issues — Clear state filter",
-        "icon": "$(symbol-enum)"
+        "icon": "$(filter-filled)"
       },
       {
         "command": "youtrack.issues.filterByTag",
@@ -218,7 +223,7 @@
       {
         "command": "youtrack.issues.clearTagFilter",
         "title": "YouTrack: Issues — Clear tag filter",
-        "icon": "$(tag)"
+        "icon": "$(filter-filled)"
       },
       {
         "command": "youtrack.issues.sortBy",
@@ -249,6 +254,11 @@
         "command": "youtrack.issues.showAll",
         "title": "YouTrack: Issues — Show resolved too",
         "icon": "$(pass-filled)"
+      },
+      {
+        "command": "youtrack.issues.clearAllFilters",
+        "title": "YouTrack: Issues — Clear all filters",
+        "icon": "$(clear-all)"
       },
       {
         "command": "youtrack.copyId",
@@ -357,6 +367,11 @@
           "type": "string",
           "default": "for: me and #Unresolved",
           "description": "Query for the status bar counter."
+        },
+        "youtrack.assignedToMeQuery": {
+          "type": "string",
+          "default": "for: me",
+          "markdownDescription": "YouTrack query for the **Assigned to me** sidebar view. Overrides any saved search named 'Assigned to me' on your YouTrack — what you put here is exactly what the extension fetches.\n\nLeave the resolved filter out of this query if you want the **Hide resolved / Show resolved too** toggle in the view title to actually do something — that toggle filters client-side, so the resolved issues need to be in the fetched payload first.\n\nReload the window after editing."
         },
         "youtrack.cache.ttl.issues": {
           "type": "number",
@@ -640,24 +655,29 @@
           "group": "navigation@0"
         },
         {
+          "command": "youtrack.assignedToMe.clearAllFilters",
+          "when": "view == youtrack.assignedToMe && (youtrack.assignedToMe.filterActive || youtrack.assignedToMe.stateFilterActive || youtrack.assignedToMe.tagFilterActive || youtrack.assignedToMe.unresolvedOnly)",
+          "group": "navigation@4"
+        },
+        {
           "command": "youtrack.assignedToMe.sortBy",
           "when": "view == youtrack.assignedToMe",
-          "group": "navigation@4"
+          "group": "navigation@5"
         },
         {
           "command": "youtrack.assignedToMe.groupFlat",
           "when": "view == youtrack.assignedToMe && youtrack.assignedToMe.groupedByProject",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "youtrack.assignedToMe.groupByProject",
           "when": "view == youtrack.assignedToMe && !youtrack.assignedToMe.groupedByProject",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "youtrack.assignedToMe.refresh",
           "when": "view == youtrack.assignedToMe",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "youtrack.issues.filter",
@@ -700,24 +720,29 @@
           "group": "navigation@0"
         },
         {
+          "command": "youtrack.issues.clearAllFilters",
+          "when": "view == youtrack.issues && (youtrack.issues.filterActive || youtrack.issues.stateFilterActive || youtrack.issues.tagFilterActive || youtrack.issues.unresolvedOnly)",
+          "group": "navigation@4"
+        },
+        {
           "command": "youtrack.issues.sortBy",
           "when": "view == youtrack.issues",
-          "group": "navigation@4"
+          "group": "navigation@5"
         },
         {
           "command": "youtrack.issues.groupFlat",
           "when": "view == youtrack.issues && youtrack.issues.groupedByProject",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "youtrack.issues.groupByProject",
           "when": "view == youtrack.issues && !youtrack.issues.groupedByProject",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "youtrack.issues.refresh",
           "when": "view == youtrack.issues",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "youtrack.refreshBoards",

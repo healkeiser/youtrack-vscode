@@ -131,9 +131,12 @@ export class QueryTreeProvider implements vscode.TreeDataProvider<Node> {
       await this.ensureFirstPage();
       const visible = this.sort(this.loaded.filter((i) => this.matches(i)));
 
-      const loadMoreNode: Node[] = this.hasMore && !this.state.anyFilterActive()
-        ? [{ kind: 'loadMore' }]
-        : [];
+      // "Load more" was previously hidden whenever any filter (including
+      // the default-on `unresolvedOnly`) was active — that suppressed
+      // pagination entirely on first open and made >50 assigned issues
+      // unreachable. Show it whenever the server has more pages and let
+      // client-side filters narrow the loaded pool independently.
+      const loadMoreNode: Node[] = this.hasMore ? [{ kind: 'loadMore' }] : [];
 
       if (this.state.groupMode === 'project') {
         const byProject = new Map<string, Issue[]>();

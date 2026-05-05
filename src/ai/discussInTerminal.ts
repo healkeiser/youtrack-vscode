@@ -94,24 +94,37 @@ export async function discussInTerminal(deps: DiscussDeps, issueId: string): Pro
   const terminal = await findOrStartClaudeTerminal();
   if (!terminal) return;
   terminal.show(/* preserveFocus */ false);
-  pasteIntoTerminal(terminal, message);
+  await pasteIntoTerminal(terminal, message);
 }
 
-// VS Code's terminal.sendText() ships the string character-by-character
-// to the PTY. Claude Code's TUI redraws its input box on every keystroke,
-// so a long multi-line message ends up reflowing across the scrollback
-// (visible duplication of paragraphs, ordering glitches). Wrapping the
-// payload in xterm "bracketed paste" markers tells the TUI "this is one
-// paste event, don't react until you see the end marker" — Claude Code
-// honors this, so the prompt arrives clean and is shown as a single
-// block.
+// VS Code's terminal.sendText() is unreliable for payloads larger than
+// ~700 chars on Windows ConPTY (microsoft/vscode#292058) — the write
+// can be truncated or partially stranded in the pty input buffer, and
+// on Claude Code exit the residue flushes to the host shell, which
+// then tries to execute lines like "- **Branch template:** ..." as
+// commands. Our prompt body is well over that threshold.
 //
-// addNewLine=false on both halves so we don't auto-submit the prompt;
-// the user reviews and presses Enter themselves.
-const PASTE_BEGIN = '\x1b[200~';
-const PASTE_END = '\x1b[201~';
-function pasteIntoTerminal(terminal: vscode.Terminal, body: string): void {
-  terminal.sendText(`${PASTE_BEGIN}${body}${PASTE_END}`, false);
+// Route through the OS clipboard and trigger VS Code's native
+// terminal-paste command instead. That produces a single atomic paste
+// event that respects bracketed-paste mode automatically (Claude Code
+// has paste mode enabled, so the body lands as one paste, not as
+// keystrokes), and it doesn't add a trailing newline, so the prompt
+// is staged for the user to review and submit themselves.
+async function pasteIntoTerminal(terminal: vscode.Terminal, body: string): Promise<void> {
+  terminal.show(false);
+  let previousClip = '';
+  try {
+    previousClip = await vscode.env.clipboard.readText();
+  } catch {
+    // Clipboard read can fail on locked sessions; proceed without restore.
+  }
+  await vscode.env.clipboard.writeText(body);
+  await vscode.commands.executeCommand('workbench.action.terminal.paste');
+  // Restore the user's clipboard once the paste has been drained from
+  // it. 250 ms is comfortably longer than the paste round-trip.
+  setTimeout(() => {
+    void vscode.env.clipboard.writeText(previousClip);
+  }, 250);
 }
 
 // Strategy:

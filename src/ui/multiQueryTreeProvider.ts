@@ -150,9 +150,11 @@ export class MultiQueryTreeProvider implements vscode.TreeDataProvider<Node> {
       if (!s) return [];
       await this.ensureFirstPage(s);
       const visible = this.sort(s.loaded.filter((i) => this.matches(i)));
-      const loadMoreNode: Node[] = s.hasMore && !this.state.anyFilterActive()
-        ? [{ kind: 'loadMore', sectionId: s.id }]
-        : [];
+      // Pagination is server-side; client-side filters (text/state/tag/
+      // unresolvedOnly) narrow the loaded pool but must not gate "Load
+      // more", or sections become unreachable past the first page when
+      // any filter is active.
+      const loadMoreNode: Node[] = s.hasMore ? [{ kind: 'loadMore', sectionId: s.id }] : [];
       if (this.state.groupMode === 'project') {
         const byProject = new Map<string, Issue[]>();
         for (const issue of visible) {

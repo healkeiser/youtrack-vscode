@@ -48,8 +48,14 @@ interface SectionDef {
   source: QuerySource;
 }
 
+// `savedQueryName` is intentionally omitted: the saved-query lookup
+// would be silently overridden by whatever a YouTrack admin has named
+// "Assigned to me" on the user's instance (often with `#Unresolved`
+// baked in, which makes the client-side resolved toggle a no-op). The
+// directQuery comes from the `youtrack.assignedToMeQuery` setting and
+// is filled in at activation time; defaults to `for: me`.
 const TOP_SECTIONS: SectionDef[] = [
-  { viewId: 'youtrack.assignedToMe', source: { label: 'Assigned to me', savedQueryName: 'Assigned to me', directQuery: 'for: me #Unresolved' } },
+  { viewId: 'youtrack.assignedToMe', source: { label: 'Assigned to me', directQuery: 'for: me' } },
 ];
 
 const ISSUES_SUBSECTIONS: Array<{ id: string; label: string; source: QuerySource }> = [
@@ -109,9 +115,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   issuesState.groupMode = initialGroup;
   assignedState.unresolvedOnly = true; // sensible default for "what am I working on?"
 
+  const assignedQuery = cfg.get<string>('assignedToMeQuery', 'for: me').trim() || 'for: me';
   const assignedProvider = new QueryTreeProvider(
     'youtrack.assignedToMe', client, cache, assignedState,
-    TOP_SECTIONS[0].source,
+    { ...TOP_SECTIONS[0].source, directQuery: assignedQuery },
   );
   const issuesProvider = new MultiQueryTreeProvider(
     'youtrack.issues', client, cache, issuesState, ISSUES_SUBSECTIONS,
@@ -666,6 +673,18 @@ async function registerScopedCommands(
     vscode.commands.registerCommand(`${base}.showAll`, async () => {
       state.setUnresolvedOnly(false);
       await setCtx(`${base}.unresolvedOnly`, false);
+    }),
+    vscode.commands.registerCommand(`${base}.clearAllFilters`, async () => {
+      state.setFilterText('');
+      state.setStateFilter([]);
+      state.setTagFilter([]);
+      state.setUnresolvedOnly(false);
+      await Promise.all([
+        setCtx(`${base}.filterActive`, false),
+        setCtx(`${base}.stateFilterActive`, false),
+        setCtx(`${base}.tagFilterActive`, false),
+        setCtx(`${base}.unresolvedOnly`, false),
+      ]);
     }),
   );
 }
