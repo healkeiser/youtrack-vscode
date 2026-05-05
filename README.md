@@ -1,12 +1,43 @@
-<p align="center">
-  <img src="media/youtrack.png" alt="YouTrack Companion" width="128">
-</p>
+<div align="center">
 
-### youtrack-companion
+  <img src="https://raw.githubusercontent.com/healkeiser/youtrack-companion/main/media/youtrack.png" alt="YouTrack Companion" width="128">
 
-Third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail panel, agile board, time tracking, AI assist via Claude Code, and a pile of editor-native workflows that turn the extension into a "create a ticket and keep coding" loop rather than a "read tickets while coding" loop.
+  <h3 align="center">youtrack-companion</h3>
 
-[**Marketplace**](https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion) · [**Open VSX**](https://open-vsx.org/extension/healkeiser/youtrack-companion) · [**Releases**](https://github.com/healkeiser/youtrack-companion/releases)
+  <p align="center">
+    Third-party YouTrack Cloud companion for Visual Studio Code. Sidebar, full-fidelity issue detail panel, agile board, time tracking, AI assist via Claude Code, and a pile of editor-native workflows.
+    <br/><br/>
+    <a href="https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion"><strong>Marketplace</strong></a>
+    &nbsp;·&nbsp;
+    <a href="https://open-vsx.org/extension/healkeiser/youtrack-companion"><strong>Open VSX</strong></a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/healkeiser/youtrack-companion/releases"><strong>Releases</strong></a>
+  </p>
+
+  ##
+
+  <p align="center">
+    <!-- Maintenance status -->
+    <img src="https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg?&label=Maintenance"> &nbsp;&nbsp;
+    <!-- License -->
+    <img src="https://img.shields.io/badge/license-MIT-blue?&label=License"/> &nbsp;&nbsp;
+    <!-- GitHub build workflow -->
+    <img src="https://img.shields.io/github/actions/workflow/status/healkeiser/youtrack-companion/release.yml?&label=Build&logo=github-actions&logoColor=white" alt="Build"> &nbsp;&nbsp;
+    <!-- VS Marketplace version -->
+    <a href="https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion"><img src="https://img.shields.io/visual-studio-marketplace/v/healkeiser.youtrack-companion?&logo=visualstudiocode&logoColor=white&label=Marketplace" alt="VS Marketplace Version"/></a> &nbsp;&nbsp;
+    <!-- VS Marketplace installs -->
+    <a href="https://marketplace.visualstudio.com/items?itemName=healkeiser.youtrack-companion"><img src="https://img.shields.io/visual-studio-marketplace/i/healkeiser.youtrack-companion?&logo=visualstudiocode&logoColor=white&label=Installs" alt="VS Marketplace Installs"/></a> &nbsp;&nbsp;
+    <!-- Open VSX version -->
+    <a href="https://open-vsx.org/extension/healkeiser/youtrack-companion"><img src="https://img.shields.io/open-vsx/v/healkeiser/youtrack-companion?&label=Open%20VSX" alt="Open VSX Version"/></a> &nbsp;&nbsp;
+    <!-- Last Commit -->
+    <img src="https://img.shields.io/github/last-commit/healkeiser/youtrack-companion?logo=github&label=Last%20Commit" alt="Last Commit"> &nbsp;&nbsp;
+    <!-- Commit Activity -->
+    <a href="https://github.com/healkeiser/youtrack-companion/pulse" alt="Activity"><img src="https://img.shields.io/github/commit-activity/m/healkeiser/youtrack-companion?&logo=github&label=Commit%20Activity"></a> &nbsp;&nbsp;
+    <!-- GitHub stars -->
+    <img src="https://img.shields.io/github/stars/healkeiser/youtrack-companion" alt="GitHub Stars"/> &nbsp;&nbsp;
+  </p>
+
+</div>
 
 > [!NOTE]
 > Distributed via the VS Code Marketplace, Open VSX (for VSCodium / Cursor / Theia / Gitpod), and direct GitHub Releases.
