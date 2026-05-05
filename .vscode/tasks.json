@@ -107,6 +107,25 @@
             }
         },
         {
+            "label": "Reinstall Extension (Local)",
+            "detail": "Build + package + install the freshest .vsix + reload window. The full local iteration loop in one shot.",
+            "type": "shell",
+            "command": "npm run reinstall",
+            "icon": {
+                "id": "rocket",
+                "color": "terminal.ansiGreen"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
             "label": "Test Extension",
             "detail": "vitest unit suite.",
             "type": "shell",

@@ -895,7 +895,8 @@
     "test:watch": "vitest",
     "package": "vsce package",
     "test:integration": "tsc -p tsconfig.test.json && node ./test-dist/test/runTest.js",
-    "changelog": "npx --yes auto-changelog --commit-limit false --hide-credit"
+    "changelog": "npx --yes auto-changelog --commit-limit false --hide-credit",
+    "reinstall": "powershell -ExecutionPolicy Bypass -File ./.scripts/Reinstall-Extension.ps1"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
