@@ -1,24 +1,22 @@
 name: Release
 
-# Three stages, chained:
+# Two entry points, both produce the same outcome (version bump,
+# changelog, .vsix on the GitHub release, Open VSX upload, Marketplace
+# upload):
 #
-#   1. release-bump  — runs once. workflow_dispatch with `bump` does
-#      the npm version + auto-changelog + commit + tag + push so the
-#      package matrix below sees the canonical state. push:tags skips
-#      this job entirely (the bump was already done).
+#   1. workflow_dispatch with a `bump` input — invoked from VS Code's
+#      "Release Extension" task. The workflow itself bumps the version
+#      in package.json, regenerates CHANGELOG.md, commits + tags, and
+#      then proceeds with the build/release/publish chain.
 #
-#   2. package       — fans out across (os, arch) targets. Each runner
-#      installs the matching @anthropic-ai/claude-agent-sdk-<triple>
-#      optional binary and runs `vsce package --target <triple>`,
-#      producing a .vsix that contains ONLY that platform's claude
-#      binary. Keeps each .vsix well under the Marketplace 80MB hard
-#      limit (~30MB per target instead of ~250MB universal).
+#   2. push: tags 'v*.*.*' — for direct git-push releases (e.g. when
+#      the bump was done by hand). The bump step is skipped because
+#      package.json already matches the tag.
 #
-#   3. publish       — single runner, downloads every per-target .vsix
-#      artifact, uploads them all to the GitHub release, and
-#      publishes each to Open VSX + VS Code Marketplace. Each registry
-#      receives every target so users get the right binary
-#      automatically based on their OS/arch.
+# Single universal .vsix (no per-platform matrix) — the AI features
+# spawn the user's own `claude` CLI from PATH instead of bundling a
+# platform-specific Claude Code binary. .vsix size collapsed from
+# ~80MB (compressed, max one platform) to ~5MB (universal).
 on:
   workflow_dispatch:
     inputs:
@@ -35,8 +33,8 @@ permissions:
   contents: write
 
 jobs:
-  release-bump:
-    runs-on: windows-latest
+  release:
+    runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
@@ -56,13 +54,13 @@ jobs:
 
       - name: Bump version + changelog (workflow_dispatch only)
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        shell: pwsh
+        shell: bash
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-          $newVersion = (npm version ${{ inputs.bump }} --no-git-tag-version) -replace '^v',''
-          Write-Host "Bumped to $newVersion"
+          newVersion=$(npm version ${{ inputs.bump }} --no-git-tag-version | sed 's/^v//')
+          echo "Bumped to $newVersion"
 
           npx --yes auto-changelog --commit-limit false --hide-credit --next-version "v$newVersion"
 
@@ -74,97 +72,28 @@ jobs:
 
       - name: Resolve tag + version
         id: tag
-        shell: pwsh
+        shell: bash
         run: |
-          $tag = git describe --tags --abbrev=0
-          $version = $tag -replace '^v',''
-          Write-Host "tag=$tag version=$version"
-          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-  package:
-    needs: release-bump
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Host runners are picked so the matching native binary
-          # gets installed by `npm ci` automatically. The
-          # `target` column is the vsce/Marketplace platform triple;
-          # the `npm-suffix` column is the @anthropic-ai/claude-agent-sdk-<X>
-          # optional-dep suffix, identical for these five targets.
-          - os: windows-latest
-            target: win32-x64
-          - os: ubuntu-latest
-            target: linux-x64
-          - os: ubuntu-22.04-arm
-            target: linux-arm64
-          - os: macos-13
-            target: darwin-x64
-          - os: macos-latest
-            target: darwin-arm64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          # Pull the tag the bump job created so we package the exact
-          # committed state, not whatever happens to be on main now.
-          ref: ${{ needs.release-bump.outputs.tag }}
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - run: npm ci
+          tag=$(git describe --tags --abbrev=0)
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Resolved $tag / $version"
 
       - run: npm run build
-
-      - name: Package .vsix for ${{ matrix.target }}
-        shell: bash
-        run: npx --yes @vscode/vsce package --target ${{ matrix.target }} --no-yarn
-
-      - name: Upload .vsix artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: vsix-${{ matrix.target }}
-          path: '*.vsix'
-          if-no-files-found: error
-          retention-days: 7
-
-  publish:
-    needs: [release-bump, package]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.release-bump.outputs.tag }}
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '20'
-
-      - name: Download all .vsix artifacts
-        uses: actions/download-artifact@v5
-        with:
-          path: vsix-artifacts
-          pattern: vsix-*
-          merge-multiple: true
-
-      - name: List artifacts
-        run: ls -la vsix-artifacts/
+      - run: npm test
+      - name: Package .vsix
+        run: npx --yes @vscode/vsce package --no-yarn
 
       - name: Extract changelog section for this release
         id: changelog-section
         shell: bash
         run: |
-          version="${{ needs.release-bump.outputs.version }}"
+          version="${{ steps.tag.outputs.version }}"
           if [ ! -f CHANGELOG.md ]; then
             echo "section=See release notes for details." >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Match `## [vX.Y.Z]...` or `## [X.Y.Z]...`, copy until the
-          # next `## [...]` header.
           section=$(awk "/^## \[?v?${version}\]?(\(|$)/{found=1; next} /^## \[?v?[0-9]+\.[0-9]+\.[0-9]+\]?/{if(found) exit} found{print}" CHANGELOG.md)
           if [ -z "$section" ]; then section="See CHANGELOG.md for details."; fi
           {
@@ -173,11 +102,11 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub release with all .vsix files
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.release-bump.outputs.tag }}
-          name: ${{ needs.release-bump.outputs.tag }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
           body: |
             ## What's Changed
 
@@ -186,39 +115,34 @@ jobs:
             ## Full changelog
 
             ${{ github.server_url }}/${{ github.repository }}/blob/main/CHANGELOG.md
-          files: 'vsix-artifacts/*.vsix'
+          files: '*.vsix'
 
-      # Publish every per-target .vsix to Open VSX. Each call is
-      # independent — a failure on one target shouldn't block the
-      # others. Skip cleanly if the token isn't configured.
-      - name: Publish all targets to Open VSX
+      # Open VSX (https://open-vsx.org) — VSCodium / Cursor / Theia /
+      # Gitpod. Skip cleanly when the secret isn't configured.
+      - name: Publish to Open VSX
         env:
           OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
         shell: bash
         run: |
           if [ -z "$OVSX_TOKEN" ]; then
-            echo "OVSX_TOKEN not set in repo secrets; skipping Open VSX publish."
+            echo "OVSX_TOKEN not set; skipping Open VSX publish."
             exit 0
           fi
-          rc=0
-          for vsix in vsix-artifacts/*.vsix; do
-            echo "Publishing $vsix to Open VSX…"
-            npx --yes ovsx publish "$vsix" -p "$OVSX_TOKEN" || rc=$?
-          done
-          exit $rc
+          vsix=$(ls *.vsix | head -n 1)
+          [ -n "$vsix" ] || { echo "No .vsix found."; exit 1; }
+          npx --yes ovsx publish "$vsix" -p "$OVSX_TOKEN"
 
-      - name: Publish all targets to VS Code Marketplace
+      # VS Code Marketplace. Skip cleanly when the secret isn't
+      # configured.
+      - name: Publish to VS Code Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         shell: bash
         run: |
           if [ -z "$VSCE_PAT" ]; then
-            echo "VSCE_PAT not set in repo secrets; skipping Marketplace publish."
+            echo "VSCE_PAT not set; skipping Marketplace publish."
             exit 0
           fi
-          rc=0
-          for vsix in vsix-artifacts/*.vsix; do
-            echo "Publishing $vsix to VS Code Marketplace…"
-            npx --yes @vscode/vsce publish --packagePath "$vsix" --pat "$VSCE_PAT" || rc=$?
-          done
-          exit $rc
+          vsix=$(ls *.vsix | head -n 1)
+          [ -n "$vsix" ] || { echo "No .vsix found."; exit 1; }
+          npx --yes @vscode/vsce publish --packagePath "$vsix" --pat "$VSCE_PAT"

@@ -12,15 +12,3 @@ esbuild.config.mjs
 vitest.config.ts
 .github/**
 !media/**
-# Claude Agent SDK is loaded from node_modules at runtime (ESM-only,
-# can't be bundled by esbuild) and ships native binaries per platform.
-# We carve out just the runtime deps the SDK and its transitive imports
-# need. Note: the *-{platform}-{arch} binary packages are optional deps;
-# the .vsix will only contain the binary for the platform that ran
-# `vsce package`. Producing a public, multi-platform release requires
-# building one .vsix per (platform, arch) - see vsce docs on
-# platform-specific extensions.
-!node_modules/@anthropic-ai/**
-!node_modules/@modelcontextprotocol/**
-!node_modules/zod/**
-!node_modules/zod-to-json-schema/**

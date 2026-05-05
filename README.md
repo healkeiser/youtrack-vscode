@@ -23,22 +23,20 @@ Or from the command line: `code --install-extension healkeiser.youtrack-companio
 Search **YouTrack Companion** in the Extensions sidebar — those editors talk to Open VSX out of the box.
 
 ### Manual / air-gapped / corporate setups
-Each release publishes one `.vsix` per platform (`win32-x64`, `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`). The Marketplace and Open VSX pick the right one for you automatically; for direct `.vsix` install, grab the file matching your OS/arch from the [latest release](https://github.com/healkeiser/youtrack-companion/releases/latest):
+A single universal `.vsix` ships per release — same artifact across Windows, macOS, and Linux because the AI features spawn the user's own `claude` CLI rather than bundling per-platform binaries.
 
 ```powershell
-# Windows x64
+# Windows / PowerShell
 $asset = (Invoke-RestMethod https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest).assets `
-  | Where-Object name -like '*win32-x64*.vsix' | Select-Object -First 1
+  | Where-Object name -like '*.vsix' | Select-Object -First 1
 Invoke-WebRequest $asset.browser_download_url -OutFile $asset.name
 code --install-extension $asset.name
 ```
 
 ```bash
-# Linux x64 — replace the grep target with your platform: linux-arm64,
-# darwin-x64, darwin-arm64, etc.
-PLATFORM=linux-x64
+# macOS / Linux
 URL=$(curl -s https://api.github.com/repos/healkeiser/youtrack-companion/releases/latest \
-  | grep browser_download_url | grep "${PLATFORM}.*\\.vsix" | head -1 | cut -d '"' -f 4)
+  | grep browser_download_url | grep '\.vsix' | head -1 | cut -d '"' -f 4)
 curl -L -o youtrack-companion.vsix "$URL"
 code --install-extension youtrack-companion.vsix
 ```
@@ -111,9 +109,9 @@ Or just download the `.vsix` from the [latest release page](https://github.com/h
 
 ### AI assist (Claude integration)
 
-> Optional. Off by default — enable with `youtrack.ai.enabled = true`. Requires [Claude Code](https://claude.com/claude-code) on the local machine; auth is inherited from whatever Claude Code is signed into (personal Max plan, Team plan, API key, Bedrock, Vertex).
+> Optional. Off by default — enable with `youtrack.ai.enabled = true`. Requires [Claude Code](https://claude.com/claude-code) installed and on `PATH`; auth is inherited from whatever Claude Code is signed into (personal Max plan, Team plan, API key, Bedrock, Vertex).
 
-- Powered by the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agent-sdk) and the YouTrack MCP server (`<host>/mcp`). No API key in extension settings.
+- The extension spawns the user's own `claude` CLI in `--print --output-format stream-json` mode and pipes events through the YouTrack MCP server (`<host>/mcp`). No SDK is bundled — the `.vsix` stays under 1MB instead of carrying a per-platform Claude Code binary. No API key in extension settings.
 - **Summarize Issue** — sidebar context menu, panel toolbar, or `youtrack.ai.summarizeIssue`. Streams a structured TL;DR / Context / Open questions / Next steps into a markdown doc beside your editor.
 - **Discuss in Claude Code Terminal** — pipes issue context + your branch/commit conventions into an existing `claude` terminal session (or spawns a new one). Bracketed-paste so the prompt arrives as a single block, not character-by-character.
 - **Create Issue with AI** — `youtrack.ai.createIssue` quick-picks _free-form_ / _from editor selection_ / _from clipboard_. The agent drafts summary + description + project / type / priority / tag suggestions, optionally surfaces near-duplicates via the YouTrack MCP, and opens the existing Create Issue panel pre-filled. You always review and submit — the agent never files tickets directly.
