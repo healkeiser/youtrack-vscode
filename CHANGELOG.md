@@ -2,8 +2,16 @@
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
 
+#### [v0.16.1](https://github.com/healkeiser/youtrack-companion/compare/v0.16.0...v0.16.1)
+
+- [FEAT] Sidebar: ID-descending default + asc/desc toggle button [`8d7edf1`](https://github.com/healkeiser/youtrack-companion/commit/8d7edf153d5a03bd9c96912cd63c819b8157d773)
+- [BUILD] Bump softprops/action-gh-release v2 -&gt; v3 (node24) [`68bc8ac`](https://github.com/healkeiser/youtrack-companion/commit/68bc8ac5a04cc07928bec56e7f3b7058ad1bb39b)
+
 #### [v0.16.0](https://github.com/healkeiser/youtrack-companion/compare/v0.15.6...v0.16.0)
 
+> 5 May 2026
+
+- [BUILD] Bump version to 0.16.0 [`177277e`](https://github.com/healkeiser/youtrack-companion/commit/177277e9ab1c0b838f1e7569383bd64670dc36a4)
 - [FIX] Sidebar paging, filter feedback, terminal paste; configurable Assigned-to-me query [`4dfcec2`](https://github.com/healkeiser/youtrack-companion/commit/4dfcec259c7db32c28e2d37309fb5a06b0b2de61)
 - [BUILD] Fix release workflow: auto-changelog renamed --next-version to --latest-version [`c23bc12`](https://github.com/healkeiser/youtrack-companion/commit/c23bc121690266e77844343504cb23f427e18bfc)
 
